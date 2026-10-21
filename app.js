@@ -84,14 +84,14 @@
   function route() {
     const h = location.hash.replace(/^#\/?/, '');
     const parts = h.split('/').filter(Boolean);
-    return { name: parts[0] || 'home', arg: parts[1] || '' };
+    return { name: parts[0] || 'home', arg: parts[1] || '', arg2: parts[2] || '' };
   }
   function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
 
   // ---------- Renderowanie ----------
   const scrollMem = {};
   function render() {
-    app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; });
+    app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; if (el.dataset.autoend) scrollMem[el.dataset.scroll + ':x'] = el.scrollLeft; });
     const r = route();
     let html;
     if (r.name === 'plan') {
@@ -103,9 +103,13 @@
       if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
+    else if (r.name === 'diet' && window.DietUI) html = window.DietUI.view(r);
     else html = viewHome();
     app.innerHTML = html + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
-    app.querySelectorAll('[data-scroll]').forEach((el) => { if (scrollMem[el.dataset.scroll]) el.scrollTop = scrollMem[el.dataset.scroll]; });
+    app.querySelectorAll('[data-scroll]').forEach((el) => {
+      if (scrollMem[el.dataset.scroll]) el.scrollTop = scrollMem[el.dataset.scroll];
+      if (el.dataset.autoend) el.scrollLeft = scrollMem[el.dataset.scroll + ':x'] != null ? scrollMem[el.dataset.scroll + ':x'] : el.scrollWidth;
+    });
   }
   let toastTimer;
   function toast(msg) {
@@ -136,11 +140,11 @@
           <div class="txt"><div class="name" style="color:var(--text-2)">Finanse</div><div class="desc">Budżet i wydatki</div></div>
           <div class="badge-soon">WKRÓTCE</div>
         </div>
-        <div class="module" aria-disabled="true">
+        <a class="module diet" href="#/diet">
           <div class="ico" style="background:var(--coral-bg);color:var(--coral)">${I.apple}</div>
-          <div class="txt"><div class="name" style="color:var(--text-2)">Dieta</div><div class="desc">Posiłki i nawyki żywieniowe</div></div>
-          <div class="badge-soon">WKRÓTCE</div>
-        </div>
+          <div class="txt"><div class="name">Dieta</div><div class="desc">Jadłospis, zakupy, dziennik i waga</div></div>
+          <div style="color:var(--coral);flex:none;display:flex">${I.chevR}</div>
+        </a>
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
     </main>`;
@@ -484,23 +488,52 @@
             <div class="kv"><span>Miejsce zapisu</span><span>Pamięć aplikacji</span></div>
             <div class="kv" style="padding-bottom:0"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie dane (zadania i dietę). Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
-          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON ze wszystkimi zadaniami</span></span></button>
+          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON – wybierasz zadania i/lub dietę</span></span></button>
           <button class="bigbtn" data-a="askload">${I.upload}<span class="two"><span>Wczytaj kopię z pliku</span><span>Zastąpi dane na tym telefonie</span></span></button>
           <input id="importFile" class="sr-only" type="file" accept="application/json,.json" data-in="import" tabindex="-1" aria-hidden="true">
           ${st.loadStep === 1 ? `<div class="confirmbox">
-            <div>Wczytanie kopii zastąpi wszystkie obecne zadania. Najpierw zapisz kopię obecnych danych, jeśli chcesz je zachować.</div>
+            <div>Wczytanie kopii zastąpi obecne dane w modułach, które wybierzesz. Najpierw zapisz kopię obecnych danych, jeśli chcesz je zachować.</div>
             <div style="display:flex;gap:10px">
               <button class="btn-cancel small" data-a="cancelload">Anuluj</button>
               <button class="btn-gold" data-a="doload">Wybierz plik…</button>
             </div></div>` : ''}
           ${st.msg ? `<div class="okbox" role="status">${st.err ? I.warn : I.ok}<span>${esc(st.msg)}</span></div>` : ''}
         </section>
+        ${window.DietUI ? window.DietUI.settingsSections() : ''}
       </div>
+      ${S.bk ? viewBackupSheet() : ''}
     </main>`;
+  }
+
+  // Okno wyboru modułów kopii (zapis i wczytanie) – decyzja właściciela.
+  function viewBackupSheet() {
+    const b = S.bk, save = b.mode === 'save';
+    const mods = [['tasks', 'Zadania', 'Plan dnia: zadania, powtarzanie, kolejność'], ['diet', 'Dieta', 'Jadłospisy, plan posiłków, dziennik, waga, zakupy']]
+      .filter(([k]) => save || b.avail[k]);
+    const anyOn = mods.some(([k]) => b[k]);
+    const anim = b.anim ? ' anim' : ''; b.anim = false;
+    return `<div class="sheet-wrap${anim}">
+      <button class="sheet-scrim" data-a="bkclose" aria-label="Zamknij okno kopii"></button>
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="${save ? 'Zapisz kopię' : 'Wczytaj kopię'}">
+        <div class="grab" aria-hidden="true"></div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <h2>${save ? 'Zapisz kopię do pliku' : 'Wczytaj kopię z pliku'}</h2>
+          <div style="font-size:13px;color:var(--muted)">${save ? 'Wybierz moduły, które mają trafić do pliku.' : esc(b.fileName) + ' · wybierz moduły do wczytania. Zaznaczone zastąpią dane na tym telefonie, pozostałe zostaną bez zmian.'}</div>
+        </div>
+        <div role="group" aria-label="Moduły" style="display:flex;flex-direction:column;gap:10px">
+          ${mods.map(([k, t, sub]) => `<button class="sheet-opt check${b[k] ? ' on' : ''}" role="checkbox" aria-checked="${!!b[k]}" data-a="bktoggle" data-k="${k}">
+            <span class="cbox">${b[k] ? I.check : ''}</span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${t}</span><span style="font-size:13px;color:var(--muted)">${esc(save ? sub : b.info[k])}</span></span></button>`).join('')}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:2px">
+          <button class="btn-cancel" data-a="bkclose">Anuluj</button>
+          <button class="primary" data-a="bkok"${anyOn ? '' : ' disabled'}>${save ? 'Zapisz kopię' : 'Wczytaj wybrane'}</button>
+        </div>
+      </div>
+    </div>`;
   }
 
   // ---------- Akcje ----------
@@ -576,16 +609,30 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; go('#/plan/day'); },
-    export: () => {
-      const name = 'mylife-kopia-' + C.todayKey() + '.json';
-      const blob = new Blob([C.exportJSON()], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      S.set = { loadStep: 0, msg: 'Zapisano plik ' + name };
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); go('#/plan/day'); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { anim: true, mode: 'save', tasks: true, diet: true }; render(); },
+    bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
+    bkclose: () => { S.bk = null; render(); },
+    bkok: () => {
+      const b = S.bk; if (!b) return;
+      if (b.mode === 'save') {
+        const modules = {};
+        if (b.tasks) modules.tasks = C.exportData();
+        if (b.diet && window.Diet) modules.diet = window.Diet.exportData();
+        const name = 'mylife-kopia-' + C.todayKey() + '.json';
+        downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
+        try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
+        S.bk = null;
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : ''].filter(Boolean).join(' i ') + ')' };
+      } else {
+        const done = [];
+        try {
+          if (b.tasks) done.push('zadania: ' + C.tasksWord(C.importData(b.data.tasks)));
+          if (b.diet && window.Diet) { window.Diet.importData(b.data.diet); done.push('dieta: ' + window.Diet.summary()); }
+          S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') };
+        } catch (err) { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; }
+        S.bk = null;
+      }
       render();
     },
     askload: () => { S.set = { loadStep: 1, msg: '' }; render(); },
@@ -613,6 +660,14 @@
       render();
     }
   };
+
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
 
   function setUndo(snap, kind, text) {
     clearTimeout(S.undoTimer);
@@ -646,6 +701,7 @@
       case 'title': d.title = el.value; break;
       case 'note': d.note = el.value; break;
       case 'count': el.value = digits(el.value, 3); break;
+      default: if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
     }
   });
   app.addEventListener('change', (e) => {
@@ -657,15 +713,31 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        f.text().then((txt) => { const n = C.importJSON(txt); S.set = { loadStep: 0, msg: 'Wczytano kopię: ' + C.tasksWord(n) }; render(); })
-          .catch((err) => { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; render(); });
+        f.text().then((txt) => {
+          const p = JSON.parse(txt);
+          // Kopia v5: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
+          const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
+          if (!data || (!data.tasks && !data.diet)) throw new Error('To nie jest kopia MyLife.');
+          const avail = { tasks: !!data.tasks, diet: !!data.diet };
+          const info = {
+            tasks: data.tasks ? C.tasksWord((data.tasks.tasks || []).length) : '',
+            diet: data.diet ? (data.diet.menus || []).length + ' ' + C.plural((data.diet.menus || []).length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' + Object.keys(data.diet.journal || {}).length + ' ' + C.plural(Object.keys(data.diet.journal || {}).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(data.diet.weights || {}).length + ' ' + C.plural(Object.keys(data.diet.weights || {}).length, 'wpis', 'wpisy', 'wpisów') + ' wagi' : ''
+          };
+          S.set = { loadStep: 0, msg: '' };
+          S.bk = { anim: true, mode: 'load', fileName: f.name, data, avail, info, tasks: avail.tasks, diet: avail.diet };
+          render();
+        }).catch((err) => { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; render(); });
         el.value = '';
         break;
       }
+      default:
+        if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onChange(el, k);
     }
   });
   app.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && (S.sheet || S.del)) { S.sheet = null; S.del = null; render(); return; }
+    if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
+    if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
+    if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (e.target.id === 'quick' && e.key === 'Enter') {
       const v = e.target.value.trim(); if (!v) return;
       const t = C.blankTask(S.sel); t.title = v; C.upsert(t);
@@ -801,10 +873,14 @@
 
   // ---------- Start ----------
   C.load();
+  window.App = { I, svg, esc, gearLink, go, render, toast, route, actions, S, downloadBlob, longDay };
+  if (window.Diet) { window.Diet.load(); }
+  if (window.DietUI) { window.DietUI.init(window.App); }
   window.addEventListener('hashchange', () => {
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
-    S.del = null;
+    S.del = null; S.bk = null;
+    if (window.DietUI) window.DietUI.onRoute(r);
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {

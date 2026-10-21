@@ -265,6 +265,14 @@
     save();
     return db.tasks.length;
   }
+  // Kopia z wyborem modułów (v5): dane zadań bez zapisu „ostatniej kopii” (robi to interfejs).
+  function exportData() { return snapshot(); }
+  function importData(d) {
+    if (!d || !Array.isArray(d.tasks)) throw new Error('Plik nie zawiera zadań.');
+    db = migrate({ tasks: d.tasks, order: d.order || {} });
+    save();
+    return db.tasks.length;
+  }
   function wipe() { db = { version: 2, tasks: [], order: {} }; save(); }
 
   window.Core = {
@@ -272,6 +280,6 @@
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
-    exportJSON, importJSON, wipe, lastBackup
+    exportJSON, importJSON, exportData, importData, wipe, lastBackup
   };
 })();

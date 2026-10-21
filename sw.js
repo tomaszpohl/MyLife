@@ -1,7 +1,9 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v4';
+const VERSION = 'mylife-v5';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
+  './diet-pdf.js', './diet-core.js', './diet-ui.js',
+  './lib/jszip.min.js', './lib/pdf.min.mjs', './lib/pdf.worker.min.mjs',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/badge-96.png'
 ];
 
