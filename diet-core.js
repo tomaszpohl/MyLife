@@ -38,7 +38,7 @@
   // ---------- Jadłospisy ----------
   const menus = () => db.menus;
   const getMenu = (mid) => db.menus.find((m) => m.id === mid) || null;
-  function addMenu(parsed, fileName, size) {
+  function addMenu(parsed, fileName, size, startDay) {
     const m = {
       id: id('m'),
       name: window.DietPdf.menuName(parsed.kcalTarget, fileName),
@@ -47,10 +47,11 @@
       slots: parsed.slots,
       days: parsed.days,
       dishes: parsed.dishes,
-      importedAt: C.todayKey()
+      importedAt: C.todayKey(),
+      startDay: Math.min(Math.max(1, startDay || 1), parsed.days.length) // „Pierwszy dzień diety” wybrany przy imporcie
     };
     db.menus.push(m);
-    db.imports.unshift({ name: fileName, size: size || 0, at: C.todayKey(), menu: m.id });
+    db.imports.unshift({ name: fileName, size: size || 0, at: C.todayKey(), menu: m.id, first: m.startDay });
     save();
     return m;
   }
@@ -89,13 +90,15 @@
   const currentMenu = () => { const a = actOn(C.todayKey()); return a ? getMenu(a.menu) : null; };
 
   // ---------- Plan posiłków ----------
-  // Dzień jadłospisu liczony od daty aktywacji, po ostatnim dniu – od Dnia 1 (decyzja właściciela).
+  // Dzień jadłospisu liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie;
+  // po ostatnim dniu – od Dnia 1 (decyzje właściciela).
   function planFor(k) {
     const a = actOn(k);
     if (!a) return null;
     const m = getMenu(a.menu);
     if (!m || !m.days.length) return null;
-    const idx = ((C.diffDays(a.from, k) % m.days.length) + m.days.length) % m.days.length;
+    const n = m.days.length, start = (m.startDay || 1) - 1;
+    const idx = (((start + C.diffDays(a.from, k)) % n) + n) % n;
     const day = m.days[idx];
     const ov = db.overrides[k] || {};
     const meals = day.meals.map((ml) => {

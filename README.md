@@ -1,6 +1,6 @@
-# MyLife – Plan dnia i Dieta (aplikacja na Androida, PWA) · wersja 5
+# MyLife – Plan dnia i Dieta (aplikacja na Androida, PWA) · wersja 6
 
-Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/makieta-zmiany.md`.
+Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
 Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa też moduł **Dieta** – jadłospisy z PDF od dietetyka.
 
@@ -29,23 +29,23 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 | Ekran | Funkcje |
 |---|---|
-| **Dieta** | Dzisiejsze posiłki z aktualnego jadłospisu (z kcal) i wejścia do funkcji. Bez aktualnego jadłospisu: komunikat i przyciski do importu / listy. |
+| **Dieta** | Dzisiejsze posiłki z aktualnego jadłospisu (z kcal) i wejścia do funkcji. Bez aktualnego jadłospisu: osobny ekran „Brak aktualnego jadłospisu” z przyciskami „Importuj w Ustawieniach” i „Lista jadłospisów” (bez kafli funkcji, jak w makiecie). |
 | **Lista jadłospisów** | Statusy: Aktualny (zielony), Zaplanowany (bursztynowy), Nieaktywny (szary), Nieaktualny (czerwony). „Aktywuj” – kalendarz „Obowiązuje od (włącznie)”; data dziś = od razu aktualny, data w przyszłości = Zaplanowany i automatyczne przełączenie. Zmiana terminu i usunięcie planowanej aktywacji, filtr statusu, zmiana nazwy (ołówek), źródłowy plik PDF. |
-| **Jadłospis** | Dni „Dzień 1…14” z posiłkami i sumą kcal; szczegóły dania: kcal, porcja (gdy podana), składniki „gramatura (miara domowa)”, przepis w krokach (zdaniach). |
-| **Plan posiłków** | Dzień / Tydzień / Miesiąc. Jadłospis liczony od daty aktywacji, po ostatnim dniu od Dnia 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
+| **Jadłospis** | Pod nagłówkiem nazwa i status jadłospisu. Dni „Dzień 1…14” (kolejność jak w PDF) z posiłkami i sumą kcal; szczegóły dania: kcal, porcja (gdy podana), składniki „gramatura (miara domowa)”, przepis w krokach (zdaniach). |
+| **Plan posiłków** | Dzień / Tydzień / Miesiąc. Jadłospis liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie; po ostatnim dniu wraca Dzień 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
 | **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda); odhaczanie z paskiem postępu, kupione na końcu. |
 | **Dziennik** | Dzień: ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (rodzaj, czas, dystans – wymagane). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
 | **Waga** | Wpis na dziś (±0,1 kg), porównanie z poprzednim wpisem, wykres przewijany w poziomie (dotknięcie punktu = data i waga), historia ze zmianą (spadek zielony, wzrost czerwony) i usuwaniem. |
-| **Ustawienia** | Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, import, lista zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
+| **Ustawienia** | Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis), lista zaimportowanych plików z dniem startu. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
 
-**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” otwierają okno wyboru modułów (Zadania, Dieta). Przy wczytaniu zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
+**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
 ## Instalacja na telefonie (Android)
 
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v5.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v6.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -84,15 +84,16 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v6`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v7`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v6 (21.10.2026)**: poprawka według makiety i `design.md`: okno „Pierwszy dzień diety” przy imporcie PDF (plan liczony od wybranego dnia), ekran „Brak aktualnego jadłospisu” jak w makiecie, wybór modułów kopii w karcie (przy wczytaniu najpierw moduły, potem plik), nazwa i status jadłospisu pod nagłówkiem, teksty w Ustawieniach.
 - **v5 (21.10.2026)**: moduł Dieta według makiety „Etap 2 – Dieta” i decyzji właściciela: import jadłospisów z PDF od dietetyka, lista jadłospisów z aktywacją, jadłospis z przepisami, plan posiłków ze zmianą dań, lista zakupów, dziennik ze statystykami, waga z wykresem, eksport dziennika do .xlsx, kopia z wyborem modułów.
-- **v4 (20.10.2026)**: według makiety z 20.10 wieczór i `makieta-zmiany.md`. Nazwa MyLife, usunięte godziny, przypomnienia i powiadomienia, uchwyt do zmiany kolejności (dotyk i klawiatura), ukończone na końcu listy, nowy wygląd Edytuj zadanie, uproszczone Ustawienia (powrót zawsze do widoku Dzień), Własne powtarzanie bez godziny, przypomnienia i podglądu terminów.
+- **v4 (20.10.2026)**: według makiety z 20.10 wieczór i `design.md`. Nazwa MyLife, usunięte godziny, przypomnienia i powiadomienia, uchwyt do zmiany kolejności (dotyk i klawiatura), ukończone na końcu listy, nowy wygląd Edytuj zadanie, uproszczone Ustawienia (powrót zawsze do widoku Dzień), Własne powtarzanie bez godziny, przypomnienia i podglądu terminów.
 - **v3 (20.10.2026)**: przy usuwaniu zadania cyklicznego okno wyboru: tylko ten termin albo cały cykl.
 - **v2 (20.10.2026)**: ekran Ustawienia z ikoną w nagłówkach, przekładanie zadania przesunięciem w lewo, „Cofnij” dla przełożenia.
 - **v1 (19.10.2026)**: pierwsza wersja: ekran główny, Dzień / Tydzień / Miesiąc, nowe zadanie, własne powtarzanie, kopia zapasowa.

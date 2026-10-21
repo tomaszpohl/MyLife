@@ -417,3 +417,20 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 .sheet-opt.check { gap: 12px; }
 .okbox a { text-decoration: underline; }
 .okbox span { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- v6: pusty stan Diety, okno „Pierwszy dzień diety”, wybór modułów kopii ---------- */
+.dempty { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; padding: 8px 24px calc(40px + var(--safe-bottom)) 24px; text-align: center; }
+.dico.big { width: 64px; height: 64px; border-radius: 18px; }
+.dico.big svg { width: 30px; height: 30px; }
+.dempty a.primary, .dempty a.btn2 { display: flex; align-items: center; justify-content: center; }
+.modal-wrap { position: absolute; inset: 0; z-index: 20; background: rgba(5, 8, 12, 0.78); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { width: 100%; max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--accent-line); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.fdgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.fdgrid button { height: 48px; padding: 0; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600; }
+.fdgrid button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.bkpick { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--accent-line); }
+.bkpick.load { background: var(--gold-bg); border-color: #5A4A1F; }
+.bkmod { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; color: var(--text); font-size: 15px; text-align: left; }
+.bkmod.on .cbox { background: var(--accent); border-color: var(--accent); }
+.btn-gold:disabled, .bkpick .primary:disabled { background: var(--line); color: var(--dim); }
+.modal > div { overflow-wrap: anywhere; }

@@ -86,8 +86,22 @@
   };
 
   // ---------- Dieta (ekran główny modułu) ----------
+  // Brak aktualnego jadłospisu: osobny ekran jak w makiecie „Dieta · Brak jadłospisu” (decyzja właściciela).
+  function viewEmpty() {
+    return `<main class="screen">${topbar('#/', 'Dieta', 'Wróć')}
+      <div class="dempty">
+        <div class="dico big">${J.book}</div>
+        <div style="font-family:var(--display);font-size:20px;font-weight:600">Brak aktualnego jadłospisu</div>
+        <div style="font-size:14px;line-height:1.5;color:var(--muted)">Nie ma jadłospisu obowiązującego na dziś. Zaimportuj plik PDF w Ustawieniach albo wybierz i aktywuj jadłospis z listy.</div>
+        <div style="align-self:stretch;display:flex;flex-direction:column;gap:10px;margin-top:8px">
+          <a class="primary" style="flex:none" href="#/settings">Importuj w Ustawieniach</a>
+          <a class="btn2 accent" style="height:52px;font-size:16px;font-weight:600" href="#/diet/menus">Lista jadłospisów</a>
+        </div>
+      </div></main>`;
+  }
   function viewHome() {
     const T = today(), p = D.planFor(T);
+    if (!p) return viewEmpty();
     const card = p ? `<div class="dcard accent">
         <div class="dhead"><div class="eyebrow">Dziś</div><div style="font-size:12px;color:var(--muted)">${esc(D.dayShort(T))} · ${kcal(p.kcal)}</div></div>
         ${p.meals.map((m) => `<a class="dmeal" href="#/diet/menu/${p.menu.id}" aria-label="${esc(m.slot + ': ' + m.dish.name + '. Otwórz jadłospis')}">
@@ -202,7 +216,7 @@
     }
     return `<main class="screen" style="position:relative">${topbar('#/diet/menus', 'Jadłospis')}
       <div class="dscroll" data-scroll="diet-menu-${mid}">
-        <div style="font-size:13px;color:var(--muted)">${esc(m.name)}</div>
+        <div style="font-size:13px;color:var(--muted)">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
         ${days}
       </div>${detail}</main>`;
   }
@@ -451,7 +465,7 @@
     const imports = D.imports();
     return `<section class="scard" style="gap:12px">
         <div class="eyebrow">Eksport diety</div>
-        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: posiłki (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
+        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: jeden arkusz, wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
         <div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
           ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>
         <div style="font-size:12px;color:var(--muted)">Zakres: od ${esc(D.dateLong(St.expFrom))} do dziś (${esc(D.dateLong(T))})</div>
@@ -460,15 +474,29 @@
       </section>
       <section class="scard" style="gap:12px">
         <div class="eyebrow">Import diety</div>
-        <div class="para" style="line-height:1.45">Wczytaj jadłospis z pliku PDF. Każdy plik dodaje nowy jadłospis do listy „Dieta – Jadłospisy” ze statusem „Nieaktywny”. Możesz importować kolejne pliki w dowolnym momencie.</div>
+        <div class="para" style="line-height:1.45">Wczytaj jadłospis z pliku PDF. Przed dodaniem wskażesz, który dzień diety z pliku jest pierwszym. Każdy plik dodaje nowy jadłospis do listy „Dieta – Jadłospisy” ze statusem „Nieaktywny”. Możesz importować kolejne pliki w dowolnym momencie.</div>
         <button class="bigbtn" data-a="dpickpdf"${St.busy ? ' disabled' : ''}>${J.file}<span class="two"><span>Wybierz plik PDF…</span><span>Tylko pliki .pdf</span></span></button>
         <input id="dietPdf" class="sr-only" type="file" accept="application/pdf,.pdf" data-in="diet-pdf" tabindex="-1" aria-hidden="true">
         ${St.pending ? `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(St.pending.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(St.pending.size)} · ${St.busy ? 'odczytuję…' : 'gotowy do importu'}</div></div></div>
-          <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dimpcancel"${St.busy ? ' disabled' : ''}>Anuluj</button><button class="primary" style="height:48px" data-a="dimport"${St.busy ? ' disabled' : ''}>${St.busy ? 'Odczytuję plik…' : 'Importuj jadłospis'}</button></div>` : ''}
+          <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dimpcancel"${St.busy ? ' disabled' : ''}>Anuluj</button><button class="primary" style="height:48px" data-a="dimport" aria-haspopup="dialog"${St.busy ? ' disabled' : ''}>${St.busy ? 'Odczytuję plik…' : 'Importuj jadłospis'}</button></div>` : ''}
         ${St.impMsg ? `<div class="okbox" role="status">${St.impErr ? I.warn : I.ok}<span>${esc(St.impMsg)}${St.impErr ? '' : ' <a href="#/diet/menus" style="color:var(--accent);font-weight:600">Otwórz listę jadłospisów</a>'}</span></div>` : ''}
         <div class="eyebrow" style="margin-top:4px">Zaimportowane pliki</div>
-        ${imports.length ? imports.map((f) => `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(f.size)} · zaimportowano ${esc(D.dateDots(f.at))}</div></div></div>`).join('') : '<div class="para">Jeszcze nic nie zaimportowano.</div>'}
-      </section>`;
+        ${imports.length ? imports.map((f) => `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(f.size)} · zaimportowano ${esc(D.dateDots(f.at))} · start: Dzień ${f.first || 1}</div></div></div>`).join('') : '<div class="para">Jeszcze nic nie zaimportowano.</div>'}
+      </section>
+      ${St.parsed ? firstDayDialog() : ''}`;
+  }
+  // Okno „Pierwszy dzień diety” (makieta: Ustawienia → Import diety).
+  function firstDayDialog() {
+    const St = U.settings, n = St.parsed.days.length, f = St.firstDay;
+    const order = [...Array(n)].map((_, i) => 'Dzień ' + (((f - 1 + i) % n) + 1)).join(' → ');
+    return `<div class="modal-wrap" role="dialog" aria-modal="true" aria-label="Pierwszy dzień diety">
+      <div class="modal">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">Pierwszy dzień diety</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--muted)">Plik „${esc(St.fileName)}” zawiera jadłospis na ${n} ${C.plural(n, 'dzień', 'dni', 'dni')}. Wskaż, który dzień ma być uznany za pierwszy. Kolejne dni będą następować po nim, a po Dniu ${n} wraca Dzień 1.</div>
+        <div class="fdgrid" role="radiogroup" aria-label="Pierwszy dzień diety">${St.parsed.days.map((d) => `<button role="radio" class="${d.n === f ? 'on' : ''}" aria-checked="${d.n === f}" data-a="dfirst" data-n="${d.n}">Dzień ${d.n}</button>`).join('')}</div>
+        <div style="font-size:12px;line-height:1.5;color:var(--dim)">Kolejność: ${esc(order)}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dfirstcancel">Anuluj</button><button class="primary" style="height:48px" data-a="dfirstok">Dodaj jadłospis</button></div>
+      </div></div>`;
   }
   const sizeTxt = (b) => (b >= 1048576 ? D.fmtNum(b / 1048576, 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
 
@@ -586,20 +614,27 @@
     },
     dpickpdf: () => { const f = document.getElementById('dietPdf'); if (f) f.click(); },
     dimpcancel: () => { U.settings.pending = null; U.settings.file = null; R(); },
+    // „Importuj jadłospis”: odczyt pliku, potem okno „Pierwszy dzień diety”; dopiero „Dodaj jadłospis” dodaje jadłospis.
     dimport: async () => {
       const St = U.settings; if (!St.file) return;
       St.busy = true; St.impMsg = ''; R();
       try {
-        const parsed = await readPdf(St.file);
-        const m = D.addMenu(parsed, St.file.name, St.file.size);
-        St.impMsg = 'Zaimportowano „' + St.file.name + '” jako „' + m.name + '” (' + m.days.length + ' dni, ' + C.plural(Object.keys(m.dishes).length, 'danie', 'dania', 'dań').replace(/^/, Object.keys(m.dishes).length + ' ') + '). Jadłospis pojawił się na liście jako nieaktywny.';
-        St.impErr = false;
+        St.parsed = await readPdf(St.file);
+        St.fileName = St.file.name; St.fileSize = St.file.size; St.firstDay = 1;
       } catch (e) {
         console.error(e);
         St.impMsg = 'Nie udało się odczytać jadłospisu z tego pliku. ' + (e && e.message ? e.message : '') + ' Aplikacja odczytuje jadłospisy w układzie „Indywidualny plan żywieniowy” (dni, posiłki, tabele składników).';
-        St.impErr = true;
+        St.impErr = true; St.pending = null; St.file = null;
       }
-      St.busy = false; St.pending = null; St.file = null; R();
+      St.busy = false; R();
+    },
+    dfirst: (el) => { U.settings.firstDay = +el.dataset.n; R(); },
+    dfirstcancel: () => { const St = U.settings; St.parsed = null; R(); },
+    dfirstok: () => {
+      const St = U.settings; if (!St.parsed) return;
+      const m = D.addMenu(St.parsed, St.fileName, St.fileSize, St.firstDay);
+      St.impMsg = 'Zaimportowano plik „' + St.fileName + '” jako jadłospis „' + m.name + '”. Pierwszym dniem diety jest Dzień ' + m.startDay + '. Jadłospis dodano do listy ze statusem nieaktywny.';
+      St.impErr = false; St.parsed = null; St.pending = null; St.file = null; R();
     }
   };
 
@@ -630,6 +665,7 @@
     return false;
   }
   function onEscape() {
+    if (U.settings.parsed) { U.settings.parsed = null; return true; }
     if (U.plan.sheet) { U.plan.sheet = null; return true; }
     if (U.list.edit) { U.list.edit = null; return true; }
     if (U.menu.detail) { U.menu.detail = null; return true; }

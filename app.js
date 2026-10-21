@@ -488,52 +488,34 @@
             <div class="kv"><span>Miejsce zapisu</span><span>Pamięć aplikacji</span></div>
             <div class="kv" style="padding-bottom:0"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie dane (zadania i dietę). Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania i dietę. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
-          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON – wybierasz zadania i/lub dietę</span></span></button>
+          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta)</span></span></button>
           <button class="bigbtn" data-a="askload">${I.upload}<span class="two"><span>Wczytaj kopię z pliku</span><span>Zastąpi dane na tym telefonie</span></span></button>
           <input id="importFile" class="sr-only" type="file" accept="application/json,.json" data-in="import" tabindex="-1" aria-hidden="true">
-          ${st.loadStep === 1 ? `<div class="confirmbox">
-            <div>Wczytanie kopii zastąpi obecne dane w modułach, które wybierzesz. Najpierw zapisz kopię obecnych danych, jeśli chcesz je zachować.</div>
-            <div style="display:flex;gap:10px">
-              <button class="btn-cancel small" data-a="cancelload">Anuluj</button>
-              <button class="btn-gold" data-a="doload">Wybierz plik…</button>
-            </div></div>` : ''}
+          ${S.bk ? viewBackupPicker() : ''}
           ${st.msg ? `<div class="okbox" role="status">${st.err ? I.warn : I.ok}<span>${esc(st.msg)}</span></div>` : ''}
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
       </div>
-      ${S.bk ? viewBackupSheet() : ''}
     </main>`;
   }
 
-  // Okno wyboru modułów kopii (zapis i wczytanie) – decyzja właściciela.
-  function viewBackupSheet() {
-    const b = S.bk, save = b.mode === 'save';
-    const mods = [['tasks', 'Zadania', 'Plan dnia: zadania, powtarzanie, kolejność'], ['diet', 'Dieta', 'Jadłospisy, plan posiłków, dziennik, waga, zakupy']]
-      .filter(([k]) => save || b.avail[k]);
-    const anyOn = mods.some(([k]) => b[k]);
-    const anim = b.anim ? ' anim' : ''; b.anim = false;
-    return `<div class="sheet-wrap${anim}">
-      <button class="sheet-scrim" data-a="bkclose" aria-label="Zamknij okno kopii"></button>
-      <div class="sheet" role="dialog" aria-modal="true" aria-label="${save ? 'Zapisz kopię' : 'Wczytaj kopię'}">
-        <div class="grab" aria-hidden="true"></div>
-        <div style="display:flex;flex-direction:column;gap:3px">
-          <h2>${save ? 'Zapisz kopię do pliku' : 'Wczytaj kopię z pliku'}</h2>
-          <div style="font-size:13px;color:var(--muted)">${save ? 'Wybierz moduły, które mają trafić do pliku.' : esc(b.fileName) + ' · wybierz moduły do wczytania. Zaznaczone zastąpią dane na tym telefonie, pozostałe zostaną bez zmian.'}</div>
-        </div>
-        <div role="group" aria-label="Moduły" style="display:flex;flex-direction:column;gap:10px">
-          ${mods.map(([k, t, sub]) => `<button class="sheet-opt check${b[k] ? ' on' : ''}" role="checkbox" aria-checked="${!!b[k]}" data-a="bktoggle" data-k="${k}">
-            <span class="cbox">${b[k] ? I.check : ''}</span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${t}</span><span style="font-size:13px;color:var(--muted)">${esc(save ? sub : b.info[k])}</span></span></button>`).join('')}
-        </div>
-        <div style="display:flex;gap:10px;margin-top:2px">
-          <button class="btn-cancel" data-a="bkclose">Anuluj</button>
-          <button class="primary" data-a="bkok"${anyOn ? '' : ' disabled'}>${save ? 'Zapisz kopię' : 'Wczytaj wybrane'}</button>
-        </div>
-      </div>
-    </div>`;
+  // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
+  function viewBackupPicker() {
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta']];
+    return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
+      <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
+      ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
+      ${mods.map(([k, t]) => `<button class="bkmod${b[k] ? ' on' : ''}" role="checkbox" aria-checked="${!!b[k]}" data-a="bktoggle" data-k="${k}"><span class="cbox">${b[k] ? I.check : ''}</span><span>${t}</span></button>`).join('')}
+      ${none ? '<div role="alert" style="font-size:13px;color:var(--danger)">Zaznacz co najmniej jeden moduł.</div>' : ''}
+      <div style="display:flex;gap:10px">
+        <button class="btn-cancel small" data-a="bkclose">Anuluj</button>
+        <button class="${load ? 'btn-gold' : 'primary'}" style="height:48px" data-a="bkok"${none ? ' disabled' : ''}>${load ? 'Wybierz plik…' : 'Zapisz kopię'}</button>
+      </div></div>`;
   }
 
   // ---------- Akcje ----------
@@ -610,7 +592,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); go('#/plan/day'); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { anim: true, mode: 'save', tasks: true, diet: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -625,19 +607,13 @@
         S.bk = null;
         S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : ''].filter(Boolean).join(' i ') + ')' };
       } else {
-        const done = [];
-        try {
-          if (b.tasks) done.push('zadania: ' + C.tasksWord(C.importData(b.data.tasks)));
-          if (b.diet && window.Diet) { window.Diet.importData(b.data.diet); done.push('dieta: ' + window.Diet.summary()); }
-          S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') };
-        } catch (err) { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; }
-        S.bk = null;
+        // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
+        const f = document.getElementById('importFile'); if (f) f.click();
+        return;
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 1, msg: '' }; render(); },
-    cancelload: () => { S.set = { loadStep: 0, msg: '' }; render(); },
-    doload: () => { const f = document.getElementById('importFile'); if (f) f.click(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -713,20 +689,20 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet } : { tasks: true, diet: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
-          // Kopia v5: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
+          // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
           if (!data || (!data.tasks && !data.diet)) throw new Error('To nie jest kopia MyLife.');
-          const avail = { tasks: !!data.tasks, diet: !!data.diet };
-          const info = {
-            tasks: data.tasks ? C.tasksWord((data.tasks.tasks || []).length) : '',
-            diet: data.diet ? (data.diet.menus || []).length + ' ' + C.plural((data.diet.menus || []).length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' + Object.keys(data.diet.journal || {}).length + ' ' + C.plural(Object.keys(data.diet.journal || {}).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(data.diet.weights || {}).length + ' ' + C.plural(Object.keys(data.diet.weights || {}).length, 'wpis', 'wpisy', 'wpisów') + ' wagi' : ''
-          };
-          S.set = { loadStep: 0, msg: '' };
-          S.bk = { anim: true, mode: 'load', fileName: f.name, data, avail, info, tasks: avail.tasks, diet: avail.diet };
-          render();
-        }).catch((err) => { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; render(); });
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : ''].filter(Boolean);
+          const done = [];
+          if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
+          if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
+          if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
+          S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
+          S.bk = null; render();
+        }).catch((err) => { S.set = { loadStep: 0, msg: 'Nie udało się wczytać: ' + err.message, err: true }; S.bk = null; render(); });
         el.value = '';
         break;
       }
