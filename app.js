@@ -50,6 +50,35 @@
   const backBtn = (label, act, icon) => `<button class="iconbtn" data-a="${act || 'navback'}" aria-label="${label || 'Wróć'}">${icon || I.back}</button>`;
   const homeBtn = () => `<button class="iconbtn soft" data-a="navhome" aria-label="Pulpit główny">${I.home}</button>`;
   const navBtns = (label, act, icon) => backBtn(label, act, icon) + homeBtn();
+  // Dolny pasek szybkiej nawigacji w modułach Dieta i Finanse (v8, makieta 22.10 wieczór).
+  const NB = {
+    diet: { cls: 'coral', items: [
+      ['home', '#/diet', 'Dieta', '<path d="M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z"></path><path d="M12 7c0-1.5.7-3 2-4"></path>'],
+      ['menus', '#/diet/menus', 'Jadłospis', '<path d="M9 6h11M9 12h11M9 18h11"></path><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path>'],
+      ['plan', '#/diet/plan', 'Plan', '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>'],
+      ['shop', '#/diet/shop', 'Zakupy', '<path d="M6 7h13l-1.5 8h-10L6 7Z"></path><path d="M6 7 5 4H3"></path><circle cx="9" cy="19" r="1.3"></circle><circle cx="16" cy="19" r="1.3"></circle>'],
+      ['journal', '#/diet/journal', 'Dziennik', '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"></path><path d="M5 17a3 3 0 0 1 3-3h11"></path>'],
+      ['weight', '#/diet/weight', 'Waga', '<rect x="3.5" y="4" width="17" height="16" rx="4"></rect><path d="M8.5 9.5a4.5 3 0 0 1 7 0"></path><path d="m12 9.5 1.5-1.5"></path>']
+    ] },
+    fin: { cls: 'gold', items: [
+      ['home', '#/fin', 'Finanse', '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2"></path><path d="M4 7.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 1 4 7.5Z"></path><circle cx="16" cy="14" r="1"></circle>'],
+      ['worth', '#/fin/worth', 'Majątek', '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>'],
+      ['exp', '#/fin/exp', 'Wydatki', '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"></path><path d="M9 8h6M9 12h6"></path>'],
+      ['result', '#/fin/result', 'Wynik', '<rect x="3.5" y="6" width="17" height="12" rx="3"></rect><circle cx="12" cy="12" r="2.5"></circle>']
+    ] }
+  };
+  function navbar(mod, active) {
+    const m = NB[mod];
+    return `<nav class="navbar ${m.cls}" aria-label="Szybka nawigacja">${m.items.map(([k, href, label, body]) => k === active
+      ? `<div class="nb on" aria-current="page">${svg(22, 1.8, body)}<span>${label}</span></div>`
+      : `<a class="nb" href="${href}">${svg(22, 1.8, body)}<span>${label}</span></a>`).join('')}</nav>`;
+  }
+  // Wstawia pasek na koniec ekranu modułu (okna pełnoekranowe leżą nad nim).
+  function withNavbar(html, mod, active) {
+    const i = html.lastIndexOf('</main>');
+    if (i < 0) return html;
+    return html.slice(0, i).replace('<main class="screen', '<main class="screen withnav') + navbar(mod, active) + html.slice(i);
+  }
   const gearLink = (extra) => `<a class="iconbtn soft" href="#/settings" aria-label="Ustawienia"${extra ? ' style="' + extra + '"' : ''}>${I.gear}</a>`;
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -114,6 +143,7 @@
     if (r[0] === 'settings' || r[0] === 'data') return '#/plan/day';
     if (r[0] === 'diet' && r[1] === 'menu') return '#/diet/menus';
     if (r[0] === 'diet' && r[1]) return '#/diet';
+    if (r[0] === 'fin' && r[1]) return '#/fin';
     return '#/';
   }
   function navReplace(h) { if (curHash() === h) { render(); return; } navMode = 'replace'; location.replace(h); }
@@ -143,7 +173,8 @@
       if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (navMode = 'replace', location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
-    else if (r.name === 'diet' && window.DietUI) html = window.DietUI.view(r);
+    else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
+    else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
     else html = viewHome();
     app.innerHTML = html + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
     app.querySelectorAll('[data-scroll]').forEach((el) => {
@@ -175,11 +206,11 @@
           <div class="txt"><div class="name">Plan dnia</div><div class="desc">${esc(desc)}</div></div>
           <div style="color:var(--accent);flex:none;display:flex">${I.chevR}</div>
         </a>
-        <div class="module" aria-disabled="true">
+        <a class="module fin" href="#/fin">
           <div class="ico" style="background:var(--gold-bg);color:var(--gold)">${I.wallet}</div>
-          <div class="txt"><div class="name" style="color:var(--text-2)">Finanse</div><div class="desc">Budżet i wydatki</div></div>
-          <div class="badge-soon">WKRÓTCE</div>
-        </div>
+          <div class="txt"><div class="name">Finanse</div><div class="desc">Majątek, wydatki i wynik finansowy</div></div>
+          <div style="color:var(--gold);flex:none;display:flex">${I.chevR}</div>
+        </a>
         <a class="module diet" href="#/diet">
           <div class="ico" style="background:var(--coral-bg);color:var(--coral)">${I.apple}</div>
           <div class="txt"><div class="name">Dieta</div><div class="desc">Jadłospis, zakupy, dziennik i waga</div></div>
@@ -528,11 +559,11 @@
             <div class="kv"><span>Miejsce zapisu</span><span>Pamięć aplikacji</span></div>
             <div class="kv" style="padding-bottom:0"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania i dietę. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę i finanse. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
-          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta)</span></span></button>
+          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta, finanse)</span></span></button>
           <button class="bigbtn" data-a="askload">${I.upload}<span class="two"><span>Wczytaj kopię z pliku</span><span>Zastąpi dane na tym telefonie</span></span></button>
           <input id="importFile" class="sr-only" type="file" accept="application/json,.json" data-in="import" tabindex="-1" aria-hidden="true">
           ${S.bk ? viewBackupPicker() : ''}
@@ -545,8 +576,8 @@
 
   // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
   function viewBackupPicker() {
-    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet;
-    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta']];
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse']];
     return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
       <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
       ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
@@ -634,7 +665,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); back(); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -643,11 +674,12 @@
         const modules = {};
         if (b.tasks) modules.tasks = C.exportData();
         if (b.diet && window.Diet) modules.diet = window.Diet.exportData();
+        if (b.fin && window.Fin) modules.fin = window.Fin.exportData();
         const name = 'mylife-kopia-' + C.todayKey() + '.json';
         downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
         try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
         S.bk = null;
-        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : ''].filter(Boolean).join(' i ') + ')' };
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
       } else {
         // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
         const f = document.getElementById('importFile'); if (f) f.click();
@@ -655,7 +687,7 @@
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true }; render(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -725,7 +757,9 @@
       case 'title': d.title = el.value; break;
       case 'note': d.note = el.value; break;
       case 'count': el.value = digits(el.value, 3); break;
-      default: if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
+      default:
+        if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
+        else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
     }
   });
   app.addEventListener('change', (e) => {
@@ -737,16 +771,17 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet } : { tasks: true, diet: true };
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin } : { tasks: true, diet: true, fin: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
           // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
-          if (!data || (!data.tasks && !data.diet)) throw new Error('To nie jest kopia MyLife.');
-          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : ''].filter(Boolean);
+          if (!data || (!data.tasks && !data.diet && !data.fin)) throw new Error('To nie jest kopia MyLife.');
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : ''].filter(Boolean);
           const done = [];
           if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
           if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
+          if (want.fin && data.fin && window.Fin) { window.Fin.importData(data.fin); done.push('finanse: ' + window.Fin.summary()); }
           if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
           S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
           S.bk = null; render();
@@ -756,12 +791,15 @@
       }
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onChange(el, k);
+        else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onChange(el, k);
     }
   });
   app.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
+    if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
     if (e.target.id === 'quick' && e.key === 'Enter') {
       const v = e.target.value.trim(); if (!v) return;
       const t = C.blankTask(S.sel); t.title = v; C.upsert(t);
@@ -915,12 +953,15 @@
   window.App = { I, svg, esc, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
+  if (window.Fin) { window.Fin.load(); }
+  if (window.FinUI) { window.FinUI.init(window.App); }
   window.addEventListener('hashchange', () => {
     navSync();
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
     S.del = null; S.bk = null;
     if (window.DietUI) window.DietUI.onRoute(r);
+    if (window.FinUI) window.FinUI.onRoute(r);
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {
