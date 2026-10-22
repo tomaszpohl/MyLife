@@ -1,4 +1,4 @@
-# MyLife – Plan dnia i Dieta (aplikacja na Androida, PWA) · wersja 6
+# MyLife – Plan dnia i Dieta (aplikacja na Androida, PWA) · wersja 7
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -15,7 +15,7 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 | **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), notatka. |
 | **Edytuj zadanie** | Jak Nowe zadanie, z wypełnionymi polami. Na dole przyciski „Usuń zadanie” i „Zapisz zmiany”. |
 | **Własne powtarzanie** | Co N dni / tygodni / miesięcy, wybór dni tygodnia, koniec (nigdy / do dnia / po N powtórzeniach). |
-| **Ustawienia** (zębatka w nagłówku) | Przechowywanie danych (miejsce zapisu, data ostatniej kopii, ostrzeżenie), zapis kopii do pliku JSON, wczytanie kopii z potwierdzeniem. Strzałka wstecz zawsze prowadzi do widoku Dzień. |
+| **Ustawienia** (zębatka w nagłówku) | Przechowywanie danych (miejsce zapisu, data ostatniej kopii, ostrzeżenie), zapis kopii do pliku JSON, wczytanie kopii z potwierdzeniem. Strzałka wstecz wraca do ekranu, z którego otwarto Ustawienia. |
 
 **Usuwanie zadania cyklicznego** (przesunięciem w prawo albo przyciskiem „Usuń zadanie” w edycji) otwiera okno z wyborem: **Tylko ten termin** (pozostałe terminy zostają) albo **Cały cykl** (wszystkie terminy tego zadania). Zadanie jednorazowe usuwa się od razu. W obu przypadkach można użyć „Cofnij”.
 
@@ -23,20 +23,22 @@ Przełożenie zadania cyklicznego dotyczy tylko tego jednego terminu. Przełożo
 
 **Kolejność zadań** jest zapamiętywana dla każdego dnia osobno.
 
+**Nawigacja (od v7):** strzałka wstecz prowadzi do poprzedniego widoku (np. Dzień otwarty z Tygodnia wraca do Tygodnia, Ustawienia do ekranu, z którego je otwarto, Plan posiłków do Jadłospisu albo Diety). Przełączniki Dzień / Tydzień / Miesiąc nie są osobnym krokiem – Dzień wybrany przełącznikiem wraca do ekranu głównego. Przycisk telefonu „wstecz” działa tak samo. Obok strzałki jest przycisk **Pulpit główny** (ikona domu) – na wszystkich ekranach poza głównym, także w widoku przepisu.
+
 ## Moduł Dieta (od v5)
 
 Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan żywieniowy”: strona przeglądu dni, potem dzień po dniu posiłki z kcal, przepisem i tabelą składników). Odczyt działa w telefonie, bez internetu.
 
 | Ekran | Funkcje |
 |---|---|
-| **Dieta** | Dzisiejsze posiłki z aktualnego jadłospisu (z kcal) i wejścia do funkcji. Bez aktualnego jadłospisu: osobny ekran „Brak aktualnego jadłospisu” z przyciskami „Importuj w Ustawieniach” i „Lista jadłospisów” (bez kafli funkcji, jak w makiecie). |
-| **Lista jadłospisów** | Statusy: Aktualny (zielony), Zaplanowany (bursztynowy), Nieaktywny (szary), Nieaktualny (czerwony). „Aktywuj” – kalendarz „Obowiązuje od (włącznie)”; data dziś = od razu aktualny, data w przyszłości = Zaplanowany i automatyczne przełączenie. Zmiana terminu i usunięcie planowanej aktywacji, filtr statusu, zmiana nazwy (ołówek), źródłowy plik PDF. |
+| **Dieta** | Dzisiejsze posiłki z aktualnego jadłospisu (z kcal) – dotknięcie posiłku otwiera jego przepis (z przyciskiem „Zmień posiłek w planie”) – i wejścia do funkcji. Bez aktualnego jadłospisu: osobny ekran „Brak aktualnego jadłospisu” z przyciskami „Importuj w Ustawieniach” i „Lista jadłospisów” (bez kafli funkcji, jak w makiecie). |
+| **Lista jadłospisów** | Statusy: Aktualny (zielony), Zaplanowany (bursztynowy), Nieaktywny (szary), Nieaktualny (czerwony). „Aktywuj” – kalendarz „Obowiązuje od (włącznie)”; data dziś = od razu aktualny, data w przyszłości = Zaplanowany i automatyczne przełączenie. Zmiana terminu i usunięcie planowanej aktywacji, filtr statusu, zmiana nazwy (ołówek), źródłowy plik PDF. Nieaktualne jadłospisy są ukryte w „Wszystkie” – widać je w filtrze „Nieaktualny”. **Przeciągnięcie w prawo usuwa jadłospis** (z „Cofnij”); aktualnego nie można usunąć. Dziennik i statystyki z dni, gdy usunięty jadłospis obowiązywał, zostają. |
 | **Jadłospis** | Pod nagłówkiem nazwa i status jadłospisu. Dni „Dzień 1…14” (kolejność jak w PDF) z posiłkami i sumą kcal; szczegóły dania: kcal, porcja (gdy podana), składniki „gramatura (miara domowa)”, przepis w krokach (zdaniach). |
-| **Plan posiłków** | Dzień / Tydzień / Miesiąc. Jadłospis liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie; po ostatnim dniu wraca Dzień 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
-| **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda); odhaczanie z paskiem postępu, kupione na końcu. |
-| **Dziennik** | Dzień: ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (rodzaj, czas, dystans – wymagane). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
+| **Plan posiłków** | Dzień / Tydzień / Miesiąc. Dotknięcie posiłku otwiera przepis z przyciskiem „Zmień posiłek”. Jadłospis liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie; po ostatnim dniu wraca Dzień 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
+| **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda), pod ilością miara domowa przeliczona z PDF (np. „≈ 3 łyżki”, „≈ 2 sztuki”; bez miary, gdy PDF jej nie podaje lub to „szczypta”); odhaczanie z paskiem postępu, kupione na końcu. |
+| **Dziennik** | Dzień: ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (wymagany tylko rodzaj; czas i dystans opcjonalne, suma z podanych). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
 | **Waga** | Wpis na dziś (±0,1 kg), porównanie z poprzednim wpisem, wykres przewijany w poziomie (dotknięcie punktu = data i waga), historia ze zmianą (spadek zielony, wzrost czerwony) i usuwaniem. |
-| **Ustawienia** | Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis), lista zaimportowanych plików z dniem startu. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
+| **Ustawienia** | Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
 
 **Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
@@ -45,7 +47,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v6.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v7.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -84,13 +86,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v7`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v8`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v7 (22.10.2026)**: według makiety i `design.md` (zmiany z 22.10): wstecz do poprzedniego widoku i przycisk „Pulpit główny”, przepis po dotknięciu posiłku na ekranie Dieta i w Planie posiłków (z „Zmień posiłek”), usuwanie jadłospisu przeciągnięciem w prawo (z „Cofnij”, bez aktualnego), nieaktualne jadłospisy tylko w filtrze „Nieaktualny”, miara domowa na liście zakupów, opcjonalny czas i dystans aktywności, bez listy zaimportowanych plików.
 - **v6 (21.10.2026)**: poprawka według makiety i `design.md`: okno „Pierwszy dzień diety” przy imporcie PDF (plan liczony od wybranego dnia), ekran „Brak aktualnego jadłospisu” jak w makiecie, wybór modułów kopii w karcie (przy wczytaniu najpierw moduły, potem plik), nazwa i status jadłospisu pod nagłówkiem, teksty w Ustawieniach.
 - **v5 (21.10.2026)**: moduł Dieta według makiety „Etap 2 – Dieta” i decyzji właściciela: import jadłospisów z PDF od dietetyka, lista jadłospisów z aktywacją, jadłospis z przepisami, plan posiłków ze zmianą dań, lista zakupów, dziennik ze statystykami, waga z wykresem, eksport dziennika do .xlsx, kopia z wyborem modułów.
 - **v4 (20.10.2026)**: według makiety z 20.10 wieczór i `design.md`. Nazwa MyLife, usunięte godziny, przypomnienia i powiadomienia, uchwyt do zmiany kolejności (dotyk i klawiatura), ukończone na końcu listy, nowy wygląd Edytuj zadanie, uproszczone Ustawienia (powrót zawsze do widoku Dzień), Własne powtarzanie bez godziny, przypomnienia i podglądu terminów.

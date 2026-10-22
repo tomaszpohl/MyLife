@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v6';
+const VERSION = 'mylife-v7';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
   './diet-pdf.js', './diet-core.js', './diet-ui.js',

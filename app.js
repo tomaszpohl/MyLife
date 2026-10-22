@@ -8,6 +8,7 @@
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
   const I = {
     back: svg(24, 2, '<path d="m15 6-6 6 6 6"></path>'),
+    home: svg(22, 1.8, '<path d="M4 11.5 12 5l8 6.5"></path><path d="M6 10v9h12v-9"></path><path d="M10 19v-5h4v5"></path>'),
     prev: svg(22, 2, '<path d="m15 6-6 6 6 6"></path>'),
     next: svg(22, 2, '<path d="m9 6 6 6-6 6"></path>'),
     close: svg(24, 2, '<path d="M6 6l12 12M18 6 6 18"></path>'),
@@ -45,6 +46,10 @@
     trashS: svg(18, 2, '<path d="M4 7h16"></path><path d="M10 11v6M14 11v6"></path><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path><path d="M9 7V4h6v3"></path>'),
     ok: svg(18, 2.4, '<path d="m5 12 5 5 9-10"></path>', ' style="flex:none;color:var(--accent)"')
   };
+  // Strzałka wstecz (poprzedni widok) i przycisk „Pulpit główny” – na wszystkich ekranach poza głównym (v7).
+  const backBtn = (label, act, icon) => `<button class="iconbtn" data-a="${act || 'navback'}" aria-label="${label || 'Wróć'}">${icon || I.back}</button>`;
+  const homeBtn = () => `<button class="iconbtn soft" data-a="navhome" aria-label="Pulpit główny">${I.home}</button>`;
+  const navBtns = (label, act, icon) => backBtn(label, act, icon) + homeBtn();
   const gearLink = (extra) => `<a class="iconbtn soft" href="#/settings" aria-label="Ustawienia"${extra ? ' style="' + extra + '"' : ''}>${I.gear}</a>`;
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -86,7 +91,42 @@
     const parts = h.split('/').filter(Boolean);
     return { name: parts[0] || 'home', arg: parts[1] || '', arg2: parts[2] || '' };
   }
-  function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+  function go(hash) { if (location.hash === hash) render(); else { navMode = 'push'; location.hash = hash; } }
+
+  // ---------- Nawigacja (v7): „wstecz” prowadzi do poprzedniego widoku ----------
+  // Stos odwiedzonych ekranów odpowiada historii przeglądarki (przycisk wstecz telefonu działa tak samo).
+  // Przełączniki Dzień / Tydzień / Miesiąc podmieniają bieżący wpis (jak w makiecie – nie są krokiem wstecz).
+  const NAV_KEY = 'mylife.nav';
+  let nav = [], navMode = null;
+  const curHash = () => (location.hash && location.hash !== '#' && location.hash !== '#/' ? location.hash : '#/');
+  try { nav = JSON.parse(sessionStorage.getItem(NAV_KEY)) || []; } catch (e) { nav = []; }
+  if (!Array.isArray(nav) || nav[nav.length - 1] !== curHash()) nav = [curHash()];
+  function navSync() {
+    const h = curHash(), mode = navMode; navMode = null;
+    if (mode === 'replace') { if (nav.length) nav[nav.length - 1] = h; else nav.push(h); }
+    else if (mode === 'push') { if (nav[nav.length - 1] !== h) nav.push(h); }
+    else { const j = nav.lastIndexOf(h); if (j >= 0) nav = nav.slice(0, j + 1); else nav.push(h); }
+    try { sessionStorage.setItem(NAV_KEY, JSON.stringify(nav.slice(-60))); } catch (e) {}
+  }
+  function parentOf(h) {
+    const r = h.replace(/^#\/?/, '').split('/').filter(Boolean);
+    if (r[0] === 'task') return '#/plan/' + S.lastPlan;
+    if (r[0] === 'settings' || r[0] === 'data') return '#/plan/day';
+    if (r[0] === 'diet' && r[1] === 'menu') return '#/diet/menus';
+    if (r[0] === 'diet' && r[1]) return '#/diet';
+    return '#/';
+  }
+  function navReplace(h) { if (curHash() === h) { render(); return; } navMode = 'replace'; location.replace(h); }
+  function back() {
+    if (nav.length >= 2) { history.back(); return; }
+    navReplace(parentOf(curHash()));
+  }
+  function home() {
+    if (curHash() === '#/') return;
+    const j = nav.indexOf('#/');
+    if (j >= 0) history.go(j - (nav.length - 1));
+    else navReplace('#/');
+  }
 
   // ---------- Renderowanie ----------
   const scrollMem = {};
@@ -100,7 +140,7 @@
       try { localStorage.setItem('mylive.lastPlan', v); } catch (e) {}
       html = v === 'day' ? viewDay() : v === 'week' ? viewWeek() : viewMonth();
     } else if (r.name === 'task') {
-      if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (location.replace('#/task/new'), '');
+      if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (navMode = 'replace', location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
     else if (r.name === 'diet' && window.DietUI) html = window.DietUI.view(r);
@@ -152,10 +192,10 @@
 
   // ---------- Wspólne części planera ----------
   function planTop() {
-    return `<div class="topbar"><a class="iconbtn" href="#/" aria-label="Wróć do ekranu głównego">${I.back}</a><h1>Planer dnia</h1>${gearLink('margin-left:auto')}</div>`;
+    return `<div class="topbar">${navBtns()}<h1>Planer dnia</h1>${gearLink('margin-left:auto')}</div>`;
   }
   function seg(active) {
-    const b = (v, label) => v === active ? `<div class="on" aria-current="page">${label}</div>` : `<a href="#/plan/${v}">${label}</a>`;
+    const b = (v, label) => v === active ? `<div class="on" aria-current="page">${label}</div>` : `<a href="#/plan/${v}" data-nav="replace">${label}</a>`;
     return `<nav class="seg" aria-label="Widok">${b('day', 'Dzień')}${b('week', 'Tydzień')}${b('month', 'Miesiąc')}</nav>`;
   }
   const addFooter = () => `<div class="footbar"><button class="primary" data-a="new">${I.plusM}<span>Dodaj zadanie</span></button></div>`;
@@ -392,14 +432,14 @@
     return true;
   }
   function viewForm(arg) {
-    if (!ensureDraft(arg)) return `<main class="screen"><div class="topbar"><a class="iconbtn" href="#/plan/${S.lastPlan}" aria-label="Wróć">${I.back}</a><h1>Nie ma takiego zadania</h1></div></main>`;
+    if (!ensureDraft(arg)) return `<main class="screen"><div class="topbar">${navBtns()}<h1>Nie ma takiego zadania</h1></div></main>`;
     const d = S.draft, editing = !!d.id;
     const rt = d.repeat.type;
     const repLabel = rt === 'custom' ? C.customShort(d.repeat, d.date) : { none: 'Nie powtarzaj', daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc' }[rt];
     const repOpen = !!S.ui.rep;
     const presets = [['none', 'Nie powtarzaj'], ['daily', 'Codziennie'], ['weekly', 'Co tydzień'], ['monthly', 'Co miesiąc']];
     return `<main class="screen">
-      <div class="topbar center"><button class="iconbtn" data-a="cancel" aria-label="Zamknij bez zapisywania">${I.close}</button><h1>${editing ? 'Edytuj zadanie' : 'Nowe zadanie'}</h1>${gearLink()}</div>
+      <div class="topbar">${navBtns('Zamknij bez zapisywania', 'cancel', I.close)}<h1>${editing ? 'Edytuj zadanie' : 'Nowe zadanie'}</h1>${gearLink('margin-left:auto')}</div>
       <div class="form" data-scroll="form">
         <div class="field"><label class="eyebrow" for="tytul">Tytuł</label>
           <input id="tytul" class="title-input" type="text" autocomplete="off" placeholder="Co masz do zrobienia?" value="${esc(d.title)}" data-in="title"></div>
@@ -443,7 +483,7 @@
     const wd = [1, 2, 3, 4, 5, 6, 0];
     const ends = [['never', 'Nigdy'], ['date', 'Do dnia'], ['count', 'Po ilości powtórzeń']];
     return `<main class="screen">
-      <div class="topbar"><button class="iconbtn" data-a="rback" aria-label="Wróć do zadania bez zmian">${I.back}</button><h1>Własne powtarzanie</h1>${gearLink('margin-left:auto')}</div>
+      <div class="topbar">${navBtns('Wróć do zadania bez zmian', 'rback')}<h1>Własne powtarzanie</h1>${gearLink('margin-left:auto')}</div>
       <div class="form tight" data-scroll="rec">
         <div class="panel"><div class="eyebrow">Powtarzaj co</div>
           <div class="stepper">
@@ -473,7 +513,7 @@
     const lbText = !lb ? 'brak' : lb === C.todayKey() ? 'dziś' : lb === C.addDays(C.todayKey(), -1) ? 'wczoraj' : longDay(lb);
     const st = S.set;
     return `<main class="screen">
-      <div class="topbar"><button class="iconbtn" data-a="sback" aria-label="Wróć">${I.back}</button><h1>Ustawienia</h1></div>
+      <div class="topbar">${navBtns('Wróć', 'sback')}<h1>Ustawienia</h1></div>
       <div class="form tight" style="gap:14px;padding-bottom:calc(20px + var(--safe-bottom))" data-scroll="settings">
         <section class="scard">
           <div class="eyebrow">Przechowywanie danych</div>
@@ -541,7 +581,9 @@
     undo: () => { if (S.undo) { C.restore(S.undo.snap); S.undo = null; render(); } },
     new: () => { S.draft = null; go('#/task/new'); },
     edit: (el) => { S.draft = null; S.editK = el.dataset.k || null; go('#/task/' + el.dataset.id); },
-    cancel: () => { S.draft = null; go('#/plan/' + S.lastPlan); },
+    cancel: () => { S.draft = null; back(); },
+    navback: () => back(),
+    navhome: () => home(),
     replist: () => { S.ui.rep = !S.ui.rep; render(); },
     reppick: (el) => { const r = S.draft.repeat; r.type = el.dataset.v; if (r.type !== 'custom') { r.endMode = 'never'; } S.ui.rep = false; render(); },
     custom: () => {
@@ -560,7 +602,7 @@
         S.del = { anim: true, id: d.id, k, mode: 'one', from: 'form' };
         render(); return;
       }
-      const snap = C.snapshot(); C.remove(d.id); S.draft = null; setUndo(snap); go('#/plan/day');
+      const snap = C.snapshot(); C.remove(d.id); S.draft = null; setUndo(snap); back();
     },
     dmode: (el) => { S.del.mode = el.dataset.v; render(); },
     dclose: () => { S.del = null; render(); },
@@ -571,16 +613,16 @@
       if (sd.mode === 'all') { C.remove(sd.id); setUndo(snap, 'delete', 'usunięto cały cykl „' + t.title + '”'); }
       else { C.skipOccurrence(sd.id, sd.k); setUndo(snap, 'delete', ''); }
       S.del = null;
-      if (sd.from === 'form') { S.draft = null; S.sel = sd.k; go('#/plan/day'); } else render();
+      if (sd.from === 'form') { S.draft = null; S.sel = sd.k; back(); } else render();
     },
     // Własne powtarzanie
-    rback: () => { S.rdraft = null; go(S.draft && S.draft.id ? '#/task/' + S.draft.id : '#/task/new'); },
+    rback: () => { S.rdraft = null; back(); },
     rdone: () => {
       const r = S.rdraft;
       if (r.repeat.unit === 'week' && !r.repeat.weekdays.length) { toast('Wybierz co najmniej jeden dzień tygodnia'); return; }
       if (r.repeat.endMode === 'date' && !r.repeat.endDate) { toast('Wybierz datę końca'); return; }
       S.draft.repeat = r.repeat;
-      S.rdraft = null; go(S.draft.id ? '#/task/' + S.draft.id : '#/task/new');
+      S.rdraft = null; back();
     },
     int: (el) => { const r = S.rdraft.repeat; r.interval = Math.max(1, Math.min(99, r.interval + +el.dataset.d)); render(); },
     unit: (el) => { S.rdraft.repeat.unit = el.dataset.u; render(); },
@@ -591,7 +633,7 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); go('#/plan/day'); },
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); back(); },
     export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
@@ -660,13 +702,19 @@
     S.sel = saved.date >= C.todayKey() || !C.isRecurring(saved) ? saved.date : S.sel;
     if (!C.occursOn(saved, S.sel)) { const n = nextDates(saved, 1)[0]; if (n) S.sel = n; }
     S.draft = null;
-    go('#/plan/' + S.lastPlan);
+    back();
   }
 
   // Delegacja zdarzeń
   let suppressClick = false;
   app.addEventListener('click', (e) => {
     if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
+    const lnk = e.target.closest('a[href^="#"]');
+    if (lnk) {
+      const h = lnk.getAttribute('href');
+      if (lnk.dataset.nav === 'replace') { e.preventDefault(); navReplace(h); return; }
+      if (h !== location.hash) navMode = 'push';
+    }
     const el = e.target.closest('[data-a]');
     if (el && actions[el.dataset.a]) { e.preventDefault(); actions[el.dataset.a](el, e); }
   });
@@ -794,9 +842,9 @@
     if (e.target.closest('[data-grip]')) return;
     const strip = e.target.closest('[data-strip]');
     if (strip) { sw = { strip: true, x0: e.clientX, y0: e.clientY }; return; }
-    const row = e.target.closest('.row[data-swipe]');
-    if (!row || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    sw = { row, wrap: row.parentElement, x0: e.clientX, y0: e.clientY, dx: 0, active: false };
+    const row = e.target.closest('.row[data-swipe], .mcard[data-mswipe]');
+    if (!row || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('.actbox')) return;
+    sw = { row, wrap: row.parentElement, menu: row.hasAttribute('data-mswipe'), x0: e.clientX, y0: e.clientY, dx: 0, active: false };
   });
   app.addEventListener('pointermove', (e) => {
     if (!sw || sw.strip) return;
@@ -809,8 +857,14 @@
         sw.row.style.transition = 'none';
       } else return;
     }
-    sw.dx = Math.max(-240, Math.min(240, dx));
+    sw.dx = Math.max(sw.menu ? 0 : -240, Math.min(240, dx));
     sw.row.style.transform = 'translateX(' + sw.dx + 'px)';
+    if (sw.menu) {
+      // Lista jadłospisów (v7): tylko w prawo = usuń; aktualnego nie można usunąć.
+      sw.wrap.classList.toggle('swiping', sw.dx > 0);
+      if (!sw.wrap.classList.contains('blocked')) sw.wrap.querySelector('.mrev .lbl').textContent = sw.dx >= 100 ? 'Puść, aby usunąć' : 'Usuń';
+      return;
+    }
     sw.wrap.classList.toggle('swiping', sw.dx > 0);
     sw.wrap.classList.toggle('swiping-l', sw.dx < 0);
     sw.wrap.querySelector('.row-del .lbl').textContent = sw.dx >= 100 ? 'Puść, aby usunąć' : 'Usuń';
@@ -827,6 +881,15 @@
     if (!s.active) return;
     suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
     s.row.style.transition = 'transform .2s ease';
+    if (s.menu) {
+      const id = s.wrap.dataset.id, blocked = s.wrap.classList.contains('blocked');
+      if (!cancelled && s.dx >= 100 && !blocked) { s.row.style.transform = 'translateX(110%)'; setTimeout(() => window.DietUI.swipeDelete(id), 180); }
+      else {
+        s.row.style.transform = 'translateX(0)';
+        setTimeout(() => { s.wrap.classList.remove('swiping'); if (!cancelled && s.dx >= 100 && blocked) window.DietUI.swipeDelete(id); }, 200);
+      }
+      return;
+    }
     if (!cancelled && s.dx >= 100) {
       s.row.style.transform = 'translateX(110%)';
       const id = s.wrap.dataset.id, k = s.wrap.dataset.k;
@@ -849,10 +912,11 @@
 
   // ---------- Start ----------
   C.load();
-  window.App = { I, svg, esc, gearLink, go, render, toast, route, actions, S, downloadBlob, longDay };
+  window.App = { I, svg, esc, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   window.addEventListener('hashchange', () => {
+    navSync();
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
     S.del = null; S.bk = null;

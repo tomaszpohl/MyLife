@@ -29,9 +29,10 @@
   // ---------- Stan ekranów (tymczasowy) ----------
   const today = () => C.todayKey();
   const U = {
-    plan: { view: 'day', k: null, month: null, sheet: null },
+    home: { detail: null },
+    plan: { view: 'day', k: null, month: null, sheet: null, rec: null },
     menu: { detail: null },
-    list: { filter: 'all', fOpen: false, open: null, sel: null, msg: '', edit: null, draft: '', err: false },
+    list: { filter: 'all', fOpen: false, open: null, sel: null, msg: '', edit: null, draft: '', err: false, undo: null },
     journal: { tab: 'day', k: null, dev: '', actName: '', actMin: '', actKm: '', actErr: false, from: null, fromOpen: false, sort: 'eaten-desc', sortOpen: false },
     weight: { kg: '', saved: false, tip: null },
     shop: { exp: {} },
@@ -40,7 +41,26 @@
   };
 
   // ---------- Wspólne ----------
-  const topbar = (back, title, backLabel) => `<div class="topbar"><a class="iconbtn" href="${back}" aria-label="${backLabel || 'Wróć'}">${I.back}</a><h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
+  // Nagłówek: wstecz (poprzedni widok), „Pulpit główny”, tytuł, zębatka (v7).
+  const topbar = (title, backLabel) => `<div class="topbar">${A.navBtns(backLabel)}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
+  // Widok przepisu (Jadłospis, Dieta, Plan posiłków): kcal, porcja, składniki „g (miara)”, kroki.
+  function dishOverlay(o) {
+    const dish = o.dish;
+    return `<div class="overlay" role="dialog" aria-label="${esc(dish.name)}">
+        <div class="topbar">${A.navBtns(o.backLabel || 'Wróć', o.close)}
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;margin-left:4px"><div style="font-size:12px;color:var(--accent);font-weight:500">${esc(o.slot)}</div><div style="font-size:12px;color:var(--muted)">${esc(o.sub)}</div></div></div>
+        <div class="dscroll" data-scroll="diet-dish">
+          <h2 class="dish-title">${esc(dish.name)}</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">${kcal(dish.kcal)}</span>${dish.portion ? `<span class="chip">${esc(dish.portion)}</span>` : ''}</div>
+          <div class="dcard tight"><div class="eyebrow" style="padding-bottom:4px">Składniki</div>
+            ${dish.ing.map((g) => `<div class="ingrow"><span>${esc(g.name)}</span><span>${esc(gramsTxt(g))}</span></div>`).join('')}</div>
+          <div class="dcard"><div class="eyebrow">Przepis</div>
+            ${(dish.steps && dish.steps.length ? dish.steps : [dish.recipe]).map((t, i) => `<div class="step"><div class="n">${i + 1}</div><div class="t">${esc(t)}</div></div>`).join('')}</div>
+        </div>
+        <div class="footbar">${o.footer}</div>
+      </div>`;
+  }
+  const toPlanBtn = (k) => `<button class="btn2 accent" style="flex:1;height:52px;font-size:16px;font-weight:600" data-a="dtoplan" data-k="${k || ''}">Zmień posiłek w planie</button>`;
   const kcal = (n) => Math.round(n) + ' kcal';
   const gramsTxt = (g) => (g.grams != null ? D.fmtNum(g.grams) + ' g' : '') + (g.measure ? ' (' + g.measure.replace(/(\d)\.(\d)/g, '$1,$2') + ')' : '');
   const planDayLabel = (k) => { const d = C.parse(k); return C.DAY_NAME[d.getDay()] + ', ' + d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()]; };
@@ -88,7 +108,7 @@
   // ---------- Dieta (ekran główny modułu) ----------
   // Brak aktualnego jadłospisu: osobny ekran jak w makiecie „Dieta · Brak jadłospisu” (decyzja właściciela).
   function viewEmpty() {
-    return `<main class="screen">${topbar('#/', 'Dieta', 'Wróć')}
+    return `<main class="screen">${topbar('Dieta')}
       <div class="dempty">
         <div class="dico big">${J.book}</div>
         <div style="font-family:var(--display);font-size:20px;font-weight:600">Brak aktualnego jadłospisu</div>
@@ -104,11 +124,13 @@
     if (!p) return viewEmpty();
     const card = p ? `<div class="dcard accent">
         <div class="dhead"><div class="eyebrow">Dziś</div><div style="font-size:12px;color:var(--muted)">${esc(D.dayShort(T))} · ${kcal(p.kcal)}</div></div>
-        ${p.meals.map((m) => `<a class="dmeal" href="#/diet/menu/${p.menu.id}" aria-label="${esc(m.slot + ': ' + m.dish.name + '. Otwórz jadłospis')}">
-          <div class="slot">${esc(m.slot)}</div><div class="nm">${esc(m.dish.name)}</div><div class="kc">${kcal(m.dish.kcal)}</div></a>`).join('')}
+        ${p.meals.map((m) => `<button class="dmeal" data-a="dhomedish" data-slot="${esc(m.slot)}" aria-label="${esc(m.slot + ': ' + m.dish.name + '. Pokaż przepis')}">
+          <div class="slot">${esc(m.slot)}</div><div class="nm">${esc(m.dish.name)}</div><div class="kc">${kcal(m.dish.kcal)}</div></button>`).join('')}
       </div>` : noPlan();
     const fn = (href, icon, title, desc) => `<a class="dfn" href="${href}"><div class="dico">${icon}</div><div class="txt"><div class="t">${title}</div><div class="s">${desc}</div></div><div style="color:var(--dim);display:flex">${J.chev}</div></a>`;
-    return `<main class="screen">${topbar('#/', 'Dieta', 'Wróć do ekranu głównego')}
+    const hm = U.home.detail && p.meals.find((x) => x.slot === U.home.detail);
+    const detail = hm ? dishOverlay({ dish: hm.dish, slot: hm.slot, sub: 'Dziś · ' + D.dayShort(T), close: 'dhomedishclose', footer: toPlanBtn(T) }) : '';
+    return `<main class="screen" style="position:relative">${topbar('Dieta')}
       <div class="dscroll" data-scroll="diet-home">
         ${card}
         <div class="eyebrow">Funkcje</div>
@@ -117,7 +139,7 @@
         ${fn('#/diet/shop', J.cart, 'Lista zakupów', 'Z wybranych dni lub posiłków')}
         ${fn('#/diet/journal', J.clip, 'Dziennik', 'Zjedzone posiłki, odstępstwa, aktywność')}
         ${fn('#/diet/weight', J.trend, 'Waga', 'Wpisy, wykres i porównanie')}
-      </div></main>`;
+      </div>${detail}</main>`;
   }
 
   // ---------- Lista jadłospisów ----------
@@ -126,8 +148,9 @@
     const L = U.list, T = today();
     const all = D.menus().map((m, i) => ({ m, i, s: D.status(m) }));
     const FILT = [['all', 'Wszystkie'], ['off', 'Nieaktywny'], ['cur', 'Aktualny'], ['plan', 'Zaplanowany'], ['old', 'Nieaktualny']];
-    const cnt = (f) => f === 'all' ? all.length : all.filter((x) => x.s.st === f).length;
-    const shown = all.filter((x) => L.filter === 'all' || x.s.st === L.filter).sort((a, b) => ST_RANK[a.s.st] - ST_RANK[b.s.st] || a.i - b.i);
+    // v7: nieaktualne jadłospisy są ukryte na liście „Wszystkie” (i w jej liczniku); widać je tylko w filtrze „Nieaktualny”.
+    const cnt = (f) => f === 'all' ? all.filter((x) => x.s.st !== 'old').length : all.filter((x) => x.s.st === f).length;
+    const shown = all.filter((x) => L.filter === 'all' ? x.s.st !== 'old' : x.s.st === L.filter).sort((a, b) => ST_RANK[a.s.st] - ST_RANK[b.s.st] || a.i - b.i);
     const cur = D.currentMenu();
     const cards = shown.map(({ m, s }) => {
       const open = L.open === m.id;
@@ -145,7 +168,10 @@
           ${s.planAct ? `<button class="btn2 danger" data-a="dactcancel" data-id="${m.id}">Usuń planowaną aktywację</button>` : ''}
         </div>`;
       }
-      return `<div class="mcard st-${s.st}">
+      const blocked = s.st === 'cur';
+      return `<div class="mwrap${blocked ? ' blocked' : ''}" data-id="${m.id}">
+        <div class="mrev" aria-hidden="true">${J.trash}<span class="lbl">${blocked ? 'Aktualnego nie można usunąć' : 'Usuń'}</span></div>
+        <div class="mcard st-${s.st}" data-mswipe>
         <div class="mtop">
           <button class="iconbtn soft pen" data-a="dren" data-id="${m.id}" aria-label="Zmień nazwę jadłospisu: ${esc(m.name)}">${J.pencil}</button>
           <a class="minfo" href="#/diet/menu/${m.id}" aria-label="Otwórz jadłospis: ${esc(m.name)}">
@@ -158,19 +184,19 @@
         <div class="stsub">${esc(s.sub)}</div>
         ${s.st !== 'cur' ? `<button class="btn2 accent" style="margin-top:10px" data-a="dacttoggle" data-id="${m.id}" aria-expanded="${open}">${s.planAct ? 'Zmień termin aktywacji' : 'Aktywuj'}</button>` : ''}
         ${act}
-      </div>`;
+      </div></div>`;
     }).join('');
     const editM = L.edit ? D.getMenu(L.edit) : null;
-    return `<main class="screen">${topbar('#/diet', 'Lista jadłospisów')}
+    return `<main class="screen">${topbar('Lista jadłospisów')}
       <div class="dscroll" data-scroll="diet-menus">
-        ${L.msg ? `<div class="okbox" role="status">${I.ok}<span>${esc(L.msg)}</span></div>` : ''}
+        ${L.msg ? `<div class="okbox" role="status">${I.ok}<span style="flex:1;min-width:0">${esc(L.msg)}</span>${L.undo ? '<button class="undo-pill" data-a="dmenuundo">Cofnij</button>' : ''}</div>` : ''}
         ${all.length ? `<div class="ddrop">
           <button class="select" data-a="dfilter" aria-haspopup="listbox" aria-expanded="${L.fOpen}"><span><span style="color:var(--muted)">Status: </span>${FILT.find((f) => f[0] === L.filter)[1]}</span><span style="color:var(--muted);display:flex">${L.fOpen ? J.up : J.down}</span></button>
           ${L.fOpen ? `<div class="options" role="listbox" aria-label="Filtr statusu jadłospisu">${FILT.map(([f, l]) => `<button role="option" aria-selected="${L.filter === f}" data-a="dfiltpick" data-v="${f}"><span class="${L.filter === f ? 'on' : ''}">${l} (${cnt(f)})</span>${L.filter === f ? `<span style="color:var(--accent);display:flex">${J.check}</span>` : ''}</button>`).join('')}</div>` : ''}
         </div>` : ''}
         ${!all.length ? `<div class="dcard"><div style="font-family:var(--display);font-size:16px;font-weight:600">Brak jadłospisów</div><div class="para">Jadłospisy dodajesz importem pliku PDF w Ustawieniach. Każdy plik pojawi się tutaj jako „Nieaktywny”.</div><a class="btn2 accent" href="#/settings">Przejdź do importu</a></div>`
           : shown.length ? cards : '<div class="para" style="text-align:center;padding:16px 0">Brak jadłospisów o tym statusie.</div>'}
-        ${all.length ? '<div class="para" style="font-size:12px">W danym momencie obowiązuje jeden jadłospis. Z początkiem wybranej daty nowy jadłospis automatycznie staje się aktualny, a poprzedni zostaje oznaczony jako nieaktualny.</div>' : ''}
+        ${all.length ? '<div class="para" style="font-size:12px">Przeciągnij jadłospis w prawo, aby go usunąć (aktualnego jadłospisu nie można usunąć). W danym momencie obowiązuje jeden jadłospis. Z początkiem wybranej daty nowy jadłospis automatycznie staje się aktualny, a poprzedni zostaje oznaczony jako nieaktualny.</div>' : ''}
       </div>
       ${editM ? `<div class="sheet-wrap">
         <button class="sheet-scrim" data-a="drenclose" aria-label="Zamknij"></button>
@@ -187,7 +213,7 @@
   // ---------- Jadłospis (dni, dania, przepis) ----------
   function viewMenu(mid) {
     const m = D.getMenu(mid);
-    if (!m) return `<main class="screen">${topbar('#/diet/menus', 'Jadłospis')}<div class="dscroll"><div class="para">Nie znaleziono jadłospisu.</div></div></main>`;
+    if (!m) return `<main class="screen">${topbar('Jadłospis')}<div class="dscroll"><div class="para">Nie znaleziono jadłospisu.</div></div></main>`;
     const days = m.days.map((d) => {
       const tot = d.meals.reduce((t, x) => t + m.dishes[x.dish].kcal, 0);
       return `<div class="dcard tight">
@@ -199,22 +225,9 @@
     const det = U.menu.detail && U.menu.detail.menu === mid ? U.menu.detail : null;
     let detail = '';
     if (det) {
-      const dish = m.dishes[det.dish];
-      detail = `<div class="overlay" role="dialog" aria-label="${esc(dish.name)}">
-        <div class="topbar"><button class="iconbtn" data-a="ddishclose" aria-label="Wróć do jadłospisu">${I.back}</button>
-          <div style="display:flex;flex-direction:column;gap:1px;min-width:0"><div style="font-size:12px;color:var(--accent);font-weight:500">${esc(det.slot)}</div><div style="font-size:12px;color:var(--muted)">Dzień ${det.day}</div></div></div>
-        <div class="dscroll" data-scroll="diet-dish">
-          <h2 class="dish-title">${esc(dish.name)}</h2>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">${kcal(dish.kcal)}</span>${dish.portion ? `<span class="chip">${esc(dish.portion)}</span>` : ''}</div>
-          <div class="dcard tight"><div class="eyebrow" style="padding-bottom:4px">Składniki</div>
-            ${dish.ing.map((g) => `<div class="ingrow"><span>${esc(g.name)}</span><span>${esc(gramsTxt(g))}</span></div>`).join('')}</div>
-          <div class="dcard"><div class="eyebrow">Przepis</div>
-            ${(dish.steps && dish.steps.length ? dish.steps : [dish.recipe]).map((t, i) => `<div class="step"><div class="n">${i + 1}</div><div class="t">${esc(t)}</div></div>`).join('')}</div>
-        </div>
-        <div class="footbar"><a class="btn2 accent" style="flex:1;height:52px;font-size:16px;font-weight:600" href="#/diet/plan">Zmień posiłek w planie</a></div>
-      </div>`;
+      detail = dishOverlay({ dish: m.dishes[det.dish], slot: det.slot, sub: 'Dzień ' + det.day, close: 'ddishclose', backLabel: 'Wróć do jadłospisu', footer: toPlanBtn() });
     }
-    return `<main class="screen" style="position:relative">${topbar('#/diet/menus', 'Jadłospis')}
+    return `<main class="screen" style="position:relative">${topbar('Jadłospis')}
       <div class="dscroll" data-scroll="diet-menu-${mid}">
         <div style="font-size:13px;color:var(--muted)">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
         ${days}
@@ -232,9 +245,9 @@
       navTitle = planDayLabel(P.k); navSub = P.k === T ? 'Dziś' : P.k < T ? 'Minione' : 'Zaplanowane';
       const p = D.planFor(P.k);
       body = p ? `<div class="dcard tight">${p.meals.map((x) => `<div class="pslot">
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
-              <div class="slot">${esc(x.slot)}</div><div style="font-size:15px">${esc(x.dish.name)}</div>
-              <div style="font-size:12px;color:var(--muted)">${kcal(x.dish.kcal)}${x.changed ? ' · <span style="color:var(--coral)">zmienione</span>' : ''}</div></div>
+            <button class="precbtn" data-a="dprec" data-k="${P.k}" data-slot="${esc(x.slot)}" aria-label="${esc('Pokaż przepis: ' + x.slot + ', ' + x.dish.name)}">
+              <span class="slot">${esc(x.slot)}</span><span style="font-size:15px">${esc(x.dish.name)}</span>
+              <span style="font-size:12px;color:var(--muted)">${kcal(x.dish.kcal)}${x.changed ? ' · <span style="color:var(--coral)">zmienione</span>' : ''}</span></button>
             <button class="pillbtn" style="margin:0" data-a="dchange" data-slot="${esc(x.slot)}" aria-label="Zmień posiłek: ${esc(x.slot)}"><span class="pill">Zmień</span></button></div>`).join('')}
           <div class="ingrow" style="border-top:1px solid var(--line)"><span style="color:var(--muted)">Razem w tym dniu</span><span style="color:var(--text);font-weight:600">${kcal(p.kcal)}</span></div></div>
           <a class="pillbtn" style="margin:0;align-self:flex-start" href="#/diet/menu/${p.menu.id}"><span class="pill">${J.arrow}<span>Składniki i przepisy</span></span></a>`
@@ -265,23 +278,29 @@
         <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:4px 2px"><i class="cdot"></i><span>dzień ze zmienionym posiłkiem</span></div></div>
         <div class="dcard"><div class="dhead"><div style="font-family:var(--display);font-size:16px;font-weight:600">${esc(planDayLabel(P.k))}</div></div>
           <button class="pillbtn" style="align-self:flex-start;margin:-8px 0 -6px 0" data-a="dplanday" data-k="${P.k}"><span class="pill">${J.arrow}<span>Otwórz ten dzień</span></span></button>
-          ${p ? p.meals.map((x) => `<div class="wline"><span class="sh" style="width:84px">${esc(x.slot)}</span><span class="nm" style="white-space:normal">${esc(x.dish.name)}</span></div>`).join('') : '<div class="para">Brak jadłospisu na ten dzień.</div>'}</div>`;
+          ${p ? p.meals.map((x) => `<button class="wline precline" data-a="dprec" data-k="${P.k}" data-slot="${esc(x.slot)}" aria-label="${esc('Pokaż przepis: ' + x.slot + ', ' + x.dish.name)}"><span class="sh" style="width:84px">${esc(x.slot)}</span><span class="nm" style="white-space:normal">${esc(x.dish.name)}</span><span style="flex:none;color:var(--dim);display:flex">${J.chevS}</span></button>`).join('') : '<div class="para">Brak jadłospisu na ten dzień.</div>'}</div>`;
+    }
+    let rec = '';
+    if (P.rec) {
+      const rp = D.planFor(P.rec.k), rm = rp && rp.meals.find((x) => x.slot === P.rec.slot);
+      if (rm) rec = dishOverlay({ dish: rm.dish, slot: rm.slot, sub: planDayLabel(P.rec.k), close: 'dprecclose', footer: `<button class="btn2 accent" style="flex:1;height:52px;font-size:16px;font-weight:600" data-a="dchange" data-k="${P.rec.k}" data-slot="${esc(rm.slot)}">Zmień posiłek</button>` });
+      else P.rec = null;
     }
     let sheet = '';
     if (P.sheet) {
-      const opts = D.slotOptions(P.k, P.sheet.slot);
+      const opts = D.slotOptions(P.sheet.k, P.sheet.slot);
       const sel = P.sheet.pick;
       const anim = P.sheet.anim ? ' anim' : ''; P.sheet.anim = false;
       sheet = `<div class="sheet-wrap${anim}"><button class="sheet-scrim" data-a="dchangeclose" aria-label="Zamknij okno zmiany posiłku"></button>
         <div class="sheet" role="dialog" aria-modal="true" aria-label="Zmień posiłek">
           <div class="grab" aria-hidden="true"></div>
-          <div style="display:flex;flex-direction:column;gap:3px"><h2>Zmień: ${esc(P.sheet.slot)}</h2><div style="font-size:13px;color:var(--muted)">${esc(planDayLabel(P.k))}</div></div>
+          <div style="display:flex;flex-direction:column;gap:3px"><h2>Zmień: ${esc(P.sheet.slot)}</h2><div style="font-size:13px;color:var(--muted)">${esc(planDayLabel(P.sheet.k))}</div></div>
           <div role="radiogroup" aria-label="Dostępne dania" class="optlist">${opts.map((o) => `<button class="sheet-opt${o.id === sel ? ' on' : ''}" role="radio" aria-checked="${o.id === sel}" data-a="dchangepick" data-dish="${o.id}">
             <span class="dot"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(o.name)}</span><span style="font-size:13px;color:var(--muted)">${kcal(o.kcal)}${o.id === P.sheet.base ? ' · z jadłospisu na ten dzień' : ''}</span></span></button>`).join('')}</div>
           <div style="display:flex;gap:10px"><button class="btn-cancel" data-a="dchangeclose">Anuluj</button><button class="primary" data-a="dchangesave">Zapisz zmianę</button></div>
         </div></div>`;
     }
-    return `<main class="screen">${topbar('#/diet', 'Plan posiłków')}
+    return `<main class="screen" style="position:relative">${topbar('Plan posiłków')}
       <div class="head-pad tight">
         <nav class="seg" role="tablist">${tabs.map(([v, l]) => `<button role="tab" class="${P.view === v ? 'on' : ''}" aria-selected="${P.view === v}" data-a="dplanview" data-v="${v}">${l}</button>`).join('')}</nav>
         <div class="navrow">
@@ -290,14 +309,14 @@
           <button class="iconbtn soft" data-a="dplannav" data-d="1" aria-label="Następny">${I.next}</button>
         </div>
       </div>
-      <div class="dscroll" data-scroll="diet-plan">${body}</div>${sheet}</main>`;
+      <div class="dscroll" data-scroll="diet-plan">${body}</div>${rec}${sheet}</main>`;
   }
 
   // ---------- Lista zakupów ----------
   function viewShop() {
     const sh = D.shopping(), days = D.shopDays();
     const plans = days.map((k) => ({ k, p: D.planFor(k) }));
-    if (!plans.some((x) => x.p)) return `<main class="screen">${topbar('#/diet', 'Lista zakupów')}<div class="dscroll">${noPlan(D.menus().length ? 'W najbliższych 7 dniach nie obowiązuje żaden jadłospis.' : null)}</div></main>`;
+    if (!plans.some((x) => x.p)) return `<main class="screen">${topbar('Lista zakupów')}<div class="dscroll">${noPlan(D.menus().length ? 'W najbliższych 7 dniach nie obowiązuje żaden jadłospis.' : null)}</div></main>`;
     if (sh.stage === 'list') {
       const items = D.shopItems();
       const bought = sh.bought || {};
@@ -306,14 +325,14 @@
       const sorted = items.slice().sort((a, b) => (bought[a.key] ? 1 : 0) - (bought[b.key] ? 1 : 0) || a.name.localeCompare(b.name, 'pl'));
       const keys = Object.keys(sh.sel).filter((x) => sh.sel[x]);
       const dayCount = new Set(keys.map((x) => x.split('|')[0])).size;
-      return `<main class="screen">${topbar('#/diet', 'Lista zakupów')}
+      return `<main class="screen">${topbar('Lista zakupów')}
         <div class="dscroll" data-scroll="diet-shop-list">
           <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:var(--display);font-size:18px;font-weight:600">Do kupienia</div>
             <div style="font-size:13px;color:var(--muted)">${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} z ${dayCount} ${dayCount === 1 ? 'dnia' : 'dni'}</div></div>
           <div><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding-bottom:6px"><span>Kupiono ${bn} z ${items.length}</span><span>${pct}%</span></div>
             <div class="bar"><div style="width:${pct}%"></div></div></div>
           <div class="dcard tight">${sorted.map((x) => `<button class="shoprow${bought[x.key] ? ' done' : ''}" role="checkbox" aria-checked="${!!bought[x.key]}" data-a="dbuy" data-key="${esc(x.key)}">
-            <span class="cbox">${bought[x.key] ? I.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="amt">${D.fmtNum(x.grams)} g</span></button>`).join('')}</div>
+            <span class="cbox">${bought[x.key] ? I.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="amt"><span>${D.fmtNum(x.grams)} g</span>${x.measure ? `<span class="meas">${esc(x.measure)}</span>` : ''}</span></button>`).join('')}</div>
         </div>
         <div class="footbar"><button class="btn2" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div></main>`;
     }
@@ -337,7 +356,7 @@
       </div>`;
     }).join('');
     const allSel = allKeys.length && allKeys.every((x) => sel[x]);
-    return `<main class="screen">${topbar('#/diet', 'Lista zakupów')}
+    return `<main class="screen">${topbar('Lista zakupów')}
       <div class="dscroll" data-scroll="diet-shop">
         <div class="dhead"><div class="eyebrow">Dni i posiłki</div><button class="pillbtn" style="margin:0" data-a="dshopall"><span class="pill">${allSel ? 'Odznacz wszystko' : 'Zaznacz wszystko'}</span></button></div>
         ${rows}
@@ -355,7 +374,8 @@
     if (Jn.tab === 'day') {
       const k = Jn.k, p = D.planFor(k), j = D.jday(k);
       const eaten = Object.values(j.meals).filter((x) => x === 'eaten').length;
-      const mins = j.acts.reduce((t, a) => t + a.min, 0), kms = j.acts.reduce((t, a) => t + a.km, 0);
+      const mins = j.acts.reduce((t, a) => t + (a.min || 0), 0), kms = j.acts.reduce((t, a) => t + (a.km || 0), 0);
+      const actTotal = (mins || kms) ? 'Razem ' + [mins ? mins + ' min' : '', kms ? D.fmtNum(kms) + ' km' : ''].filter(Boolean).join(' · ') : '';
       body = `<div class="navrow">
           <button class="iconbtn soft" data-a="djnav" data-d="-1" aria-label="Poprzedni dzień">${I.prev}</button>
           <div class="mid"><div class="big">${esc(planDayLabel(k))}</div><div class="small">${k === T ? 'Dziś' : 'Minione dni'}</div></div>
@@ -369,13 +389,13 @@
         <div class="dcard"><div class="eyebrow">Odstępstwa od diety</div>
           ${j.devs.length ? j.devs.map((e) => `<div class="jentry"><div style="flex:1">${esc(e.text)}</div><button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : '<div class="para">Brak odstępstw tego dnia.</div>'}
           <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="Dodaj odstępstwo">${J.plus}</button></div></div>
-        <div class="dcard"><div class="dhead"><div class="eyebrow">Aktywność fizyczna</div>${mins ? `<div style="font-size:12px;color:var(--muted)">Razem ${mins} min · ${D.fmtNum(kms)} km</div>` : ''}</div>
-          ${j.acts.length ? j.acts.map((e) => { const t = e.name + ' · ' + e.min + ' min · ' + D.fmtNum(e.km) + ' km'; return `<div class="jentry"><div style="flex:1">${esc(t)}</div><button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
+        <div class="dcard"><div class="dhead"><div class="eyebrow">Aktywność fizyczna</div>${actTotal ? `<div style="font-size:12px;color:var(--muted)">${actTotal}</div>` : ''}</div>
+          ${j.acts.length ? j.acts.map((e) => { const t = D.actText(e, ' · '); return `<div class="jentry"><div style="flex:1">${esc(t)}</div><button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
           <input class="quick" style="flex:none" type="text" aria-label="Rodzaj aktywności (wymagane)" placeholder="Rodzaj, np. spacer" value="${esc(Jn.actName)}" data-in="diet-actname">
-          <div class="jadd"><input class="quick" type="text" inputmode="numeric" maxlength="3" aria-label="Czas w minutach (wymagane)" placeholder="Czas (min)" value="${esc(Jn.actMin)}" data-in="diet-actmin">
-            <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (wymagane)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
+          <div class="jadd"><input class="quick" type="text" inputmode="numeric" maxlength="3" aria-label="Czas w minutach (opcjonalnie)" placeholder="Czas (min)" value="${esc(Jn.actMin)}" data-in="diet-actmin">
+            <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (opcjonalnie)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
             <button class="plus" data-a="djactadd" aria-label="Dodaj aktywność">${J.plus}</button></div>
-          <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Uzupełnij rodzaj, czas i dystans – wszystkie są wymagane.' : 'Czas i dystans są wymagane.'}</div></div>`;
+          <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne.'}</div></div>`;
     } else {
       const s = D.stats(Jn.from, T);
       const SORTS = [['skipped-desc', 'Najczęściej pomijane'], ['skipped-asc', 'Najmniej pomijane'], ['eaten-desc', 'Najczęściej zjedzone'], ['eaten-asc', 'Najmniej zjedzone']];
@@ -397,7 +417,7 @@
             <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--ok)">Zjedzone: ${x.eaten}×</span><span style="color:var(--danger)">Pominięte: ${x.skipped}×</span></div></div>`; }).join('')
           : '<div class="para" style="text-align:center;padding:12px 0">Oznacz posiłki w dzienniku, a pojawią się tutaj.</div>'}`;
     }
-    return `<main class="screen">${topbar('#/diet', 'Dziennik')}
+    return `<main class="screen">${topbar('Dziennik')}
       <div class="head-pad tight"><nav class="seg" role="tablist">${tabs.map(([v, l]) => `<button role="tab" class="${Jn.tab === v ? 'on' : ''}" aria-selected="${Jn.tab === v}" data-a="djtab" data-v="${v}">${l}</button>`).join('')}</nav></div>
       <div class="dscroll" data-scroll="diet-journal-${Jn.tab}">${body}</div></main>`;
   }
@@ -444,7 +464,7 @@
         <div class="wdl ${cls}">${dl == null ? 'pierwszy' : dl === 0 ? 'bez zmian' : sign(dl) + ' kg'}</div>
         <button class="iconbtn soft" data-a="dwdel" data-k="${e.k}" aria-label="Usuń wpis wagi z ${esc(D.dayShort(e.k, true))}">${J.trash}</button></div>`;
     }).join('');
-    return `<main class="screen">${topbar('#/diet', 'Waga')}
+    return `<main class="screen">${topbar('Waga')}
       <div class="dscroll" data-scroll="diet-weight">
         <div class="dcard accent"><div class="dhead"><div class="eyebrow">Waga na dziś</div><div style="font-size:12px;color:var(--muted)">${esc(D.dayShort(T, true))}</div></div>
           <div class="wrow"><button class="round" data-a="dwstep" data-d="-1" aria-label="Zmniejsz o 0,1 kg">−</button>
@@ -462,7 +482,6 @@
   function settingsSections() {
     const St = U.settings, T = today();
     if (!St.expFrom) St.expFrom = C.addDays(T, -6);
-    const imports = D.imports();
     return `<section class="scard" style="gap:12px">
         <div class="eyebrow">Eksport diety</div>
         <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: jeden arkusz, wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
@@ -474,14 +493,12 @@
       </section>
       <section class="scard" style="gap:12px">
         <div class="eyebrow">Import diety</div>
-        <div class="para" style="line-height:1.45">Wczytaj jadłospis z pliku PDF. Przed dodaniem wskażesz, który dzień diety z pliku jest pierwszym. Każdy plik dodaje nowy jadłospis do listy „Dieta – Jadłospisy” ze statusem „Nieaktywny”. Możesz importować kolejne pliki w dowolnym momencie.</div>
+        <div class="para" style="line-height:1.45">Wczytaj jadłospis z pliku PDF. Przed dodaniem wskażesz, który dzień diety z pliku jest pierwszym. Każdy plik dodaje nowy jadłospis do listy „Dieta – Jadłospisy” ze statusem „Nieaktywny”. Możesz importować kolejne pliki w dowolnym momencie. Aplikacja nie przechowuje listy zaimportowanych plików.</div>
         <button class="bigbtn" data-a="dpickpdf"${St.busy ? ' disabled' : ''}>${J.file}<span class="two"><span>Wybierz plik PDF…</span><span>Tylko pliki .pdf</span></span></button>
         <input id="dietPdf" class="sr-only" type="file" accept="application/pdf,.pdf" data-in="diet-pdf" tabindex="-1" aria-hidden="true">
         ${St.pending ? `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(St.pending.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(St.pending.size)} · ${St.busy ? 'odczytuję…' : 'gotowy do importu'}</div></div></div>
           <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dimpcancel"${St.busy ? ' disabled' : ''}>Anuluj</button><button class="primary" style="height:48px" data-a="dimport" aria-haspopup="dialog"${St.busy ? ' disabled' : ''}>${St.busy ? 'Odczytuję plik…' : 'Importuj jadłospis'}</button></div>` : ''}
         ${St.impMsg ? `<div class="okbox" role="status">${St.impErr ? I.warn : I.ok}<span>${esc(St.impMsg)}${St.impErr ? '' : ' <a href="#/diet/menus" style="color:var(--accent);font-weight:600">Otwórz listę jadłospisów</a>'}</span></div>` : ''}
-        <div class="eyebrow" style="margin-top:4px">Zaimportowane pliki</div>
-        ${imports.length ? imports.map((f) => `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(f.size)} · zaimportowano ${esc(D.dateDots(f.at))} · start: Dzień ${f.first || 1}</div></div></div>`).join('') : '<div class="para">Jeszcze nic nie zaimportowano.</div>'}
       </section>
       ${St.parsed ? firstDayDialog() : ''}`;
   }
@@ -518,10 +535,16 @@
     // Lista jadłospisów
     dfilter: () => { U.list.fOpen = !U.list.fOpen; R(); },
     dfiltpick: (el) => { U.list.filter = el.dataset.v; U.list.fOpen = false; R(); },
+    dmenuundo: () => { const L = U.list; if (!L.undo) return; D.restoreMenu(L.undo); L.undo = null; L.msg = 'Przywrócono jadłospis.'; R(); },
+    dhomedish: (el) => { U.home.detail = el.dataset.slot; R(); },
+    dhomedishclose: () => { U.home.detail = null; R(); },
+    dtoplan: (el) => { const k = el.dataset.k || today(); Object.assign(U.plan, { view: 'day', k, month: k.slice(0, 7), sheet: null, rec: null }); A.go('#/diet/plan'); },
+    dprec: (el) => { U.plan.rec = { k: el.dataset.k, slot: el.dataset.slot }; R(); },
+    dprecclose: () => { U.plan.rec = null; R(); },
     dacttoggle: (el) => {
       const L = U.list, m = D.getMenu(el.dataset.id), s = D.status(m);
       if (L.open === m.id) { L.open = null; } else { L.open = m.id; L.sel = s.planAct ? s.planAct.from : today(); U.cals.act = { vm: L.sel.slice(0, 7) }; }
-      L.msg = ''; R();
+      L.msg = ''; L.undo = null; R();
     },
     dactok: (el) => {
       const L = U.list, m = D.getMenu(el.dataset.id), T = today(), sel = L.sel && L.sel >= T ? L.sel : T;
@@ -550,12 +573,13 @@
     dplanday: (el) => { U.plan.k = el.dataset.k; U.plan.view = 'day'; R(); },
     dplanpick: (el) => { U.plan.k = el.dataset.k; U.plan.month = el.dataset.k.slice(0, 7); R(); },
     dchange: (el) => {
-      const p = D.planFor(U.plan.k), meal = p.meals.find((x) => x.slot === el.dataset.slot);
-      U.plan.sheet = { anim: true, slot: meal.slot, pick: meal.dishId, base: meal.base }; R();
+      const k = el.dataset.k || U.plan.k, p = D.planFor(k), meal = p && p.meals.find((x) => x.slot === el.dataset.slot);
+      if (!meal) return;
+      U.plan.sheet = { anim: true, k, slot: meal.slot, pick: meal.dishId, base: meal.base }; R();
     },
     dchangepick: (el) => { U.plan.sheet.pick = el.dataset.dish; R(); },
     dchangeclose: () => { U.plan.sheet = null; R(); },
-    dchangesave: () => { const s = U.plan.sheet; D.setOverride(U.plan.k, s.slot, s.pick); U.plan.sheet = null; R(); },
+    dchangesave: () => { const s = U.plan.sheet; D.setOverride(s.k, s.slot, s.pick); U.plan.sheet = null; R(); },
     // Zakupy
     dshopexp: (el) => { U.shop.exp[el.dataset.k] = !U.shop.exp[el.dataset.k]; R(); },
     dshopday: (el) => {
@@ -582,8 +606,9 @@
     djdevadd: () => { const t = U.journal.dev.trim(); if (!t) return; D.addDev(U.journal.k, t); U.journal.dev = ''; R(); },
     djdevdel: (el) => { D.removeDev(U.journal.k, el.dataset.id); R(); },
     djactadd: () => {
-      const Jn = U.journal, name = Jn.actName.trim(), min = parseInt(Jn.actMin, 10), km = parseFloat(String(Jn.actKm).replace(',', '.'));
-      if (!name || !(min > 0) || !(km >= 0) || Jn.actKm === '') { Jn.actErr = true; R(); return; }
+      // v7: wymagany tylko rodzaj; czas i dystans opcjonalne (puste = 0, nie są pokazywane).
+      const Jn = U.journal, name = Jn.actName.trim(), min = parseInt(Jn.actMin, 10) || 0, km = parseFloat(String(Jn.actKm).replace(',', '.')) || 0;
+      if (!name) { Jn.actErr = true; R(); return; }
       D.addActivity(Jn.k, name, min, Math.round(km * 100) / 100); Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; R();
     },
     djactdel: (el) => { D.removeActivity(U.journal.k, el.dataset.id); R(); },
@@ -667,12 +692,14 @@
   function onEscape() {
     if (U.settings.parsed) { U.settings.parsed = null; return true; }
     if (U.plan.sheet) { U.plan.sheet = null; return true; }
+    if (U.plan.rec) { U.plan.rec = null; return true; }
+    if (U.home.detail) { U.home.detail = null; return true; }
     if (U.list.edit) { U.list.edit = null; return true; }
     if (U.menu.detail) { U.menu.detail = null; return true; }
     return false;
   }
   function onRoute(r) {
-    U.menu.detail = null; U.plan.sheet = null; U.list.edit = null; U.list.msg = ''; U.weight.saved = false;
+    U.menu.detail = null; U.plan.sheet = null; U.plan.rec = null; U.home.detail = null; U.list.edit = null; U.list.msg = ''; U.list.undo = null; U.weight.saved = false;
     if (r.name === 'diet' && r.arg === 'weight') { U.weight.kg = ''; U.weight.tip = null; }
   }
 
@@ -691,6 +718,14 @@
   window.DietUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view, settingsSections, onInput, onChange, onKey, onEscape, onRoute,
+    // Przeciągnięcie jadłospisu w prawo (≥100 px) na liście – wywoływane z obsługi gestów w app.js.
+    swipeDelete(mid) {
+      const L = U.list, m = D.getMenu(mid); if (!m) return;
+      const r = D.deleteMenu(mid);
+      if (r && r.blocked) { L.msg = '„' + m.name + '” jest aktualny – nie można go usunąć. Najpierw aktywuj inny jadłospis.'; L.undo = null; }
+      else if (r) { L.msg = 'Usunięto jadłospis „' + m.name + '”.'; L.undo = r; if (L.open === mid) L.open = null; }
+      R();
+    },
     resetSettings() { U.settings.expMsg = ''; U.settings.impMsg = ''; U.settings.calOpen = false; }
   };
 })();

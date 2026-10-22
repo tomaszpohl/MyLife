@@ -4,7 +4,7 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.diet.v1';
-  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, imports: [] });
+  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' } });
   let db = empty();
   const listeners = [];
 
@@ -13,6 +13,12 @@
       const raw = localStorage.getItem(KEY);
       if (raw) { const p = JSON.parse(raw); if (p && Array.isArray(p.menus)) db = Object.assign(empty(), p); }
     } catch (e) { console.warn('Dieta: nie udało się wczytać danych', e); }
+    tidy();
+  }
+  // v7: aplikacja nie przechowuje historii zaimportowanych plików; usunięte jadłospisy bez historii znikają całkiem.
+  function tidy() {
+    delete db.imports;
+    db.menus = db.menus.filter((m) => !m.deleted || db.acts.some((a) => a.menu === m.id));
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); }
@@ -36,7 +42,8 @@
   }
 
   // ---------- Jadłospisy ----------
-  const menus = () => db.menus;
+  // Widoczne jadłospisy (usunięte zostają w danych tylko dla historii dziennika – decyzja właściciela).
+  const menus = () => db.menus.filter((m) => !m.deleted);
   const getMenu = (mid) => db.menus.find((m) => m.id === mid) || null;
   function addMenu(parsed, fileName, size, startDay) {
     const m = {
@@ -51,9 +58,27 @@
       startDay: Math.min(Math.max(1, startDay || 1), parsed.days.length) // „Pierwszy dzień diety” wybrany przy imporcie
     };
     db.menus.push(m);
-    db.imports.unshift({ name: fileName, size: size || 0, at: C.todayKey(), menu: m.id, first: m.startDay });
     save();
     return m;
+  }
+  // Usunięcie jadłospisu (przeciągnięcie w prawo): aktualnego nie można usunąć. Planowana aktywacja jest anulowana,
+  // minione dni (dziennik, statystyki, eksport) zachowują jego dania. Zwraca dane do „Cofnij”.
+  function deleteMenu(mid) {
+    const m = getMenu(mid), T = C.todayKey();
+    if (!m || m.deleted) return null;
+    const cur = actOn(T);
+    if (cur && cur.menu === mid) return { blocked: true };
+    const removed = db.acts.filter((a) => a.menu === mid && a.from > T);
+    db.acts = db.acts.filter((a) => !(a.menu === mid && a.from > T));
+    m.deleted = true;
+    save();
+    return { id: mid, acts: removed };
+  }
+  function restoreMenu(u) {
+    const m = u && getMenu(u.id); if (!m) return;
+    delete m.deleted;
+    u.acts.forEach((a) => { if (!db.acts.some((x) => x.from === a.from)) db.acts.push(a); });
+    save();
   }
   function renameMenu(mid, name) { const m = getMenu(mid); if (m) { m.name = name; save(); } }
   const menuInfo = (m) => (m.kcalTarget ? m.kcalTarget + ' kcal dziennie · ' : '') + m.days.length + ' ' + C.plural(m.days.length, 'dzień', 'dni', 'dni');
@@ -140,6 +165,8 @@
   function removeDev(k, vid) { const d = jday(k); d.devs = d.devs.filter((x) => x.id !== vid); jput(k, d); }
   function addActivity(k, name, min, km) { const d = jday(k); d.acts = d.acts.concat([{ id: id('a'), name, min, km }]); jput(k, d); }
   function removeActivity(k, aid) { const d = jday(k); d.acts = d.acts.filter((x) => x.id !== aid); jput(k, d); }
+  // Aktywność (v7): wymagany tylko rodzaj, czas i dystans opcjonalne.
+  const actText = (x, sep) => [x.name].concat(x.min > 0 ? [x.min + ' min'] : [], x.km > 0 ? [fmtNum(x.km) + ' km'] : []).join(sep || ', ');
   // Statystyki: zliczane po nazwie dania (warianty razem – decyzja właściciela).
   function stats(fromK, toK) {
     const by = {};
@@ -169,6 +196,48 @@
   const shopDays = () => { const T = C.todayKey(); return [...Array(7)].map((_, i) => C.addDays(T, i)); };
   function shopping() { return db.shopping; }
   function shopSet(patch) { db.shopping = Object.assign({}, db.shopping, patch); save(); }
+  // Miara domowa na liście zakupów (v7): ile gramów ma jedna miara danego składnika (z tabel PDF),
+  // suma gramów przeliczona na tę miarę, zaokrąglona do 0,5 („≈ 3 łyżki”, „≈ 2 sztuki”).
+  const UNITS = [
+    [/łyżecz/, ['łyżeczka', 'łyżeczki', 'łyżeczek', 'łyżeczki']],
+    [/łyż/, ['łyżka', 'łyżki', 'łyżek', 'łyżki']],
+    [/szklan/, ['szklanka', 'szklanki', 'szklanek', 'szklanki']],
+    [/ząb/, ['ząbek', 'ząbki', 'ząbków', 'ząbka']],
+    [/kromk|kromek/, ['kromka', 'kromki', 'kromek', 'kromki']],
+    [/plast/, ['plaster', 'plastry', 'plastrów', 'plastra']],
+    [/gar[sś]/, ['garść', 'garście', 'garści', 'garści']],
+    [/kul/, ['kulka', 'kulki', 'kulek', 'kulki']],
+    [/kub/, ['kubek', 'kubki', 'kubków', 'kubka']],
+    [/chochl/, ['chochla', 'chochle', 'chochli', 'chochli']],
+    [/kostk|kostek/, ['kostka', 'kostki', 'kostek', 'kostki']],
+    [/porcj/, ['porcja', 'porcje', 'porcji', 'porcji']],
+    [/opakowa/, ['opakowanie', 'opakowania', 'opakowań', 'opakowania']],
+    [/torebk|torebek/, ['torebka', 'torebki', 'torebek', 'torebki']],
+    [/butel/, ['butelka', 'butelki', 'butelek', 'butelki']],
+    [/pusz/, ['puszka', 'puszki', 'puszek', 'puszki']],
+    [/sztuk|^(mał|mniej|duż|więk|średn|gruntow)/, ['sztuka', 'sztuki', 'sztuk', 'sztuki']]
+  ];
+  function parseMeasure(str) {
+    const s = String(str || '').toLocaleLowerCase('pl').replace(/\([^)]*\)/g, ' ').replace(/,\s*[^\d\s].*$/, '').trim();
+    const m = /^(\d+(?:[.,]\d+)?)(?:\s*\/\s*(\d+))?\s*(.*)$/.exec(s) || /^([½¼¾])\s*(.*)$/.exec(s);
+    if (!m) return null;
+    let n, rest;
+    if (m.length === 3) { n = { '½': 0.5, '¼': 0.25, '¾': 0.75 }[m[1]]; rest = m[2]; }
+    else { n = parseFloat(m[1].replace(',', '.')); if (m[2]) n = n / parseFloat(m[2]); rest = m[3]; }
+    if (!(n > 0) || /szczypt|do smaku|listk|listek/.test(rest)) return null;
+    const u = UNITS.find((x) => x[0].test(rest));
+    return u ? { n, forms: u[1] } : null;
+  }
+  function measureText(grams, samples) {
+    const list = Object.values(samples);
+    if (!(grams > 0) || !list.length) return '';
+    const best = list.sort((a, b) => b.cnt - a.cnt || b.n - a.n)[0];
+    const gpu = best.g / best.n; if (!(gpu > 0)) return '';
+    const n = Math.max(0.5, Math.round(grams / gpu * 2) / 2), f = best.forms;
+    const whole = n === Math.floor(n), m10 = n % 10, m100 = n % 100;
+    const form = !whole ? f[3] : n === 1 ? f[0] : (m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14)) ? f[1] : f[2];
+    return '≈ ' + fmtNum(n) + ' ' + form;
+  }
   function shopItems() {
     const agg = {};
     Object.keys(db.shopping.sel).forEach((key) => {
@@ -178,11 +247,16 @@
       const meal = p.meals.find((x) => x.slot === slot); if (!meal || !meal.dish) return;
       meal.dish.ing.forEach((g) => {
         const nk = g.name.toLocaleLowerCase('pl');
-        agg[nk] = agg[nk] || { key: nk, name: g.name, grams: 0 };
+        agg[nk] = agg[nk] || { key: nk, name: g.name, grams: 0, samples: {} };
         agg[nk].grams += g.grams || 0;
+        const pm = parseMeasure(g.measure);
+        if (pm && g.grams > 0) {
+          const sm = agg[nk].samples[pm.forms[0]] || (agg[nk].samples[pm.forms[0]] = { g: 0, n: 0, cnt: 0, forms: pm.forms });
+          sm.g += g.grams; sm.n += pm.n; sm.cnt++;
+        }
       });
     });
-    return Object.values(agg);
+    return Object.values(agg).map((x) => ({ key: x.key, name: x.name, grams: x.grams, measure: measureText(x.grams, x.samples) }));
   }
 
   // ---------- Eksport dziennika do .xlsx (jeden arkusz, dzień po dniu) ----------
@@ -202,7 +276,7 @@
         row.push(meal && meal.dish ? meal.dish.name + ' – ' + stTxt : (st ? stTxt : ''));
       });
       row.push(j.devs.map((x) => x.text).join('; '));
-      row.push(j.acts.map((x) => x.name + ' ' + x.min + ' min, ' + fmtNum(x.km) + ' km').join('; '));
+      row.push(j.acts.map((x) => actText(x)).join('; '));
       rows.push(row);
     }
     return [head].concat(rows);
@@ -226,20 +300,19 @@
   const exportData = () => JSON.parse(JSON.stringify(db));
   function importData(d) {
     if (!d || !Array.isArray(d.menus)) throw new Error('Plik nie zawiera danych diety.');
-    db = Object.assign(empty(), d); save();
+    db = Object.assign(empty(), d); tidy(); save();
   }
-  const summary = () => db.menus.length + ' ' + C.plural(db.menus.length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' +
+  const summary = () => menus().length + ' ' + C.plural(menus().length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' +
     Object.keys(db.journal).length + ' ' + C.plural(Object.keys(db.journal).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(db.weights).length + ' ' + C.plural(Object.keys(db.weights).length, 'wpis', 'wpisy', 'wpisów') + ' wagi';
 
   window.Diet = {
     load, save, onChange: (fn) => listeners.push(fn),
     fmtNum, dayShort, dateLong, dateDots, slotShort,
-    menus, getMenu, addMenu, renameMenu, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
+    menus, getMenu, addMenu, deleteMenu, restoreMenu, renameMenu, actText, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
     planFor, slotOptions, setOverride,
     jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: () => Object.keys(db.journal).sort()[0] || null,
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems,
-    exportXlsx, journalRows, exportData, importData, summary,
-    imports: () => db.imports
+    exportXlsx, journalRows, exportData, importData, summary
   };
 })();
