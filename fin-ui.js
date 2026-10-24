@@ -29,7 +29,8 @@
     worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null },
     add: null,      // okno „Nowe wydatki”: { draft: { date, desc, amt, cat }, drafts: [], err, from: 'home'|'exp' }
     cats: null,     // okno „Kategorie wydatków”: { name, err }
-    cal: null       // otwarty kalendarz: { id, vm }
+    cal: null,      // otwarty kalendarz: { id, vm }
+    imp: { open: false, file: null, pending: null, busy: false, parts: null, sel: {}, msg: '', err: false, done: null }   // Ustawienia → import .xlsx
   };
 
   // ---------- Wspólne ----------
@@ -365,6 +366,57 @@
       </div>${modal}</main>`;
   }
 
+  // ---------- Ustawienia → „Finanse: import danych” (v9) ----------
+  const sizeTxt = (b) => (b >= 1048576 ? (Math.round(b / 104857.6) / 10 + ' MB').replace('.', ',') : Math.max(1, Math.round(b / 1024)) + ' KB');
+  const KIND = { exp: 'Wydatki', inc: 'Przychody', worth: 'Majątek' };
+  function settingsSection() {
+    const M = U.imp, open = M.open;
+    const links = M.done ? [M.done.exp ? '<a href="#/fin/exp">Otwórz listę wydatków</a>' : '', M.done.inc ? '<a href="#/fin/result">Otwórz wynik finansowy</a>' : '', M.done.worth ? '<a href="#/fin/worth">Otwórz majątek</a>' : ''].filter(Boolean).join('') : '';
+    return `<section class="scard sgroup">
+      <button class="sghead" data-a="fimpgroup" aria-expanded="${open}"><span class="sgico gold">${I.wallet.replace(/width="26" height="26"/, 'width="22" height="22"')}</span>
+        <span class="sgtxt"><span>Finanse: import danych</span><span>Wydatki, przychody i majątek z pliku .xlsx</span></span><span class="frot${open ? ' up' : ''}">${J.down}</span></button>
+      ${open ? `<div class="sgbody"><div class="sgpart">
+        <div class="eyebrow">Import danych finansowych</div>
+        <div class="para" style="line-height:1.45">Wczytaj dane z pliku .xlsx: wydatki (data, opis, kwota w PLN, kategoria), przychody miesięczne (rok, miesiąc i kwoty, np. Wynagrodzenie, Inne) oraz majątek (opis, kwota, Aktywa / Zobowiązania). Przed dodaniem zobaczysz podsumowanie każdego arkusza. Dane są dodawane do istniejących, nic nie jest nadpisywane. Kategorie wydatków spoza listy zostaną dodane jako własne kategorie.</div>
+        <button class="bigbtn dashed" data-a="fimppick"${M.busy ? ' disabled' : ''}>${ic(22, 1.8, '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"></path><path d="M14 3v5h5"></path><path d="M12 12v6M9 15l3 3 3-3"></path>')}<span class="two"><span>Wybierz plik .xlsx…</span><span>Tylko pliki .xlsx</span></span></button>
+        <input id="finXlsx" class="sr-only" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-in="fin-xlsx" tabindex="-1" aria-hidden="true">
+        ${M.pending ? `<div class="fpend"><div style="display:flex;align-items:center;gap:10px"><div class="pdfb gold">XLSX</div><div style="flex:1;min-width:0"><div class="fname">${esc(M.pending.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(M.pending.size)} · ${M.busy ? 'odczytuję…' : 'gotowy do importu'}</div></div></div>
+          <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fimpcancel"${M.busy ? ' disabled' : ''}>Anuluj</button><button class="btn-gold" data-a="fimpnext" aria-haspopup="dialog"${M.busy ? ' disabled' : ''}>${M.busy ? 'Odczytuję plik…' : 'Dalej'}</button></div></div>` : ''}
+        ${M.msg ? `<div class="okbox" role="status">${M.err ? I.warn : I.ok}<span style="display:flex;flex-direction:column;gap:6px"><span>${esc(M.msg)}</span>${links ? `<span class="flinks">${links}</span>` : ''}</span></div>` : ''}
+      </div></div>` : ''}
+    </section>${M.parts ? importDialog() : ''}`;
+  }
+  // Okno podsumowania przed importem – każdy rozpoznany arkusz osobno, z zaznaczeniem (decyzja właściciela: wszystkie arkusze).
+  function importDialog() {
+    const M = U.imp, FI = window.FinImport;
+    const known = new Set(F.CATS.concat(F.customCats()).map((c) => FI.norm(c.name)));
+    const any = M.parts.some((p, i) => M.sel[i]);
+    const kv = (k, v) => `<div class="kv"><span>${k}</span><span style="font-weight:600">${v}</span></div>`;
+    const cards = M.parts.map((p, i) => {
+      const sm = window.FinImport.summarize(p), on = !!M.sel[i];
+      let rows;
+      if (p.kind === 'worth') rows = kv('Pozycje', sm.n) + kv('Aktywa', F.money(sm.assets)) + kv('Zobowiązania', F.money(sm.liabs));
+      else {
+        rows = kv('Wiersze', sm.n + ' ' + C.plural(sm.n, 'wiersz', 'wiersze', 'wierszy')) + kv('Suma', F.money(sm.sum)) + kv('Okres', esc(F.dlabelY(sm.from) + ' – ' + F.dlabelY(sm.to)));
+        if (p.kind === 'exp') {
+          const nw = [...new Set(p.items.map((e) => FI.norm(e.catName)).filter((x) => x && !known.has(x)))].length;
+          if (nw) rows += kv('Nowe własne kategorie', nw);
+        }
+        if (p.monthly) rows += `<div style="font-size:12px;color:var(--muted);padding:2px 0 8px">Kwoty miesięczne – data: 1. dzień miesiąca.</div>`;
+      }
+      if (p.skipped) rows += `<div style="font-size:12px;color:#F2D9A0;padding:2px 0 8px">Pominięte wiersze bez daty lub kwoty: ${p.skipped}</div>`;
+      return `<div class="fimpcard${on ? ' on' : ''}"><button class="bkmod${on ? ' on' : ''}" role="checkbox" aria-checked="${on}" data-a="fimpsel" data-i="${i}"><span class="cbox">${on ? I.check : ''}</span><span><b>${KIND[p.kind]}</b> <span style="color:var(--muted);font-weight:400">· arkusz „${esc(p.sheet)}”</span></span></button>
+        <div style="padding:0 12px">${rows}</div></div>`;
+    }).join('');
+    return `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="Import danych finansowych">
+      <div style="font-family:var(--display);font-size:18px;font-weight:600">Import danych finansowych</div>
+      <div style="font-size:13px;line-height:1.45;color:var(--muted)">Plik „${esc(M.pending ? M.pending.name : '')}” zawiera dane, które zostaną dodane do istniejących. Zaznacz, co zaimportować.</div>
+      ${cards}
+      ${any ? '' : '<div role="alert" style="font-size:13px;color:var(--danger)">Zaznacz co najmniej jeden arkusz.</div>'}
+      <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fimpdlgclose">Anuluj</button><button class="btn-gold" data-a="fimpdo"${any ? '' : ' disabled'}>Importuj dane</button></div>
+    </div></div>`;
+  }
+
   // ---------- Akcje ----------
   const R_ = () => A.render();
   const newDraft = (date) => ({ date: date || today(), desc: '', amt: '', cat: null });
@@ -452,6 +504,35 @@
     },
     // Usunięcie przychodu z „Cofnij” (decyzja właściciela – jak przy wydatkach).
     frdel: (el) => { const e = F.removeIncome(el.dataset.id); if (e) { U.res.undo = e; U.res.msg = 'Usunięto: ' + (e.desc || F.icatOf(e.cat).name) + ' (' + F.money(e.amt) + ').'; } R_(); },
+    fimpgroup: () => { U.imp.open = !U.imp.open; R_(); },
+    fimppick: () => { const f = document.getElementById('finXlsx'); if (f) f.click(); },
+    fimpcancel: () => { Object.assign(U.imp, { file: null, pending: null, parts: null }); R_(); },
+    fimpnext: async () => {
+      const M = U.imp; if (!M.file) return;
+      M.busy = true; M.msg = ''; R_();
+      try {
+        M.parts = await window.FinImport.read(M.file);
+        M.sel = {}; M.parts.forEach((p, i) => { M.sel[i] = true; });
+      } catch (e) {
+        console.error(e);
+        Object.assign(M, { msg: 'Nie udało się odczytać pliku. ' + (e && e.message ? e.message : ''), err: true, done: null, file: null, pending: null, parts: null });
+      }
+      M.busy = false; R_();
+    },
+    fimpsel: (el) => { const M = U.imp, i = +el.dataset.i; M.sel[i] = !M.sel[i]; R_(); },
+    fimpdlgclose: () => { U.imp.parts = null; R_(); },
+    fimpdo: () => {
+      const M = U.imp; if (!M.parts) return;
+      const parts = M.parts.filter((p, i) => M.sel[i]); if (!parts.length) return;
+      const r = F.importParts(parts, M.pending ? M.pending.name : '');
+      const bits = [];
+      if (r.exp) bits.push(wd(r.exp) + ' na kwotę ' + F.money(r.expSum));
+      if (r.inc) bits.push(r.inc + ' ' + C.plural(r.inc, 'przychód', 'przychody', 'przychodów') + ' na kwotę ' + F.money(r.incSum));
+      if (r.worth) bits.push(r.worth + ' ' + C.plural(r.worth, 'pozycję', 'pozycje', 'pozycji') + ' majątku');
+      M.msg = 'Zaimportowano ' + bits.join(', ') + '.' + (r.newCats.length ? ' Dodano ' + r.newCats.length + ' ' + C.plural(r.newCats.length, 'własną kategorię', 'własne kategorie', 'własnych kategorii') + ' (włączone „Własne kategorie”).' : '');
+      M.err = false; M.done = { exp: !!r.exp, inc: !!r.inc, worth: !!r.worth };
+      Object.assign(M, { file: null, pending: null, parts: null }); R_();
+    },
     frundo: () => { if (U.res.undo) { F.restoreIncome(U.res.undo); U.res.undo = null; U.res.msg = 'Przywrócono przychód.'; } R_(); }
   };
 
@@ -487,7 +568,14 @@
       }
     }
   }
-  function onChange() {}
+  function onChange(el, k) {
+    if (k !== 'fin-xlsx') return;
+    const f = el.files && el.files[0]; el.value = '';
+    if (!f) return;
+    const M = U.imp;
+    if (!/\.xlsx$/i.test(f.name)) { Object.assign(M, { msg: 'Wybierz plik w formacie .xlsx.', err: true, done: null }); A.render(); return; }
+    Object.assign(M, { file: f, pending: { name: f.name, size: f.size }, msg: '', err: false, done: null, parts: null }); A.render();
+  }
   function onKey(e) {
     if (e.key !== 'Enter') return false;
     const k = e.target.dataset.key;
@@ -500,6 +588,7 @@
     if (U.add) { U.add = null; return true; }
     if (U.worth.edit || U.worth.add) { U.worth.edit = null; U.worth.add = null; return true; }
     if (U.res.add) { U.res.add = null; return true; }
+    if (U.imp.parts) { U.imp.parts = null; return true; }
     return false;
   }
   function onRoute(r) {
@@ -521,6 +610,7 @@
 
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
-    view, navKey, onInput, onChange, onKey, onEscape, onRoute
+    view, navKey, onInput, onChange, onKey, onEscape, onRoute, settingsSection,
+    resetSettings() { Object.assign(U.imp, { msg: '', done: null, parts: null }); }
   };
 })();

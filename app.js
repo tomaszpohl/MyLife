@@ -423,14 +423,17 @@
     let cells = '';
     for (let k = start; k <= end; k = C.addDays(k, 1)) {
       const d = C.parse(k), inMonth = k.slice(0, 7) === S.monthCursor;
-      const n = C.forDay(k).length;
-      const cls = !inMonth ? 'muted' : k === today ? 'today' : k === S.sel ? 'sel' : '';
-      const dots = '<i></i>'.repeat(Math.min(3, n));
-      cells += `<button class="mcell ${cls}" data-a="mpick" data-k="${k}" aria-label="${d.getDate()} ${C.MONTH_GEN[d.getMonth()]}, ${C.tasksWord(n)}"${k === S.sel ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+      // v9: jedna kropka, gdy są zadania do zrobienia; dzień przed dziś z niewykonanymi zadaniami – czerwony (zaległe).
+      const its = C.forDay(k), n = its.length, open = its.some((x) => !x.done);
+      const late = inMonth && open && k < today;
+      const cls = [!inMonth ? 'muted' : k === today ? 'today' : '', inMonth && k === S.sel && k !== today ? 'sel' : '', late ? 'late' : ''].join(' ');
+      const dots = open ? '<i></i>' : '';
+      const st = !n ? '' : late ? ', zaległe zadania' : open ? ', do zrobienia' : ', wszystko wykonane';
+      cells += `<button class="mcell ${cls}" data-a="mpick" data-k="${k}" aria-label="${d.getDate()} ${C.MONTH_GEN[d.getMonth()]}, ${C.tasksWord(n)}${st}"${k === S.sel ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
     }
     const items = C.forDay(S.sel);
     const list = items.length
-      ? items.map((x) => `<button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>`).join('')
+      ? items.map((x) => `<button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>`).join('')
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
       <div class="head-pad tight">${seg('month')}
@@ -441,9 +444,10 @@
         </div>
         <div class="dow-row" aria-hidden="true"><div>PN</div><div>WT</div><div>ŚR</div><div>CZ</div><div>PT</div><div>SB</div><div>ND</div></div>
         <div class="mgrid">${cells}</div>
+        <div class="mlegend"><span><i class="ld"></i>do zrobienia</span><span><i class="ll"></i>zaległe zadania</span></div>
       </div>
       <div class="month-panel" data-scroll="month"><div class="card">
-        <div class="hdr"><div class="t">${esc(dayTitle(S.sel))}</div><div class="c">${C.tasksWord(items.length)}</div></div>
+        <div class="hdr"><div class="t">${esc(dayTitle(S.sel))}</div><div class="c">${items.length ? items.filter((x) => x.done).length + ' z ' + items.length + ' wykonane' : C.tasksWord(0)}</div></div>
         <button class="pillbtn" style="align-self:flex-start;margin:-8px 0 -10px 0" data-a="openday" data-k="${S.sel}"><span class="pill">${I.arrow}<span>Otwórz ten dzień</span></span></button>
         ${list}
       </div></div>
@@ -570,6 +574,7 @@
           ${st.msg ? `<div class="okbox" role="status">${st.err ? I.warn : I.ok}<span>${esc(st.msg)}</span></div>` : ''}
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
+        ${window.FinUI ? window.FinUI.settingsSection() : ''}
       </div>
     </main>`;
   }
@@ -664,7 +669,7 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); back(); },
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); back(); },
     export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },

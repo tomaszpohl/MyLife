@@ -121,6 +121,42 @@
     save();
   }
 
+  // ---------- Import z pliku .xlsx (v9) – dane są dodawane do istniejących, nic nie jest nadpisywane ----------
+  const nkey = (t) => String(t || '').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/\s+/g, ' ').trim();
+  // parts: wynik FinImport.analyze (tylko zaznaczone). Zwraca podsumowanie.
+  function importParts(parts, fileName) {
+    const res = { exp: 0, expSum: 0, inc: 0, incSum: 0, worth: 0, newCats: [] };
+    parts.forEach((p) => {
+      if (p.kind === 'exp') {
+        // Kategorie z pliku: domyślna lub własna o tej samej nazwie, inaczej nowa własna kategoria (decyzja właściciela).
+        const map = {};
+        const idFor = (name) => {
+          const k = nkey(name);
+          if (!k) return NONE.id;
+          if (map[k]) return map[k];
+          const hit = CATS.find((c) => nkey(c.name) === k) || db.cats.custom.find((c) => nkey(c.name) === k);
+          if (hit) return (map[k] = hit.id);
+          const c = { id: id('c'), name: String(name).trim(), color: PAL[db.cats.custom.length % PAL.length] };
+          db.cats.custom.push(c); res.newCats.push(c.name);
+          return (map[k] = c.id);
+        };
+        const add = p.items.map((e) => ({ id: id('e'), date: e.date, desc: e.desc, amt: r2(e.amt), cat: idFor(e.catName) }));
+        db.exp = db.exp.concat(add); res.exp += add.length; res.expSum = r2(res.expSum + sum(add));
+      } else if (p.kind === 'inc') {
+        const add = p.items.map((e) => ({ id: id('i'), date: e.date, cat: ICATS.some((c) => c.id === e.cat) ? e.cat : 'oth', desc: e.desc, amt: r2(e.amt) }));
+        db.inc = db.inc.concat(add); res.inc += add.length; res.incSum = r2(res.incSum + sum(add));
+      } else if (p.kind === 'worth') {
+        // Każdy wiersz to nowa pozycja (decyzja właściciela); jeden punkt historii za cały import.
+        p.items.forEach((i) => db.worth.items.push({ id: id('w'), type: i.type === 'l' ? 'l' : 'a', name: i.name, val: r2(i.val) }));
+        res.worth += p.items.length;
+        pushHist('Import z pliku' + (fileName ? ' „' + fileName + '”' : '') + ': ' + p.items.length + ' ' + C.plural(p.items.length, 'pozycja', 'pozycje', 'pozycji'));
+      }
+    });
+    if (res.newCats.length) db.cats.mode = 'custom';
+    save();
+    return res;
+  }
+
   // ---------- Kopia ----------
   const exportData = () => JSON.parse(JSON.stringify(db));
   function importData(d) {
@@ -137,6 +173,6 @@
     expenses, addExpenses, removeExpense, restoreExpense, expIn,
     incomes, addIncome, removeIncome, restoreIncome, incIn, result,
     items, hist, net, netOf, sumType, addItem, updateItem, removeItem,
-    exportData, importData, summary
+    importParts, exportData, importData, summary
   };
 })();

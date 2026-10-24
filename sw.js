@@ -1,8 +1,8 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v8';
+const VERSION = 'mylife-v9';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
-  './diet-pdf.js', './diet-core.js', './diet-ui.js', './fin-core.js', './fin-ui.js',
+  './diet-pdf.js', './diet-core.js', './diet-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js',
   './lib/jszip.min.js', './lib/pdf.min.mjs', './lib/pdf.worker.min.mjs',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/badge-96.png'
 ];

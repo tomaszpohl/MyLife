@@ -286,7 +286,22 @@
       if (rm) rec = dishOverlay({ dish: rm.dish, slot: rm.slot, sub: planDayLabel(P.rec.k), close: 'dprecclose', footer: `<button class="btn2 accent" style="flex:1;height:52px;font-size:16px;font-weight:600" data-a="dchange" data-k="${P.rec.k}" data-slot="${esc(rm.slot)}">Zmień posiłek</button>` });
       else P.rec = null;
     }
-    let sheet = '';
+    const sheet = changeSheet();
+    return `<main class="screen" style="position:relative">${topbar('Plan posiłków')}
+      <div class="head-pad tight">
+        <nav class="seg" role="tablist">${tabs.map(([v, l]) => `<button role="tab" class="${P.view === v ? 'on' : ''}" aria-selected="${P.view === v}" data-a="dplanview" data-v="${v}">${l}</button>`).join('')}</nav>
+        <div class="navrow">
+          <button class="iconbtn soft" data-a="dplannav" data-d="-1" aria-label="Poprzedni">${I.prev}</button>
+          <div class="mid"><div class="big">${esc(navTitle)}</div>${navSub ? `<div class="small">${esc(navSub)}</div>` : ''}</div>
+          <button class="iconbtn soft" data-a="dplannav" data-d="1" aria-label="Następny">${I.next}</button>
+        </div>
+      </div>
+      <div class="dscroll" data-scroll="diet-plan">${body}</div>${rec}${sheet}</main>`;
+  }
+
+  // Okno „Zmień posiłek” – wspólne dla Planu posiłków i Listy zakupów (v9).
+  function changeSheet() {
+    const P = U.plan; let sheet = '';
     if (P.sheet) {
       const opts = D.slotOptions(P.sheet.k, P.sheet.slot);
       const sel = P.sheet.pick;
@@ -300,16 +315,7 @@
           <div style="display:flex;gap:10px"><button class="btn-cancel" data-a="dchangeclose">Anuluj</button><button class="primary" data-a="dchangesave">Zapisz zmianę</button></div>
         </div></div>`;
     }
-    return `<main class="screen" style="position:relative">${topbar('Plan posiłków')}
-      <div class="head-pad tight">
-        <nav class="seg" role="tablist">${tabs.map(([v, l]) => `<button role="tab" class="${P.view === v ? 'on' : ''}" aria-selected="${P.view === v}" data-a="dplanview" data-v="${v}">${l}</button>`).join('')}</nav>
-        <div class="navrow">
-          <button class="iconbtn soft" data-a="dplannav" data-d="-1" aria-label="Poprzedni">${I.prev}</button>
-          <div class="mid"><div class="big">${esc(navTitle)}</div>${navSub ? `<div class="small">${esc(navSub)}</div>` : ''}</div>
-          <button class="iconbtn soft" data-a="dplannav" data-d="1" aria-label="Następny">${I.next}</button>
-        </div>
-      </div>
-      <div class="dscroll" data-scroll="diet-plan">${body}</div>${rec}${sheet}</main>`;
+    return sheet;
   }
 
   // ---------- Lista zakupów ----------
@@ -351,17 +357,18 @@
             <span style="flex:1;display:flex;flex-direction:column;gap:2px;text-align:left"><span style="font-size:15px;font-weight:500">${esc(D.dayShort(k))}${k === today() ? ' · dziś' : ''}</span><span style="font-size:12px;color:var(--muted)">${n} z ${keys.length} posiłków</span></span>
             <span style="color:var(--muted);display:flex">${exp ? J.up : J.down}</span></button>
         </div>
-        ${exp ? p.meals.map((x) => { const key = k + '|' + x.slot, on = !!sel[key]; return `<button class="shopmeal" role="checkbox" aria-checked="${on}" data-a="dshopmeal" data-key="${esc(key)}" aria-label="${esc(x.slot + ': ' + x.dish.name)}">
-            <span class="tri ${on ? 'full' : 'none'}"><span class="cbox">${on ? I.check : ''}</span></span><span style="display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0"><span class="slot">${esc(x.slot)}</span><span style="font-size:14px">${esc(x.dish.name)}</span></span></button>`; }).join('') : ''}
+        ${exp ? p.meals.map((x) => { const key = k + '|' + x.slot, on = !!sel[key]; return `<div class="shopmrow"><button class="shopmeal" role="checkbox" aria-checked="${on}" data-a="dshopmeal" data-key="${esc(key)}" aria-label="${esc(x.slot + ': ' + x.dish.name)}">
+            <span class="tri ${on ? 'full' : 'none'}"><span class="cbox">${on ? I.check : ''}</span></span><span style="display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0"><span class="slot">${esc(x.slot)}${x.changed ? ' · zmieniony' : ''}</span><span style="font-size:14px">${esc(x.dish.name)}</span></span></button>
+            <button class="pillbtn" style="margin:0;flex:none;padding:0 4px 0 4px" data-a="dchange" data-k="${k}" data-slot="${esc(x.slot)}" aria-label="${esc('Zmień posiłek: ' + x.slot + ', ' + D.dayShort(k))}"><span class="pill">Zmień</span></button></div>`; }).join('') : ''}
       </div>`;
     }).join('');
     const allSel = allKeys.length && allKeys.every((x) => sel[x]);
-    return `<main class="screen">${topbar('Lista zakupów')}
+    return `<main class="screen" style="position:relative">${topbar('Lista zakupów')}
       <div class="dscroll" data-scroll="diet-shop">
         <div class="dhead"><div class="eyebrow">Dni i posiłki</div><button class="pillbtn" style="margin:0" data-a="dshopall"><span class="pill">${allSel ? 'Odznacz wszystko' : 'Zaznacz wszystko'}</span></button></div>
         ${rows}
       </div>
-      <div class="footbar"><button class="primary" data-a="dshopgen"${total ? '' : ' disabled'}>${total ? 'Generuj listę z ' + total + ' ' + C.plural(total, 'posiłku', 'posiłków', 'posiłków') : 'Zaznacz posiłki'}</button></div></main>`;
+      <div class="footbar"><button class="primary" data-a="dshopgen"${total ? '' : ' disabled'}>${total ? 'Generuj listę z ' + total + ' ' + C.plural(total, 'posiłku', 'posiłków', 'posiłków') : 'Zaznacz posiłki'}</button></div>${changeSheet()}</main>`;
   }
 
   // ---------- Dziennik ----------
@@ -482,16 +489,13 @@
   function settingsSections() {
     const St = U.settings, T = today();
     if (!St.expFrom) St.expFrom = C.addDays(T, -6);
-    return `<section class="scard" style="gap:12px">
-        <div class="eyebrow">Eksport diety</div>
-        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: jeden arkusz, wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
-        <div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
-          ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>
-        <div style="font-size:12px;color:var(--muted)">Zakres: od ${esc(D.dateLong(St.expFrom))} do dziś (${esc(D.dateLong(T))})</div>
-        <button class="bigbtn" data-a="dexport">${J.sheet}<span class="two"><span>Eksportuj dziennik (.xlsx)</span><span>Plik Excel zapisany na tym telefonie</span></span></button>
-        ${St.expMsg ? `<div class="okbox" role="status">${St.expErr ? I.warn : I.ok}<span>${esc(St.expMsg)}</span></div>` : ''}
-      </section>
-      <section class="scard" style="gap:12px">
+    // v9: import i eksport diety w jednej zwijanej pozycji (najpierw Import, potem Eksport), domyślnie zwinięte.
+    const open = !!St.open;
+    return `<section class="scard sgroup">
+        <button class="sghead" data-a="dsetgroup" aria-expanded="${open}"><span class="sgico coral">${A.svg(22, 1.8, '<path d="M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z"></path><path d="M12 7c0-1.5.7-3 2-4"></path>')}</span>
+          <span class="sgtxt"><span>Dieta: import i eksport</span><span>Jadłospis z pliku PDF · dziennik do .xlsx</span></span><span class="frot${open ? ' up' : ''}">${J.down}</span></button>
+        ${open ? `<div class="sgbody">
+          <div class="sgpart">
         <div class="eyebrow">Import diety</div>
         <div class="para" style="line-height:1.45">Wczytaj jadłospis z pliku PDF. Przed dodaniem wskażesz, który dzień diety z pliku jest pierwszym. Każdy plik dodaje nowy jadłospis do listy „Dieta – Jadłospisy” ze statusem „Nieaktywny”. Możesz importować kolejne pliki w dowolnym momencie. Aplikacja nie przechowuje listy zaimportowanych plików.</div>
         <button class="bigbtn" data-a="dpickpdf"${St.busy ? ' disabled' : ''}>${J.file}<span class="two"><span>Wybierz plik PDF…</span><span>Tylko pliki .pdf</span></span></button>
@@ -499,6 +503,17 @@
         ${St.pending ? `<div class="pending"><div class="pdfb">PDF</div><div style="flex:1;min-width:0"><div class="fname">${esc(St.pending.name)}</div><div style="font-size:12px;color:var(--muted)">${sizeTxt(St.pending.size)} · ${St.busy ? 'odczytuję…' : 'gotowy do importu'}</div></div></div>
           <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dimpcancel"${St.busy ? ' disabled' : ''}>Anuluj</button><button class="primary" style="height:48px" data-a="dimport" aria-haspopup="dialog"${St.busy ? ' disabled' : ''}>${St.busy ? 'Odczytuję plik…' : 'Importuj jadłospis'}</button></div>` : ''}
         ${St.impMsg ? `<div class="okbox" role="status">${St.impErr ? I.warn : I.ok}<span>${esc(St.impMsg)}${St.impErr ? '' : ' <a href="#/diet/menus" style="color:var(--accent);font-weight:600">Otwórz listę jadłospisów</a>'}</span></div>` : ''}
+          </div>
+          <div class="sgsep"></div>
+          <div class="sgpart">
+        <div class="eyebrow">Eksport diety</div>
+        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: jeden arkusz, wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
+        <div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
+          ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>
+        <div style="font-size:12px;color:var(--muted)">Zakres: od ${esc(D.dateLong(St.expFrom))} do dziś (${esc(D.dateLong(T))})</div>
+        <button class="bigbtn" data-a="dexport">${J.sheet}<span class="two"><span>Eksportuj dziennik (.xlsx)</span><span>Plik Excel zapisany na tym telefonie</span></span></button>
+        ${St.expMsg ? `<div class="okbox" role="status">${St.expErr ? I.warn : I.ok}<span>${esc(St.expMsg)}</span></div>` : ''}
+          </div></div>` : ''}
       </section>
       ${St.parsed ? firstDayDialog() : ''}`;
   }
@@ -626,6 +641,7 @@
     dwdel: (el) => { D.removeWeight(el.dataset.k); U.weight.tip = null; if (el.dataset.k === today()) U.weight.kg = ''; R(); },
     dwtip: (el) => { const i = +el.dataset.i; U.weight.tip = U.weight.tip === i ? null : i; R(); },
     // Ustawienia
+    dsetgroup: () => { U.settings.open = !U.settings.open; R(); },
     dexpcal: () => { U.settings.calOpen = !U.settings.calOpen; U.cals.exp = { vm: U.settings.expFrom.slice(0, 7) }; R(); },
     dexport: async () => {
       const St = U.settings;

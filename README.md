@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 8
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 9
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -11,7 +11,7 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 | **Ekran główny** | Nazwa MyLife, data, moduły: Plan dnia, Finanse i Dieta. |
 | **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. |
 | **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. |
-| **Miesiąc** | Siatka miesiąca z kropkami (1–3 wg liczby zadań), podgląd wybranego dnia, „Otwórz ten dzień”. |
+| **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”. |
 | **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), notatka. |
 | **Edytuj zadanie** | Jak Nowe zadanie, z wypełnionymi polami. Na dole przyciski „Usuń zadanie” i „Zapisz zmiany”. |
 | **Własne powtarzanie** | Co N dni / tygodni / miesięcy, wybór dni tygodnia, koniec (nigdy / do dnia / po N powtórzeniach). |
@@ -35,10 +35,10 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 | **Lista jadłospisów** | Statusy: Aktualny (zielony), Zaplanowany (bursztynowy), Nieaktywny (szary), Nieaktualny (czerwony). „Aktywuj” – kalendarz „Obowiązuje od (włącznie)”; data dziś = od razu aktualny, data w przyszłości = Zaplanowany i automatyczne przełączenie. Zmiana terminu i usunięcie planowanej aktywacji, filtr statusu, zmiana nazwy (ołówek), źródłowy plik PDF. Nieaktualne jadłospisy są ukryte w „Wszystkie” – widać je w filtrze „Nieaktualny”. **Przeciągnięcie w prawo usuwa jadłospis** (z „Cofnij”); aktualnego nie można usunąć. Dziennik i statystyki z dni, gdy usunięty jadłospis obowiązywał, zostają. |
 | **Jadłospis** | Pod nagłówkiem nazwa i status jadłospisu. Dni „Dzień 1…14” (kolejność jak w PDF) z posiłkami i sumą kcal; szczegóły dania: kcal, porcja (gdy podana), składniki „gramatura (miara domowa)”, przepis w krokach (zdaniach). |
 | **Plan posiłków** | Dzień / Tydzień / Miesiąc. Dotknięcie posiłku otwiera przepis z przyciskiem „Zmień posiłek”. Jadłospis liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie; po ostatnim dniu wraca Dzień 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
-| **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda), pod ilością miara domowa przeliczona z PDF (np. „≈ 3 łyżki”, „≈ 2 sztuki”; bez miary, gdy PDF jej nie podaje lub to „szczypta”); odhaczanie z paskiem postępu, kupione na końcu. |
+| **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda), pod ilością miara domowa przeliczona z PDF (np. „≈ 3 łyżki”, „≈ 2 sztuki”; bez miary, gdy PDF jej nie podaje lub to „szczypta”); odhaczanie z paskiem postępu, kupione na końcu. Przy każdym posiłku (po rozwinięciu dnia) „Zmień” – to samo okno co w Planie posiłków; zmiana jest wspólna z Planem, oznaczona „· zmieniony”, a lista liczy się z nowego dania. |
 | **Dziennik** | Dzień: ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (wymagany tylko rodzaj; czas i dystans opcjonalne, suma z podanych). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
 | **Waga** | Wpis na dziś (±0,1 kg), porównanie z poprzednim wpisem, wykres przewijany w poziomie (dotknięcie punktu = data i waga), historia ze zmianą (spadek zielony, wzrost czerwony) i usuwaniem. |
-| **Ustawienia** | Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
+| **Ustawienia** | Pozycja „Dieta: import i eksport” (zwinięta, po rozwinięciu najpierw Import, potem Eksport). Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
 
 ## Moduł Finanse (od v8)
 
@@ -52,7 +52,18 @@ Na ekranach Diety i Finansów na dole jest **pasek szybkiej nawigacji** (Dieta: 
 | **Kategorie wydatków** | Domyślne (Jedzenie, Dom i rachunki, Transport, Zdrowie, Rozrywka, Ubrania, Inne) albo własne (dodawanie i usuwanie, nazwa do 24 znaków, bez powtórzeń). Wydatki z usuniętej kategorii trafiają do „Bez kategorii”. |
 | **Wynik finansowy** | Okres Miesiąc / Rok / Zakres; Przychody − Wydatki = Wynik i procent odkładanych przychodów; zwijana sekcja Przychody wg kategorii (Wynagrodzenie, Premia, Inwestycje i odsetki, Inne), dodawanie i usuwanie z „Cofnij”. |
 
-Moduł startuje pusty – wszystkie kwoty wpisujesz sam.
+Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
+
+**Import danych finansowych (od v9)** – Ustawienia → „Finanse: import danych” → „Wybierz plik .xlsx…” → „Dalej” → okno podsumowania (każdy rozpoznany arkusz osobno, z zaznaczeniem) → „Importuj dane”. Dane są **dodawane** do istniejących (nic nie jest nadpisywane), ponowny import tego samego pliku doda dane drugi raz. Arkusze rozpoznawane po nagłówkach w pierwszym wierszu:
+
+| Arkusz | Kolumny | Co powstaje |
+|---|---|---|
+| Wydatki | Data · Opis · Kwota · Kategoria | Wydatki. Kategorie spoza listy są dodawane jako **własne kategorie** (włącza się tryb „Własne”); puste – „Bez kategorii”. |
+| Przychody (nazwa arkusza zawiera „przych”) | Data · Opis · Kwota · Kategoria | Przychody; kategoria rozpoznawana po nazwie (Wynagrodzenie / Premia / Inwestycje i odsetki, pozostałe – Inne). |
+| Wynik (przychody miesięczne) | Rok · Miesiąc · kolumny z kwotami (np. Wynagrodzenie, Inne) | Jeden przychód na miesiąc i kolumnę, z datą **1. dnia miesiąca**; kwoty 0 są pomijane. |
+| Majątek | Opis · Kwota · Kategoria (Aktywa / Zobowiązania) | **Każdy wiersz to nowa pozycja** majątku; jeden punkt historii „Import z pliku …”. |
+
+Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty są pomijane (okno podsumowania podaje ich liczbę).
 
 **Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
@@ -61,7 +72,7 @@ Moduł startuje pusty – wszystkie kwoty wpisujesz sam.
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v8.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v9.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -95,20 +106,22 @@ mylife/
 ├─ diet-core.js          – dane diety: jadłospisy, aktywacje, plan, dziennik, waga, zakupy, eksport .xlsx
 ├─ diet-ui.js            – ekrany modułu Dieta i sekcje diety w Ustawieniach
 ├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik
-├─ fin-ui.js             – ekrany modułu Finanse
+├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
+├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
 ├─ lib/                  – pdf.js 6.2.108 (Apache 2.0) i JSZip 3.10.1 (MIT), działają offline
 ├─ sw.js                 – praca offline (service worker)
 ├─ manifest.webmanifest  – instalacja jako aplikacja
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v9`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v10`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v9 (24.10.2026)**: import danych finansowych z .xlsx (wydatki, przychody miesięczne, majątek; własne kategorie z pliku), Miesiąc w planerze z zaległymi dniami na czerwono, jedną kropką i stanem wykonania, „Zmień” przy posiłkach na liście zakupów, Ustawienia z zwijanymi pozycjami „Dieta: import i eksport” i „Finanse: import danych”.
 - **v8 (22.10.2026)**: moduł Finanse według makiety „Etap 3 – Finanse” (Finanse, Majątek, Wydatki z kategoriami domyślnymi lub własnymi, Wynik finansowy), dolny pasek szybkiej nawigacji w Diecie i Finansach, wstecz krok po kroku przez całą historię, kopia danych z modułem Finanse.
 - **v7 (22.10.2026)**: według makiety i `design.md` (zmiany z 22.10): wstecz do poprzedniego widoku i przycisk „Pulpit główny”, przepis po dotknięciu posiłku na ekranie Dieta i w Planie posiłków (z „Zmień posiłek”), usuwanie jadłospisu przeciągnięciem w prawo (z „Cofnij”, bez aktualnego), nieaktualne jadłospisy tylko w filtrze „Nieaktualny”, miara domowa na liście zakupów, opcjonalny czas i dystans aktywności, bez listy zaimportowanych plików.
 - **v6 (21.10.2026)**: poprawka według makiety i `design.md`: okno „Pierwszy dzień diety” przy imporcie PDF (plan liczony od wybranego dnia), ekran „Brak aktualnego jadłospisu” jak w makiecie, wybór modułów kopii w karcie (przy wczytaniu najpierw moduły, potem plik), nazwa i status jadłospisu pod nagłówkiem, teksty w Ustawieniach.

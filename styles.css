@@ -537,3 +537,46 @@ a.dcard { color: var(--text); }
 .fchart .wy { width: 48px; }
 .fchart .wy div { white-space: nowrap; }
 .fchart .wscroll { margin-left: 48px; }
+
+/* ---------- v9: Miesiąc – zaległe dni, jedna kropka, stan wykonania ---------- */
+.mcell.late .num { background: var(--danger-bg); border: 1px solid var(--bad-line); color: var(--danger); font-weight: 700; }
+.mcell.late.sel .num { border: 2px solid var(--accent); }
+.mcell.late .dots i { background: var(--danger); }
+.mlegend { display: flex; gap: 16px; padding: 2px 4px 0 4px; font-size: 11px; color: var(--muted); }
+.mlegend span { display: flex; align-items: center; gap: 6px; }
+.mlegend .ld { width: 5px; height: 5px; border-radius: 3px; background: var(--accent); }
+.mlegend .ll { width: 12px; height: 12px; border-radius: 6px; background: var(--danger-bg); border: 1px solid var(--bad-line); }
+.mitem { align-items: flex-start; gap: 12px; }
+.mchk { flex: none; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--check); display: flex; align-items: center; justify-content: center; color: var(--accent-ink); }
+.mchk svg { width: 12px; height: 12px; }
+.mitem.done .mchk { background: var(--accent); border-color: var(--accent); }
+.mitem.done .ti { color: var(--dim); text-decoration: line-through; }
+/* v9: Lista zakupów – „Zmień” przy posiłku */
+.shopmrow { display: flex; align-items: center; border-top: 1px solid var(--line); }
+.shopmrow .shopmeal { flex: 1; min-width: 0; border-top: none; }
+/* v9: Ustawienia – zwijane pozycje „Dieta: import i eksport” i „Finanse: import danych” */
+.scard.sgroup { padding: 0; gap: 0; }
+.sghead { width: 100%; min-height: 68px; padding: 0 16px; display: flex; align-items: center; gap: 12px; text-align: left; background: none; border: none; color: var(--text); }
+.sgico { flex: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.sgico.coral { background: var(--coral-bg); color: var(--coral); }
+.sgico.gold { background: var(--gold-bg); color: var(--gold); }
+.sgtxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sgtxt span:first-child { font-size: 16px; font-weight: 600; }
+.sgtxt span + span { font-size: 12px; color: var(--muted); }
+.sgbody { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-top: 1px solid var(--line); }
+.sgpart { display: flex; flex-direction: column; gap: 12px; }
+.sgsep { height: 1px; background: var(--line); }
+.bigbtn.dashed { border-style: dashed; border-color: var(--check); }
+.bigbtn.dashed > svg { color: var(--gold); }
+.fpend { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--gold-line); }
+.pdfb.gold { background: var(--gold-bg); color: var(--gold); font-size: 10px; }
+.flinks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.flinks a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.fimpcard { border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; }
+.fimpcard.on { border-color: var(--gold-line); }
+.fimpcard .bkmod { border: none; background: none; }
+.fimpcard .kv:first-child { border-top: 1px solid var(--line); }
+.fimpcard:not(.on) > div { opacity: .5; }
+/* długie nazwy kategorii z importu */
+.fchip { height: auto; min-height: 44px; padding: 6px 12px; text-align: left; line-height: 1.3; }
+.ffield > .finput, .modal > .finput { flex: none; }
