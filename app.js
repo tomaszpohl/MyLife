@@ -64,6 +64,7 @@
       ['home', '#/fin', 'Finanse', '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2"></path><path d="M4 7.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 1 4 7.5Z"></path><circle cx="16" cy="14" r="1"></circle>'],
       ['worth', '#/fin/worth', 'Majątek', '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>'],
       ['exp', '#/fin/exp', 'Wydatki', '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"></path><path d="M9 8h6M9 12h6"></path>'],
+      ['cush', '#/fin/cush', 'Poduszka', '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z"></path><path d="m8.8 12.2 2.3 2.3 4.2-4.7"></path>'],
       ['result', '#/fin/result', 'Wynik', '<rect x="3.5" y="6" width="17" height="12" rx="3"></rect><circle cx="12" cy="12" r="2.5"></circle>']
     ] }
   };

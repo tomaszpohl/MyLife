@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 9
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 10
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -42,14 +42,15 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 ## Moduł Finanse (od v8)
 
-Na ekranach Diety i Finansów na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga; Finanse: Finanse · Majątek · Wydatki · Wynik). Okna pełnoekranowe zasłaniają pasek.
+Na ekranach Diety i Finansów na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga; Finanse: Finanse · Majątek · Wydatki · Poduszka · Wynik). Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
 
 | Ekran | Funkcje |
 |---|---|
 | **Finanse** | Majątek netto ze zmianą od poprzedniej aktualizacji, wynik bieżącego miesiąca (przychody / wydatki / wynik), wydatki dziś z przyciskiem „Dodaj wydatek” (okno nowych wydatków otwiera się na tym ekranie), kafelki funkcji. |
-| **Majątek** | Majątek netto, aktywa i zobowiązania, przewijany wykres historii (dotknięcie punktu = data i kwota), „Dodaj aktywo lub zobowiązanie”, rozwijane sekcje Aktywa, Zobowiązania, Historia zmian. Dotknięcie pozycji: aktualizacja wartości (z podglądem majątku po zmianie) albo usunięcie. Każda zmiana dopisuje punkt historii. |
-| **Wydatki** | Lista: miesiące, suma i liczba wydatków, dni rozwijane do szczegółów (opis, kategoria, kwota), usuwanie z „Cofnij”. Kategorie: okres Dzień / Tydzień / Miesiąc / Zakres (od–do), suma, średnia dzienna, pasek podziału i kategorie z udziałem % (dotknięcie pokazuje składniki). „Dodaj wydatki”: data, opis, kwota, kategoria; „Dodaj do listy” zbiera kilka pozycji, „Zapisz wszystkie” zapisuje je razem. |
-| **Kategorie wydatków** | Domyślne (Jedzenie, Dom i rachunki, Transport, Zdrowie, Rozrywka, Ubrania, Inne) albo własne (dodawanie i usuwanie, nazwa do 24 znaków, bez powtórzeń). Wydatki z usuniętej kategorii trafiają do „Bez kategorii”. |
+| **Majątek** | Majątek netto, aktywa i zobowiązania, przewijany wykres historii – **jeden punkt na dzień** (ostatnia wartość dnia; dotknięcie punktu = data i kwota), „Dodaj aktywo lub zobowiązanie”, rozwijane sekcje Aktywa, Zobowiązania, Historia zmian. Dotknięcie pozycji: aktualizacja wartości (z podglądem majątku po zmianie) albo usunięcie. Historia zmian ma **filtr** (Wszystkie albo jedna pozycja: wartość przed → po i różnica; dla zobowiązań spadek jest zielony). Aktywa z poduszki mają plakietkę „Poduszka”. |
+| **Wydatki** | Lista: miesiące, suma i liczba wydatków, dni rozwijane do szczegółów (opis, kategoria, kwota), usuwanie z „Cofnij”. Kategorie: okres Dzień / Tydzień / Miesiąc / Zakres (od–do), suma, średnia dzienna, pasek podziału i kategorie z udziałem % (dotknięcie pokazuje składniki). „Dodaj wydatki”: data, opis, kwota, kategoria (zwijana lista z wyszukiwarką – bez znaczenia wielkość liter i polskie znaki); „Dodaj wydatek” zapisuje jeden od razu (okno zostaje otwarte, gdy na liście są pozycje do zapisania), „Dodaj do listy” zbiera kilka pozycji, „Zapisz wszystkie” zapisuje je razem. |
+| **Kategorie wydatków** | Domyślne (Jedzenie, Dom i rachunki, Transport, Zdrowie, Rozrywka, Ubrania, Inne) albo własne (dodawanie z wyborem koloru z palety 32 – pokazywane tylko kolory jeszcze nieużyte, usuwanie, nazwa do 24 znaków, bez powtórzeń). Wydatki z usuniętej kategorii trafiają do „Bez kategorii”. |
+| **Poduszka bezpieczeństwa** | Cel = kwota miesięczna × liczba miesięcy (1–120). Realizacja w % z paskiem, „Brakuje …” / „Cel osiągnięty”, na ile miesięcy wystarczy. Składniki to aktywa z Majątku (kwota zmienia się w obu miejscach) z udziałem w %: „Dodaj składnik” (tworzy aktywo), „Dodaj składnik z Aktywów”, edycja kwoty i udziału, „Usuń z poduszki” (aktywo zostaje). Przy składniku: realizacja jego części celu i udział w całej poduszce. |
 | **Wynik finansowy** | Okres Miesiąc / Rok / Zakres; Przychody − Wydatki = Wynik i procent odkładanych przychodów; zwijana sekcja Przychody wg kategorii (Wynagrodzenie, Premia, Inwestycje i odsetki, Inne), dodawanie i usuwanie z „Cofnij”. |
 
 Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
@@ -61,7 +62,7 @@ Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
 | Wydatki | Data · Opis · Kwota · Kategoria | Wydatki. Kategorie spoza listy są dodawane jako **własne kategorie** (włącza się tryb „Własne”); puste – „Bez kategorii”. |
 | Przychody (nazwa arkusza zawiera „przych”) | Data · Opis · Kwota · Kategoria | Przychody; kategoria rozpoznawana po nazwie (Wynagrodzenie / Premia / Inwestycje i odsetki, pozostałe – Inne). |
 | Wynik (przychody miesięczne) | Rok · Miesiąc · kolumny z kwotami (np. Wynagrodzenie, Inne) | Jeden przychód na miesiąc i kolumnę, z datą **1. dnia miesiąca**; kwoty 0 są pomijane. |
-| Majątek | Opis · Kwota · Kategoria (Aktywa / Zobowiązania) | **Każdy wiersz to nowa pozycja** majątku; jeden punkt historii „Import z pliku …”. |
+| Majątek | Opis · Kwota · Kategoria (Aktywa / Zobowiązania) | **Każdy wiersz to nowa pozycja** majątku (z wpisem „Dodano …” w historii). |
 
 Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty są pomijane (okno podsumowania podaje ich liczbę).
 
@@ -72,7 +73,7 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v9.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v10.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -114,13 +115,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v10`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v11`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v10 (25.10.2026)**: Poduszka bezpieczeństwa (nowy ekran i pozycja paska Finansów), Majątek z jednym punktem wykresu na dzień i filtrem historii wg pozycji, paleta 32 kolorów i wybór koloru własnej kategorii (powtórzone kolory zaimportowanych kategorii zmienione), kategoria wydatku jako lista z wyszukiwarką, przycisk „Dodaj wydatek”, kwoty zawsze z groszami.
 - **v9 (24.10.2026)**: import danych finansowych z .xlsx (wydatki, przychody miesięczne, majątek; własne kategorie z pliku), Miesiąc w planerze z zaległymi dniami na czerwono, jedną kropką i stanem wykonania, „Zmień” przy posiłkach na liście zakupów, Ustawienia z zwijanymi pozycjami „Dieta: import i eksport” i „Finanse: import danych”.
 - **v8 (22.10.2026)**: moduł Finanse według makiety „Etap 3 – Finanse” (Finanse, Majątek, Wydatki z kategoriami domyślnymi lub własnymi, Wynik finansowy), dolny pasek szybkiej nawigacji w Diecie i Finansach, wstecz krok po kroku przez całą historię, kopia danych z modułem Finanse.
 - **v7 (22.10.2026)**: według makiety i `design.md` (zmiany z 22.10): wstecz do poprzedniego widoku i przycisk „Pulpit główny”, przepis po dotknięciu posiłku na ekranie Dieta i w Planie posiłków (z „Zmień posiłek”), usuwanie jadłospisu przeciągnięciem w prawo (z „Cofnij”, bez aktualnego), nieaktualne jadłospisy tylko w filtrze „Nieaktualny”, miara domowa na liście zakupów, opcjonalny czas i dystans aktywności, bez listy zaimportowanych plików.

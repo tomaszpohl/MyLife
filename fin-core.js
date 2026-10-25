@@ -21,9 +21,14 @@
     { id: 'oth', name: 'Inne', color: '#B79CFF' }
   ];
   const NONE = { id: 'none', name: 'Bez kategorii', color: '#6F7E90' };
-  const PAL = ['#7BE0A0', '#5BD0E8', '#F2B94B', '#FF9CC8', '#B79CFF', '#FF8F73', '#93A1B2', '#8FD14F'];
+  // Paleta 32 kolorów kategorii (v10, jak w makiecie).
+  const PAL = ['#7BE0A0', '#5BD0E8', '#F2B94B', '#FF9CC8', '#B79CFF', '#FF8F73', '#93A1B2', '#8FD14F', '#4FC3B8', '#6FA8FF', '#E58BE8', '#FFC27A', '#C8E26B', '#FF7A90', '#9AD1F0', '#D2B48C',
+    '#3FD6A8', '#A5E86B', '#E8D44D', '#FFA24D', '#FF6F6F', '#F27BB5', '#C792EA', '#8E9BFF', '#4DA3FF', '#4DD0E1', '#80CBC4', '#B5C99A', '#E6B8A2', '#BCAAA4', '#CFD8DC', '#9FA8DA'];
+  // Pierwszy kolor nieużyty przez własne kategorie; gdy wszystkie zajęte – cyklicznie.
+  const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
+  const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] } });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] } });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -38,6 +43,16 @@
     const d = Object.assign(empty(), p);
     d.worth = Object.assign({ items: [], hist: [] }, d.worth || {});
     d.cats = Object.assign({ mode: 'default', custom: [] }, d.cats || {});
+    d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
+    // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
+    if (!d.cats.recolored) {
+      const seen = [];
+      d.cats.custom.forEach((c) => {
+        if (seen.indexOf(c.color) >= 0 || PAL.indexOf(c.color) < 0) { const f = PAL.find((p) => seen.indexOf(p) < 0 && !d.cats.custom.some((x) => x !== c && x.color === p)); if (f) c.color = f; }
+        seen.push(c.color);
+      });
+      d.cats.recolored = true;
+    }
     return d;
   }
   function save() {
@@ -46,11 +61,11 @@
   }
 
   // ---------- Formatowanie ----------
-  // „1 234,50 zł”, pełne złote bez groszy („2 100 zł”), minus jako „−”.
+  // v10: kwoty zawsze z groszami („100,00 zł”).
   function money(n) {
-    const neg = n < 0, a = Math.abs(r2(n));
+    const neg = n < 0 && r2(n) !== 0, a = Math.abs(r2(n));
     const [i, f] = a.toFixed(2).split('.');
-    return (neg ? '−' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f === '00' ? '' : ',' + f) + ' zł';
+    return (neg ? '−' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + f + ' zł';
   }
   const signed = (n) => (n > 0 ? '+' : '') + money(n);
   const parseAmt = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v > 0 ? r2(v) : 0; };
@@ -67,11 +82,12 @@
   const catOf = (cid) => CATS.find((c) => c.id === cid) || db.cats.custom.find((c) => c.id === cid) || NONE;
   const icatOf = (cid) => ICATS.find((c) => c.id === cid) || ICATS[ICATS.length - 1];
   function setCatMode(m) { db.cats.mode = m === 'custom' ? 'custom' : 'default'; save(); }
-  function addCustomCat(name) {
+  function addCustomCat(name, color) {
     const nm = String(name || '').trim().slice(0, 24);
     if (!nm) return 'Wpisz nazwę kategorii.';
     if (db.cats.custom.some((c) => c.name.toLocaleLowerCase('pl') === nm.toLocaleLowerCase('pl'))) return 'Taka kategoria już istnieje.';
-    db.cats.custom.push({ id: id('c'), name: nm, color: PAL[db.cats.custom.length % PAL.length] });
+    const free = freeColors();
+    db.cats.custom.push({ id: id('c'), name: nm, color: color && free.indexOf(color) >= 0 ? color : nextColor() });
     save(); return '';
   }
   function removeCustomCat(cid) { db.cats.custom = db.cats.custom.filter((c) => c.id !== cid); save(); }
@@ -100,26 +116,63 @@
   const netOf = (list) => r2(list.reduce((t, i) => t + (i.type === 'a' ? i.val : -i.val), 0));
   const net = () => netOf(db.worth.items);
   const sumType = (t) => r2(db.worth.items.filter((i) => i.type === t).reduce((a, i) => a + i.val, 0));
-  // Każda zmiana dopisuje punkt historii (data dziś, majątek netto po zmianie, opis).
-  const pushHist = (note) => db.worth.hist.push({ d: C.todayKey(), net: net(), note });
-  function addItem(type, name, val) {
+  // Każda zmiana dopisuje wpis historii (data dziś, majątek netto po zmianie, opis) – od v10 także pozycja
+  // i wartości przed/po (kind: add|upd|del, iid, iname, ity, from, to) dla filtra historii.
+  const pushHist = (note, x) => db.worth.hist.push(Object.assign({ d: C.todayKey(), net: net(), note }, x || {}));
+  const hx = (kind, it, from, to) => ({ kind, iid: it.id, iname: it.name, ity: it.type, from: r2(from), to: r2(to) });
+  function addItem(type, name, val, noSave) {
     const it = { id: id('w'), type: type === 'l' ? 'l' : 'a', name: String(name).trim().slice(0, 40), val: r2(val) };
     db.worth.items.push(it);
-    pushHist('Dodano ' + (it.type === 'a' ? 'aktywo' : 'zobowiązanie') + ': ' + it.name);
-    save(); return it;
+    pushHist('Dodano ' + (it.type === 'a' ? 'aktywo' : 'zobowiązanie') + ': ' + it.name, hx('add', it, 0, it.val));
+    if (!noSave) save();
+    return it;
   }
   function updateItem(wid, val) {
     const it = db.worth.items.find((i) => i.id === wid); if (!it) return;
     const old = it.val; it.val = r2(val);
-    pushHist('Aktualizacja: ' + it.name + ' (' + money(old) + ' → ' + money(it.val) + ')');
+    if (old === it.val) return;
+    pushHist('Aktualizacja: ' + it.name + ' (' + money(old) + ' → ' + money(it.val) + ')', hx('upd', it, old, it.val));
     save();
   }
   function removeItem(wid) {
     const it = db.worth.items.find((i) => i.id === wid); if (!it) return;
     db.worth.items = db.worth.items.filter((i) => i.id !== wid);
-    pushHist('Usunięto pozycję: ' + it.name);
+    db.cush.items = db.cush.items.filter((k) => k.aid !== wid);   // usunięte aktywo znika też z poduszki
+    pushHist('Usunięto pozycję: ' + it.name, hx('del', it, it.val, 0));
     save();
   }
+  // Wykres: jeden punkt na dzień (ostatnia wartość dnia).
+  function histDays() {
+    const out = [];
+    db.worth.hist.forEach((h) => { if (out.length && out[out.length - 1].d === h.d) out[out.length - 1] = h; else out.push(h); });
+    return out;
+  }
+  // Wpisy dotyczące danej pozycji (starsze wpisy bez pozycji – po nazwie w opisie); tylko z wartościami przed/po.
+  const itemHist = (it) => db.worth.hist.filter((h) => (h.iid ? h.iid === it.id : h.note.indexOf(': ' + it.name) >= 0) && h.to !== undefined);
+
+  // ---------- Poduszka bezpieczeństwa (v10) ----------
+  // Cel = kwota miesięczna × liczba miesięcy. Składniki to aktywa z Majątku (kwota zapisana tylko w Majątku) z udziałem w %.
+  const cush = () => db.cush;
+  const cushTarget = () => r2(db.cush.monthly * db.cush.months);
+  const cushComps = () => db.cush.items.map((k) => ({ k, a: db.worth.items.find((i) => i.id === k.aid && i.type === 'a') })).filter((x) => x.a);
+  const cushSum = () => r2(cushComps().reduce((t, x) => t + x.a.val, 0));
+  const cushPctSum = () => Math.round(cushComps().reduce((t, x) => t + x.k.pct, 0) * 10) / 10;
+  const inCush = (aid) => db.cush.items.some((k) => k.aid === aid);
+  function setCushGoal(monthly, months) { db.cush.monthly = r2(monthly); db.cush.months = Math.round(months); save(); }
+  function cushAddNew(name, amt, pct) {
+    const it = addItem('a', name, amt, true);
+    db.cush.items.push({ id: id('k'), aid: it.id, pct });
+    save(); return it;
+  }
+  function cushLink(aid, pct) { if (!inCush(aid)) { db.cush.items.push({ id: id('k'), aid, pct }); save(); } }
+  function cushUpdate(kid, amt, pct) {
+    const k = db.cush.items.find((x) => x.id === kid); if (!k) return;
+    k.pct = pct;
+    const a = db.worth.items.find((i) => i.id === k.aid);
+    if (a && r2(amt) !== a.val) updateItem(a.id, amt);   // zapis kwoty w Majątku (wpis historii i punkt wykresu)
+    save();
+  }
+  function cushRemove(kid) { db.cush.items = db.cush.items.filter((x) => x.id !== kid); save(); }
 
   // ---------- Import z pliku .xlsx (v9) – dane są dodawane do istniejących, nic nie jest nadpisywane ----------
   const nkey = (t) => String(t || '').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/\s+/g, ' ').trim();
@@ -136,7 +189,7 @@
           if (map[k]) return map[k];
           const hit = CATS.find((c) => nkey(c.name) === k) || db.cats.custom.find((c) => nkey(c.name) === k);
           if (hit) return (map[k] = hit.id);
-          const c = { id: id('c'), name: String(name).trim(), color: PAL[db.cats.custom.length % PAL.length] };
+          const c = { id: id('c'), name: String(name).trim(), color: nextColor() };
           db.cats.custom.push(c); res.newCats.push(c.name);
           return (map[k] = c.id);
         };
@@ -146,10 +199,10 @@
         const add = p.items.map((e) => ({ id: id('i'), date: e.date, cat: ICATS.some((c) => c.id === e.cat) ? e.cat : 'oth', desc: e.desc, amt: r2(e.amt) }));
         db.inc = db.inc.concat(add); res.inc += add.length; res.incSum = r2(res.incSum + sum(add));
       } else if (p.kind === 'worth') {
-        // Każdy wiersz to nowa pozycja (decyzja właściciela); jeden punkt historii za cały import.
-        p.items.forEach((i) => db.worth.items.push({ id: id('w'), type: i.type === 'l' ? 'l' : 'a', name: i.name, val: r2(i.val) }));
+        // Każdy wiersz to nowa pozycja (decyzja właściciela). Od v10 osobny wpis historii dla każdej pozycji
+        // (filtr historii); na wykresie i tak jeden punkt na dzień.
+        p.items.forEach((i) => addItem(i.type, i.name, i.val, true));
         res.worth += p.items.length;
-        pushHist('Import z pliku' + (fileName ? ' „' + fileName + '”' : '') + ': ' + p.items.length + ' ' + C.plural(p.items.length, 'pozycja', 'pozycje', 'pozycji'));
       }
     });
     if (res.newCats.length) db.cats.mode = 'custom';
@@ -172,7 +225,9 @@
     catMode, customCats, activeCats, catOf, icatOf, setCatMode, addCustomCat, removeCustomCat,
     expenses, addExpenses, removeExpense, restoreExpense, expIn,
     incomes, addIncome, removeIncome, restoreIncome, incIn, result,
-    items, hist, net, netOf, sumType, addItem, updateItem, removeItem,
+    items, hist, histDays, itemHist, net, netOf, sumType, addItem, updateItem, removeItem,
+    PAL, freeColors, nextColor,
+    cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
     importParts, exportData, importData, summary
   };
 })();

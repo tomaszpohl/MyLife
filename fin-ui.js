@@ -16,6 +16,9 @@
     x: ic(16, 2, '<path d="M6 6l12 12M18 6 6 18"></path>'),
     plus: ic(18, 2.5, '<path d="M12 5v14M5 12h14"></path>'),
     plusL: ic(22, 2.5, '<path d="M12 5v14M5 12h14"></path>'),
+    shield: ic(22, 1.8, '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z"></path><path d="m8.8 12.2 2.3 2.3 4.2-4.7"></path>'),
+    check: ic(16, 2.6, '<path d="m5 12 5 5 9-10"></path>'),
+    search: ic(16, 2, '<circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path>'),
     cal: ic(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')
   };
 
@@ -26,7 +29,8 @@
     home: { msg: '' },
     exp: { tab: 'list', lm: null, open: {}, msg: '', undo: null, period: 'month', ref: null, from: null, to: null, catOpen: {} },
     res: { period: 'month', mk: null, yr: null, from: null, to: null, incOpen: true, msg: '', undo: null, add: null },
-    worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null },
+    worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null, hf: 'all' },
+    cush: { dlg: null },   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
     add: null,      // okno „Nowe wydatki”: { draft: { date, desc, amt, cat }, drafts: [], err, from: 'home'|'exp' }
     cats: null,     // okno „Kategorie wydatków”: { name, err }
     cal: null,      // otwarty kalendarz: { id, vm }
@@ -34,7 +38,7 @@
   };
 
   // ---------- Wspólne ----------
-  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
+  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1${title.length > 18 ? ' style="font-size:19px;min-width:0"' : ''}>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
   const wd = (n) => n + ' ' + C.plural(n, 'wydatek', 'wydatki', 'wydatków');
   const dot = (c) => `<span class="fdot" style="background:${c}"></span>`;
   const seg = (items, cur, act) => `<div class="seg" role="tablist">${items.map(([v, l]) => `<button role="tab" class="${cur === v ? 'on' : ''}" aria-selected="${cur === v}" data-a="${act}" data-v="${v}">${l}</button>`).join('')}</div>`;
@@ -82,7 +86,7 @@
 
   // ---------- Finanse (ekran główny modułu) ----------
   function viewHome() {
-    const T = today(), H = F.hist(), last = H[H.length - 1], prev = H.length > 1 ? H[H.length - 2] : null;
+    const T = today(), H = F.histDays(), last = H[H.length - 1], prev = H.length > 1 ? H[H.length - 2] : null;
     const dl = prev ? F.r2(last.net - prev.net) : 0;
     const [a, b] = monthRange(ym(T)), r = F.result(a, b);
     const todaySum = F.sum(F.expIn(T, T));
@@ -114,10 +118,14 @@
         ${fn('#/fin/worth', J.trend, 'Majątek', 'Aktywa, zobowiązania i historia zmian')}
         ${fn('#/fin/exp', J.cart, 'Wydatki', 'Lista dni, dodawanie i usuwanie')}
         ${fn('#/fin/exp/cat', J.pie, 'Wydatki wg kategorii', 'Dzień, tydzień, miesiąc lub własny okres')}
+        ${fn('#/fin/cush', J.shield, 'Poduszka bezpieczeństwa', esc(cushDesc()))}
         ${fn('#/fin/result', J.cash, 'Wynik finansowy', 'Przychody − koszty = wynik miesiąca')}
       </div>
       ${U.add ? addOverlay() : ''}${U.cats ? catsOverlay() : ''}</main>`;
   }
+
+  const pf = (x) => String(Math.round(x * 10) / 10).replace('.', ',') + '%';
+  function cushDesc() { const tg = F.cushTarget(), sm = F.cushSum(); return tg > 0 ? 'Realizacja ' + pf(sm / tg * 100) + ' · ' + F.money(sm) + ' z ' + F.money(tg) : 'Ustaw cel poduszki'; }
 
   // ---------- Okno „Nowe wydatki” (Finanse i Wydatki) ----------
   function addOverlay() {
@@ -138,16 +146,30 @@
           <div class="ffield" style="gap:8px">
             <div class="dhead" style="min-height:0"><div class="eyebrow">Kategoria</div><button class="flink" data-a="fcatsopen" aria-haspopup="dialog">Kategorie: ${F.catMode() === 'custom' ? 'Własne' : 'Domyślne'} · zmień</button></div>
             ${!cats.length ? '<div style="font-size:13px;color:#F2D9A0;line-height:1.4">Nie masz jeszcze własnych kategorii. Dotknij „zmień” i dodaj pierwszą.</div>' : ''}
-            <div class="fchips" role="radiogroup" aria-label="Kategoria wydatku">${cats.map((c) => `<button role="radio" class="fchip${d.cat === c.id ? ' on' : ''}" aria-checked="${d.cat === c.id}" data-a="faddcat" data-v="${c.id}">${dot(c.color)}${esc(c.name)}</button>`).join('')}</div>
+            ${catDropdown(cats, d.cat)}
           </div>
-          <button class="btn2 ${canAdd ? 'accent' : 'off'}" data-a="fadddraft" style="font-weight:600">Dodaj do listy</button>
-          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : 'Wymagane są kwota i kategoria. Możesz dodać kilka wydatków, a potem zapisać je razem.'}</div>
+          <div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>
+          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
+          ${Ad.msg ? okbox(Ad.msg) : ''}
         </div>
         ${n ? `<div class="dcard tight"><div class="dhead"><div class="eyebrow">Do zapisania</div><div style="font-size:13px;font-weight:600">Razem: ${F.money(tot)}</div></div>
           ${Ad.drafts.map((e, i) => { const c = F.catOf(e.cat); return `<div class="frow">${dot(c.color)}<span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(F.dlabel(e.date) + ' · ' + c.name)}</span></span><b>${F.money(e.amt)}</b><button class="iconbtn soft" data-a="fdraftdel" data-i="${i}" aria-label="Usuń z listy: ${esc(e.desc || c.name)}">${J.x}</button></div>`; }).join('')}</div>` : ''}
       </div>
       <div class="footbar"><button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button></div>
     </div>`;
+  }
+
+  // Kategoria jako zwijana lista z wyszukiwarką (v10): bez rozróżniania wielkości liter i polskich znaków.
+  function catDropdown(cats, selId) {
+    const Ad = U.add, sel = selId ? F.catOf(selId) : null, open = !!Ad.dd;
+    const q = window.FinImport ? window.FinImport.norm(Ad.q || '') : String(Ad.q || '').toLowerCase();
+    const list = cats.filter((c) => !q || (window.FinImport ? window.FinImport.norm(c.name) : c.name.toLowerCase()).indexOf(q) >= 0);
+    return `<button class="select fdd${open ? ' open' : ''}" data-a="fcatdd" aria-haspopup="listbox" aria-expanded="${open}" aria-label="Kategoria wydatku: ${esc(sel ? sel.name : 'Wybierz kategorię')}">
+        <span style="display:flex;align-items:center;gap:10px;min-width:0">${dot(sel ? sel.color : 'transparent')}<span style="color:${sel ? 'var(--text)' : 'var(--muted)'};min-width:0">${esc(sel ? sel.name : 'Wybierz kategorię')}</span></span><span class="frot${open ? ' up' : ''}">${J.down}</span></button>
+      ${open ? `<div class="fddbox">
+        <div class="fsearch">${J.search}<input type="text" maxlength="24" aria-label="Szukaj kategorii" placeholder="Szukaj kategorii…" value="${esc(Ad.q || '')}" data-in="fin-catq" autocomplete="off"></div>
+        <div class="fddlist" role="listbox" aria-label="Kategorie">${list.map((c) => `<button role="option" aria-selected="${c.id === selId}" class="fddopt${c.id === selId ? ' on' : ''}" data-a="faddcat" data-v="${c.id}">${dot(c.color)}<span style="flex:1;min-width:0">${esc(c.name)}</span>${c.id === selId ? `<span style="color:var(--accent);display:flex">${J.check}</span>` : ''}</button>`).join('')}
+          ${list.length ? '' : '<div class="para" style="padding:12px 10px">Brak pasujących kategorii.</div>'}</div></div>` : ''}`;
   }
 
   // ---------- Okno „Kategorie wydatków” ----------
@@ -163,6 +185,8 @@
         ${opt('custom', 'Własne kategorie', 'Sam dodajesz i usuwasz kategorie', `<div style="display:flex;flex-direction:column;gap:8px;padding:0 14px 14px 14px">
             ${!cu.length ? '<div class="para">Brak własnych kategorii. Wpisz nazwę poniżej i dodaj pierwszą.</div>' : ''}
             ${cu.map((c) => `<div class="frow">${dot(c.color)}<span class="ft"><span style="font-size:15px">${esc(c.name)}</span></span><button class="iconbtn soft" data-a="fcatdel" data-v="${c.id}" aria-label="Usuń kategorię: ${esc(c.name)}">${J.x}</button></div>`).join('')}
+            <div class="eyebrow" style="padding-top:6px">Kolor nowej kategorii</div>
+            ${(() => { const free = F.freeColors(), pal = free.length ? free : F.PAL, cur = Cs.color && pal.indexOf(Cs.color) >= 0 ? Cs.color : pal[0]; return `<div class="fpal" role="radiogroup" aria-label="Kolor nowej kategorii">${pal.map((c) => `<button role="radio" aria-checked="${c === cur}" aria-label="Kolor ${c}" class="${c === cur ? 'on' : ''}" data-a="fcatcolor" data-v="${c}"><span style="background:${c}"></span></button>`).join('')}</div>`; })()}
             <div style="display:flex;gap:8px;padding-top:4px"><input class="finput" type="text" maxlength="24" aria-label="Nazwa nowej kategorii" placeholder="Nazwa kategorii" value="${esc(Cs.name)}" data-in="fin-cat" data-key="fin-cat" autocomplete="off"><button class="fadd" style="height:48px" data-a="fcatadd">Dodaj</button></div>
             ${Cs.err ? `<div role="alert" style="font-size:13px;color:var(--danger)">${esc(Cs.err)}</div>` : ''}
             <div style="font-size:12px;color:var(--dim);line-height:1.4">Po usunięciu kategorii jej wydatki zostają i trafiają do „Bez kategorii”.</div></div>`)}
@@ -240,7 +264,8 @@
 
   // ---------- Majątek ----------
   function viewWorth() {
-    const W = U.worth, H = F.hist(), its = F.items(), net = F.net();
+    // v10: wykres i porównanie – jeden punkt na dzień (ostatnia wartość dnia); historia zmian – każda zmiana osobno.
+    const W = U.worth, H = F.histDays(), HA = F.hist(), its = F.items(), net = F.net();
     const last = H[H.length - 1], prev = H.length > 1 ? H[H.length - 2] : null, dl = prev ? F.r2(last.net - prev.net) : 0;
     const sign = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + F.money(Math.abs(n));
     // Wykres historii (przewijany w poziomie, najnowsze po prawej).
@@ -268,9 +293,18 @@
     const sec = (key, label, extra, inner) => `<div class="dcard tight" style="padding-bottom:4px">
         <button class="fsec" data-a="fwsec" data-v="${key}" aria-expanded="${!!W.open[key]}"><span class="eyebrow" style="flex:1">${label}</span>${extra}<span class="frot${W.open[key] ? ' up' : ''}">${J.down}</span></button>
         ${W.open[key] ? inner : ''}</div>`;
-    const rowsOf = (t) => its.filter((i) => i.type === t).map((i) => `<button class="fitem" data-a="fwedit" data-id="${i.id}" aria-label="${esc('Zaktualizuj: ' + i.name + ', ' + F.money(i.val))}"><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(i.name)}</span><b>${F.money(i.val)}</b><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak pozycji.</div>';
-    const histRows = H.map((h, i) => { const d = i === 0 ? null : F.r2(h.net - H[i - 1].net); return { h, d }; }).reverse().map(({ h, d }) =>
-      `<div class="frow" style="min-height:56px"><span class="ft"><span>${esc(h.note)}</span><span>${esc(F.dlabelY(h.d))}</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><b style="font-family:var(--display);font-size:14px">${F.money(h.net)}</b><span style="font-size:12px;font-weight:600;color:${d === null || d === 0 ? 'var(--muted)' : d > 0 ? 'var(--ok)' : 'var(--danger)'}">${d === null ? 'start' : d === 0 ? 'bez zmian' : sign(d)}</span></span></div>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak wpisów.</div>';
+    const rowsOf = (t) => its.filter((i) => i.type === t).map((i) => `<button class="fitem" data-a="fwedit" data-id="${i.id}" aria-label="${esc('Zaktualizuj: ' + i.name + ', ' + F.money(i.val))}"><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(i.name)}</span>${F.inCush(i.id) ? '<span class="fbadge">Poduszka</span>' : ''}<b>${F.money(i.val)}</b><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak pozycji.</div>';
+    // Historia zmian z filtrem: „Wszystkie” albo jedna pozycja (wartość przed → po; dla zobowiązań spadek jest zielony).
+    const fItem = W.hf !== 'all' ? its.find((i) => i.id === W.hf) : null;
+    if (W.hf !== 'all' && !fItem) W.hf = 'all';
+    const KIND = { upd: 'Aktualizacja', add: 'Dodano', del: 'Usunięto' };
+    const hfChips = `<div class="fhf" role="radiogroup" aria-label="Filtr historii wg pozycji">${[{ id: 'all', name: 'Wszystkie' }].concat(its).map((c) => `<button role="radio" aria-checked="${W.hf === c.id}" class="fhfc${W.hf === c.id ? ' on' : ''}" data-a="fwhf" data-v="${c.id}">${c.type ? `<span class="fdot" style="width:8px;height:8px;background:${c.type === 'a' ? 'var(--ok)' : 'var(--danger)'}"></span>` : ''}${esc(c.name)}</button>`).join('')}</div>`;
+    const histFiltered = fItem ? F.itemHist(fItem).slice().reverse().map((h) => {
+      const d = F.r2(h.to - h.from), good = fItem.type === 'a' ? d > 0 : d < 0;
+      return `<div class="frow" style="min-height:56px"><span class="ft"><span>${esc((KIND[h.kind] || 'Zmiana') + ': ' + F.money(h.from) + ' → ' + F.money(h.to))}</span><span>${esc(F.dlabelY(h.d))}</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><b style="font-family:var(--display);font-size:14px">${F.money(h.to)}</b><span style="font-size:12px;font-weight:600;color:${d === 0 ? 'var(--muted)' : good ? 'var(--ok)' : 'var(--danger)'}">${d === 0 ? 'bez zmian' : sign(d)}</span></span></div>`;
+    }).join('') || '<div class="para" style="padding:8px 0 12px">Brak zmian tej pozycji.</div>' : '';
+    const histRows = `<div style="font-size:12px;color:var(--muted);padding-bottom:6px">Filtr: ${fItem ? 'Zmiany pozycji: ' + esc(fItem.name) : 'Wszystkie zmiany majątku'}</div>${hfChips}` + (fItem ? histFiltered : (HA.map((h, i) => { const d = i === 0 ? null : F.r2(h.net - HA[i - 1].net); return { h, d }; }).reverse().map(({ h, d }) =>
+      `<div class="frow" style="min-height:56px"><span class="ft"><span>${esc(h.note)}</span><span>${esc(F.dlabelY(h.d))}</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><b style="font-family:var(--display);font-size:14px">${F.money(h.net)}</b><span style="font-size:12px;font-weight:600;color:${d === null || d === 0 ? 'var(--muted)' : d > 0 ? 'var(--ok)' : 'var(--danger)'}">${d === null ? 'start' : d === 0 ? 'bez zmian' : sign(d)}</span></span></div>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak wpisów.</div>'));
     // Okna: aktualizacja pozycji i nowa pozycja
     let modal = '';
     const ed = W.edit && its.find((i) => i.id === W.edit.id);
@@ -281,6 +315,7 @@
       modal = `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="Zaktualizuj: ${esc(ed.name)}">
         <div style="font-family:var(--display);font-size:18px;font-weight:600">Zaktualizuj: ${esc(ed.name)}</div>
         <div style="font-size:13px;color:var(--muted)">Obecna wartość: ${F.money(ed.val)}</div>
+        ${F.inCush(ed.id) ? '<div class="fnote">Ta pozycja jest składnikiem poduszki bezpieczeństwa – zmiana kwoty zaktualizuje też poduszkę.</div>' : ''}
         <div style="display:flex;align-items:center;gap:8px"><input class="finput amt gold" type="text" inputmode="decimal" maxlength="12" aria-label="Nowa wartość w złotych" value="${esc(W.edit.val)}" data-in="fin-wedit" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
         <div data-pv style="font-size:12px;line-height:1.4;color:var(--muted)">${esc(pv)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fweditclose">Anuluj</button><button class="primary" style="height:48px;font-size:14px" data-a="fweditsave"${can ? '' : ' disabled'}>Zapisz aktualizację</button></div>
@@ -310,6 +345,92 @@
         ${sec('h', 'Historia zmian', '', histRows)}
       </div>${modal}</main>`;
   }
+  // ---------- Poduszka bezpieczeństwa (v10) ----------
+  function viewCushion() {
+    const c = F.cush(), tg = F.cushTarget(), comps = F.cushComps(), sm = F.cushSum(), sp = F.cushPctSum();
+    const done = tg > 0 ? sm / tg * 100 : 0, full = tg > 0 && sm >= tg, gap = F.r2(tg - sm);
+    const col = full ? 'var(--ok)' : 'var(--accent)';
+    const cover = c.monthly > 0 ? sm / c.monthly : 0;
+    const rows = comps.map((x) => {
+      const part = tg * x.k.pct / 100, self = part > 0 ? x.a.val / part * 100 : 0, tot = tg > 0 ? x.a.val / tg * 100 : 0, bc = self >= 100 ? 'var(--ok)' : 'var(--accent)';
+      return `<button class="fcomp" data-a="fcedit" data-id="${x.k.id}" aria-label="${esc(x.a.name + ': ' + F.money(x.a.val) + ', udział ' + pf(x.k.pct))}">
+        <span style="display:flex;align-items:baseline;gap:10px"><span style="flex:1;min-width:0;font-size:15px;font-weight:500;word-break:break-word">${esc(x.a.name)}</span><b style="font-family:var(--display);font-size:16px">${F.money(x.a.val)}</b></span>
+        <span class="fprog small"><span style="width:${Math.min(100, Math.round(self))}%;background:${bc}"></span></span>
+        <span style="font-size:12px;color:var(--muted)">Składnik: <b style="color:${bc}">${pf(self)}</b> z ${F.money(part)} (${pf(x.k.pct)} poduszki)</span>
+        <span style="font-size:12px;color:var(--muted)">W całej poduszce: <b style="color:var(--text)">${pf(tot)}</b> celu</span></button>`;
+    }).join('');
+    const D = U.cush.dlg;
+    let modal = '';
+    if (D) {
+      const num = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v >= 0 ? F.r2(v) : null; };
+      const btns = (ok, label, act) => `<div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fcclose">Anuluj</button><button class="primary${ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="${act}">${label}</button></div>`;
+      const field = (lab, key, val, mode, ph) => `<label class="ffield"><span style="font-size:13px;color:var(--muted)">${lab}</span><input class="finput amt" type="text" inputmode="${mode}" maxlength="${key === 'n' ? 3 : key === 'pct' ? 5 : 12}" value="${esc(val)}" placeholder="${ph || ''}" data-in="fin-c${key}" autocomplete="off"></label>`;
+      if (D.t === 'goal') {
+        const m = num(D.m), n = parseInt(D.n, 10), ok = m > 0 && n >= 1 && n <= 120;
+        modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="Cel poduszki">
+          <div style="font-family:var(--display);font-size:18px;font-weight:600">Cel poduszki</div>
+          ${field('Kwota miesięczna (zł)', 'm', D.m, 'decimal', 'np. 7000')}
+          ${field('Na ile miesięcy ma wystarczyć', 'n', D.n, 'numeric', '6')}
+          <div data-cpv style="font-size:14px;line-height:1.4">${ok ? 'Kwota docelowa: ' + F.money(F.r2(m * n)) : 'Podaj kwotę miesięczną i liczbę miesięcy (1–120).'}</div>
+          ${btns(ok, 'Zapisz cel', 'fcgoalsave')}</div></div>`;
+      } else if (D.t === 'new' || D.t === 'link') {
+        const pc = num(D.pct), free = F.items().filter((i) => i.type === 'a' && !F.inCush(i.id));
+        const sel = D.t === 'link' ? free.find((i) => i.id === D.aid) : null;
+        const ok = pc !== null && pc > 0 && pc <= 100 && (D.t === 'new' ? String(D.name || '').trim() && num(D.amt) !== null : !!sel);
+        const after = Math.round((sp + (pc || 0)) * 10) / 10;
+        modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="${D.t === 'new' ? 'Nowy składnik' : 'Składnik z Aktywów'}">
+          <div style="font-family:var(--display);font-size:18px;font-weight:600">${D.t === 'new' ? 'Nowy składnik' : 'Składnik z Aktywów'}</div>
+          ${D.t === 'new' ? `<input class="finput" type="text" maxlength="40" aria-label="Nazwa składnika" placeholder="Nazwa, np. Lokata awaryjna" value="${esc(D.name || '')}" data-in="fin-cname" autocomplete="off">
+            <div style="display:flex;align-items:center;gap:8px"><input class="finput amt" type="text" inputmode="decimal" maxlength="12" aria-label="Kwota w złotych" placeholder="Kwota" value="${esc(D.amt || '')}" data-in="fin-camt" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
+            <div style="font-size:12px;line-height:1.4;color:var(--muted)">Składnik zostanie też dodany do Aktywów w Majątku.</div>`
+          : `<div style="font-size:13px;color:var(--muted)">Wybierz aktywo z Majątku:</div>
+            ${free.length ? `<div class="flinkl" role="radiogroup" aria-label="Aktywa">${free.map((a) => `<button role="radio" aria-checked="${D.aid === a.id}" class="fchip${D.aid === a.id ? ' on' : ''}" style="width:100%;justify-content:space-between;border-radius:12px" data-a="fcpick" data-v="${a.id}"><span>${esc(a.name)}</span><b>${F.money(a.val)}</b></button>`).join('')}</div>`
+              : '<div style="font-size:14px;color:var(--danger)">Wszystkie aktywa są już składnikami poduszki.</div>'}`}
+          ${field('Udział w poduszce (%)', 'pct', D.pct, 'decimal')}
+          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${ok ? 'Udziały po dodaniu: ' + pf(after) + (after === 100 ? '' : ' (powinno być 100%)') + '. Część celu dla składnika: ' + F.money(tg * pc / 100) + '.' : (D.t === 'link' && !sel ? 'Wybierz aktywo.' : 'Uzupełnij nazwę, kwotę i udział (1–100%).')}</div>
+          ${btns(ok, 'Dodaj składnik', 'fcaddsave')}</div></div>`;
+      } else if (D.t === 'edit') {
+        const x = comps.find((y) => y.k.id === D.kid);
+        if (!x) U.cush.dlg = null;
+        else {
+          const am = num(D.amt), pc = num(D.pct), ok = am !== null && pc !== null && pc > 0 && pc <= 100 && (am !== x.a.val || pc !== x.k.pct);
+          const after = Math.round((sp - x.k.pct + (pc || 0)) * 10) / 10;
+          modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(x.a.name)}">
+            <div style="font-family:var(--display);font-size:18px;font-weight:600">${esc(x.a.name)}</div>
+            <div style="font-size:13px;color:var(--muted)">Obecna kwota: ${F.money(x.a.val)}</div>
+            <div style="display:flex;align-items:center;gap:8px"><input class="finput amt" type="text" inputmode="decimal" maxlength="12" aria-label="Nowa kwota w złotych" value="${esc(D.amt)}" data-in="fin-camt" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
+            ${field('Udział w poduszce (%)', 'pct', D.pct, 'decimal')}
+            <div style="font-size:12px;line-height:1.4;color:var(--muted)">${am === null || pc === null ? 'Wpisz poprawną kwotę i udział.' : 'Zmiana kwoty zapisze się też w Aktywach (Majątek). Udziały razem: ' + pf(after) + '.'}</div>
+            ${btns(ok, 'Zapisz', 'fceditsave')}
+            <button class="btn-del" style="height:44px;font-size:14px" data-a="fcremove">Usuń z poduszki</button>
+            <div style="font-size:12px;line-height:1.4;color:var(--muted)">Aktywo zostaje w Majątku – znika tylko z poduszki.</div></div></div>`;
+        }
+      }
+    }
+    return `<main class="screen" style="position:relative">${topbar('Poduszka bezpieczeństwa')}
+      <div class="dscroll" data-scroll="fin-cush">
+        <div class="dcard" style="border-color:#1F4A57;gap:6px">
+          <div class="dhead" style="min-height:0"><div class="eyebrow">Cel poduszki</div><button class="btn-cancel small" style="height:44px;font-size:13px;padding:0 14px" data-a="fcgoal">Zmień cel</button></div>
+          <div class="fbig" style="color:var(--accent)">${F.money(tg)}</div>
+          <div style="font-size:13px;color:var(--muted)">${c.monthly > 0 ? F.money(c.monthly) + ' miesięcznie × ' + c.months + ' ' + C.plural(c.months, 'miesiąc', 'miesiące', 'miesięcy') : 'Ustaw kwotę miesięcznych wydatków i liczbę miesięcy.'}</div>
+        </div>
+        <div class="dcard">
+          <div class="dhead" style="min-height:0;align-items:baseline"><div class="eyebrow">Realizacja</div><div style="font-family:var(--display);font-size:26px;font-weight:700;color:${col}">${pf(done)}</div></div>
+          <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(done)}" aria-label="Realizacja poduszki bezpieczeństwa"><span style="width:${Math.min(100, Math.round(done))}%;background:${col}"></span></div>
+          <div style="font-size:14px">${F.money(sm)} z ${F.money(tg)}</div>
+          <div style="font-size:13px;color:${full ? 'var(--ok)' : '#F2D9A0'}">${tg <= 0 ? 'Ustaw cel, aby policzyć realizację.' : full ? (gap < 0 ? 'Cel osiągnięty – nadwyżka ' + F.money(-gap) : 'Cel osiągnięty') : 'Brakuje ' + F.money(gap)}</div>
+          <div style="font-size:13px;color:var(--muted)">Obecnie wystarczy na ${String(Math.round(cover * 10) / 10).replace('.', ',')} mies. wydatków</div>
+        </div>
+        <div class="dcard tight" style="padding-bottom:6px">
+          <div class="dhead"><div class="eyebrow">Składniki</div><div style="font-size:12px;font-weight:600;color:${sp === 100 ? 'var(--ok)' : 'var(--gold)'}">${comps.length ? 'Udziały: ' + pf(sp) + (sp === 100 ? '' : sp < 100 ? ' (brakuje ' + pf(100 - sp) + ')' : ' (za dużo o ' + pf(sp - 100) + ')') : ''}</div></div>
+          <div style="font-size:12px;line-height:1.4;color:var(--muted);padding-bottom:6px">Każdy składnik to pozycja z Aktywów w Majątku – kwoty zmieniają się w obu miejscach.</div>
+          ${rows || '<div class="para" style="padding:8px 0 14px;font-size:14px">Brak składników. Dodaj pierwszy poniżej.</div>'}
+        </div>
+        <button class="primary" style="flex:none" data-a="fcnew">${J.plusL}<span>Dodaj składnik</span></button>
+        <button class="fsecbtn" data-a="fclink">${J.trend}<span>Dodaj składnik z Aktywów</span></button>
+      </div>${modal}</main>`;
+  }
+
   function parseVal(t) { const s = String(t).replace(/\s/g, '').replace(',', '.'); if (!/^\d+(\.\d{0,2})?$/.test(s)) return null; return F.r2(parseFloat(s)); }
 
   // ---------- Wynik finansowy ----------
@@ -427,11 +548,11 @@
     // Nowe wydatki
     faddopen: (el) => { U.add = { draft: newDraft(), drafts: [], err: false, from: el.dataset.from }; U.cal = null; U.home.msg = ''; R_(); },
     faddclose: () => { U.add = null; U.cal = null; R_(); },
-    faddcat: (el) => { U.add.draft.cat = el.dataset.v; U.add.err = false; R_(); },
+    faddcat: (el) => { U.add.draft.cat = el.dataset.v; U.add.err = false; U.add.dd = false; U.add.q = ''; R_(); },
     fadddraft: () => {
       const Ad = U.add, d = Ad.draft, amt = F.parseAmt(d.amt);
       if (!(amt > 0) || !d.cat) { Ad.err = true; R_(); return; }
-      Ad.drafts.push({ date: d.date, desc: String(d.desc).trim(), amt, cat: d.cat });
+      Ad.drafts.push({ date: d.date, desc: String(d.desc).trim(), amt, cat: d.cat }); Ad.msg = '';
       Ad.draft = Object.assign({}, d, { desc: '', amt: '' }); Ad.err = false; R_();
       const f = document.getElementById('fdesc'); if (f) f.focus();
     },
@@ -455,7 +576,7 @@
       if (U.add && U.add.draft.cat && !F.activeCats().some((c) => c.id === U.add.draft.cat)) U.add.draft.cat = null;
       R_();
     },
-    fcatadd: () => { const err = F.addCustomCat(U.cats.name); U.cats.err = err; if (!err) U.cats.name = ''; R_(); const f = document.querySelector('[data-in="fin-cat"]'); if (f) f.focus(); },
+    fcatadd: () => { const err = F.addCustomCat(U.cats.name, U.cats.color); U.cats.err = err; if (!err) { U.cats.name = ''; U.cats.color = null; } R_(); const f = document.querySelector('[data-in="fin-cat"]'); if (f) f.focus(); },
     fcatdel: (el) => { F.removeCustomCat(el.dataset.v); if (U.add && U.add.draft.cat === el.dataset.v) U.add.draft.cat = null; R_(); },
     // Wydatki
     fetab: (el) => { U.exp.tab = el.dataset.v; U.cal = null; R_(); },
@@ -488,6 +609,42 @@
       if (!String(ad.name).trim() || v === null) return;
       F.addItem(ad.type, ad.name, v); U.worth.add = null; U.worth.sel = null; R_();
     },
+    // Majątek – filtr historii
+    fwhf: (el) => { U.worth.hf = el.dataset.v; R_(); },
+    // Nowe wydatki – lista kategorii z wyszukiwarką, „Dodaj wydatek”
+    fcatdd: () => { U.add.dd = !U.add.dd; U.add.q = ''; R_(); if (U.add.dd) { const f = document.querySelector('[data-in="fin-catq"]'); if (f) f.focus(); } },
+    faddnow: () => {
+      const Ad = U.add, d = Ad.draft, amt = F.parseAmt(d.amt);
+      if (!(amt > 0) || !d.cat) { Ad.err = true; R_(); return; }
+      const e = F.addExpenses([{ date: d.date, desc: String(d.desc).trim(), amt, cat: d.cat }])[0];
+      const info = 'Dodano wydatek: ' + (e.desc || F.catOf(e.cat).name) + ' (' + F.money(e.amt) + ').';
+      U.exp.open[e.date] = true;
+      // Pozycje „Do zapisania” nie przepadają – okno zostaje otwarte; inaczej okno się zamyka z potwierdzeniem.
+      if (Ad.drafts.length) { Ad.draft = Object.assign({}, d, { desc: '', amt: '' }); Ad.err = false; Ad.dd = false; Ad.msg = info; }
+      else {
+        if (Ad.from === 'home') U.home.msg = info; else { U.exp.tab = 'list'; U.exp.lm = ym(e.date); U.exp.msg = info; U.exp.undo = null; }
+        U.add = null; U.cal = null;
+      }
+      R_();
+    },
+    fcatcolor: (el) => { U.cats.color = el.dataset.v; R_(); },
+    // Poduszka bezpieczeństwa
+    fcgoal: () => { const c = F.cush(); U.cush.dlg = { t: 'goal', m: c.monthly ? String(c.monthly).replace('.', ',') : '', n: String(c.months || 6) }; R_(); },
+    fcnew: () => { U.cush.dlg = { t: 'new', name: '', amt: '', pct: String(Math.max(0, Math.round((100 - F.cushPctSum()) * 10) / 10)).replace('.', ',') }; R_(); },
+    fclink: () => { U.cush.dlg = { t: 'link', aid: null, pct: String(Math.max(0, Math.round((100 - F.cushPctSum()) * 10) / 10)).replace('.', ',') }; R_(); },
+    fcedit: (el) => { const x = F.cushComps().find((y) => y.k.id === el.dataset.id); if (!x) return; U.cush.dlg = { t: 'edit', kid: x.k.id, amt: String(x.a.val).replace('.', ','), pct: String(x.k.pct).replace('.', ',') }; R_(); },
+    fcpick: (el) => { U.cush.dlg.aid = el.dataset.v; R_(); },
+    fcclose: () => { U.cush.dlg = null; R_(); },
+    fcgoalsave: () => { const D = U.cush.dlg, m = F.parseAmt(D.m), n = parseInt(D.n, 10); if (!(m > 0) || !(n >= 1 && n <= 120)) return; F.setCushGoal(m, n); U.cush.dlg = null; R_(); },
+    fcaddsave: () => {
+      const D = U.cush.dlg, pc = cnum(D.pct);
+      if (pc === null || !(pc > 0 && pc <= 100)) return;
+      if (D.t === 'new') { const am = cnum(D.amt); if (!String(D.name || '').trim() || am === null) return; F.cushAddNew(D.name, am, pc); }
+      else { if (!D.aid) return; F.cushLink(D.aid, pc); }
+      U.cush.dlg = null; R_();
+    },
+    fceditsave: () => { const D = U.cush.dlg, am = cnum(D.amt), pc = cnum(D.pct); if (am === null || pc === null || !(pc > 0 && pc <= 100)) return; F.cushUpdate(D.kid, am, pc); U.cush.dlg = null; R_(); },
+    fcremove: () => { F.cushRemove(U.cush.dlg.kid); U.cush.dlg = null; R_(); },
     // Wynik finansowy
     frperiod: (el) => { U.res.period = el.dataset.v; U.cal = null; R_(); },
     frnav: (el) => { const R = U.res, d = +el.dataset.d; if (R.period === 'month') R.mk = addMonths(R.mk, d); else R.yr += d; R_(); },
@@ -536,6 +693,8 @@
     frundo: () => { if (U.res.undo) { F.restoreIncome(U.res.undo); U.res.undo = null; U.res.msg = 'Przywrócono przychód.'; } R_(); }
   };
 
+  function cnum(t) { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v >= 0 ? F.r2(v) : null; }
+
   // ---------- Pola tekstowe ----------
   const amtClean = (v, n) => v.replace(/[^\d,.]/g, '').slice(0, n);
   function onInput(el, k) {
@@ -543,6 +702,12 @@
     if (k === 'fin-desc') U.add.draft.desc = v;
     else if (k === 'fin-amt') { el.value = amtClean(v, 9); U.add.draft.amt = el.value; }
     else if (k === 'fin-cat') { U.cats.name = v.slice(0, 24); U.cats.err = ''; }
+    else if (k === 'fin-catq') { U.add.q = v.slice(0, 24); filterCats(); return; }
+    else if (k === 'fin-cm') { el.value = amtClean(v, 12); U.cush.dlg.m = el.value; }
+    else if (k === 'fin-cn') { el.value = v.replace(/\D/g, '').slice(0, 3); U.cush.dlg.n = el.value; }
+    else if (k === 'fin-cpct') { el.value = amtClean(v, 5); U.cush.dlg.pct = el.value; }
+    else if (k === 'fin-camt') { el.value = amtClean(v, 12); U.cush.dlg.amt = el.value; }
+    else if (k === 'fin-cname') U.cush.dlg.name = v;
     else if (k === 'fin-wedit') { el.value = amtClean(v, 12); U.worth.edit.val = el.value; }
     else if (k === 'fin-wname') U.worth.add.name = v;
     else if (k === 'fin-wval') { el.value = amtClean(v, 12); U.worth.add.val = el.value; }
@@ -552,9 +717,23 @@
   }
   // Podczas pisania odświeżamy tylko stan przycisków i podgląd – bez przerysowania ekranu,
   // żeby dotknięcie przycisku zaraz po wpisaniu kwoty nie „przepadło”.
+  // Wyszukiwarka kategorii: filtrowanie listy bez przerysowania (pole zachowuje fokus i klawiaturę).
+  function filterCats() {
+    const q = window.FinImport.norm(U.add.q || '');
+    let n = 0;
+    document.querySelectorAll('.fddopt').forEach((b) => { const ok = !q || window.FinImport.norm(b.textContent).indexOf(q) >= 0; b.hidden = !ok; if (ok) n++; });
+    let e = document.querySelector('.fddlist .fnone');
+    if (!n && !e) { e = document.createElement('div'); e.className = 'para fnone'; e.style.padding = '12px 10px'; e.textContent = 'Brak pasujących kategorii.'; const l = document.querySelector('.fddlist'); if (l) l.appendChild(e); }
+    if (n && e) e.remove();
+  }
   function live() {
     const q = (sel) => document.querySelector(sel);
-    if (U.add) { const b = q('[data-a=fadddraft]'), ok = F.parseAmt(U.add.draft.amt) > 0 && !!U.add.draft.cat; if (b) { b.classList.toggle('accent', ok); b.classList.toggle('off', !ok); } }
+    if (U.cush.dlg) {   // Poduszka: stan przycisku i podgląd celu
+      const D = U.cush.dlg, b = q('.modal .primary');
+      if (D.t === 'goal') { const m = cnum(D.m), n = parseInt(D.n, 10), ok = m > 0 && n >= 1 && n <= 120; if (b) b.classList.toggle('dim', !ok); const pv = q('[data-cpv]'); if (pv) pv.textContent = ok ? 'Kwota docelowa: ' + F.money(F.r2(m * n)) : 'Podaj kwotę miesięczną i liczbę miesięcy (1–120).'; }
+      else if (b) { const pc = cnum(D.pct), ok = pc !== null && pc > 0 && pc <= 100 && (D.t !== 'new' || (String(D.name || '').trim() && cnum(D.amt) !== null)) && (D.t !== 'link' || !!D.aid); b.classList.toggle('dim', !ok); }
+    }
+    if (U.add) { const b = q('[data-a=fadddraft]'), b2 = q('[data-a=faddnow]'), ok = F.parseAmt(U.add.draft.amt) > 0 && !!U.add.draft.cat; if (b) { b.classList.toggle('accent', ok); b.classList.toggle('off', !ok); } if (b2) b2.classList.toggle('off', !ok); }
     if (U.res.add) { const b = q('[data-a=fraddsave]'); if (b) b.classList.toggle('dim', !(F.parseAmt(U.res.add.amt) > 0 && !!U.res.add.cat)); }
     const W = U.worth;
     if (W.add) { const b = q('[data-a=fwaddsave]'); if (b) b.disabled = !(String(W.add.name).trim() && parseVal(W.add.val) !== null); }
@@ -585,6 +764,7 @@
   function onEscape() {
     if (U.cal) { U.cal = null; return true; }
     if (U.cats) { U.cats = null; return true; }
+    if (U.cush.dlg) { U.cush.dlg = null; return true; }
     if (U.add) { U.add = null; return true; }
     if (U.worth.edit || U.worth.add) { U.worth.edit = null; U.worth.add = null; return true; }
     if (U.res.add) { U.res.add = null; return true; }
@@ -594,7 +774,7 @@
   function onRoute(r) {
     U.add = null; U.cats = null; U.cal = null; U.home.msg = '';
     U.exp.msg = ''; U.exp.undo = null; U.res.msg = ''; U.res.undo = null; U.res.add = null;
-    U.worth.edit = null; U.worth.add = null; U.worth.sel = null;
+    U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null;
     if (r.name === 'fin' && r.arg === 'exp') U.exp.tab = r.arg2 === 'cat' ? 'cat' : 'list';
   }
 
@@ -603,10 +783,11 @@
       case 'worth': return viewWorth();
       case 'exp': return viewExpenses();
       case 'result': return viewResult();
+      case 'cush': return viewCushion();
       default: return viewHome();
     }
   }
-  const navKey = (r) => (r.arg === 'worth' ? 'worth' : r.arg === 'exp' ? 'exp' : r.arg === 'result' ? 'result' : 'home');
+  const navKey = (r) => (['worth', 'exp', 'result', 'cush'].indexOf(r.arg) >= 0 ? r.arg : 'home');
 
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
