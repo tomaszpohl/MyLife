@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 14
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 15
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -77,7 +77,7 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v14.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v15.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -98,7 +98,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v14 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v15 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -122,13 +122,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v15`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v16`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v15 (28.10.2026)**: poprawka – na telefonie z Androidem wybrany plik nie trafiał do aplikacji (import jadłospisu PDF, import finansów .xlsx i wczytanie kopii danych). Przyczyną było przerysowanie ekranu po powrocie z okna wyboru pliku (od v12); teraz ekran przelicza się po powrocie tylko wtedy, gdy zmienił się dzień. Service worker pobiera pliki nowej wersji prosto z serwera.
 - **v14 (28.10.2026)**: import diety – nazwy produktów w kilku liniach odczytywane w całości (np. fasola czerwona w Dniu 11 pliku z 06.07.2026); okno „Podobne składniki” do łączenia podobnych nazw składników w jedną, z zapamiętywaniem połączeń.
 - **v13 (28.10.2026)**: podzadania w Planerze dnia (Nowe i Edytuj zadanie, Dzień, Tydzień, Miesiąc; odhaczanie osobno dla każdego terminu, automatyczne wykonanie zadania po odhaczeniu wszystkich podzadań); Dieta → Dziennik: dotknięcie posiłku otwiera pełny przepis z przyciskiem „Wróć do dziennika”.
 - **v12 (28.10.2026)**: numer wersji w Ustawieniach; aktualizacja aplikacji bez starych plików z pamięci telefonu (pobieranie „no-cache” i automatyczne przeładowanie po nowej wersji); po powrocie do aplikacji (np. następnego dnia) każdy ekran, także lista zakupów, liczy się od nowa – lista zakupów nie pokazuje posiłków z minionych dni.

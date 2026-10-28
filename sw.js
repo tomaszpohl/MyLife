@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v14';
+const VERSION = 'mylife-v15';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
   './diet-pdf.js', './diet-core.js', './diet-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js',
@@ -8,7 +8,8 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // v15: pliki prosto z serwera (bez pamięci przeglądarki), żeby kopia offline nie łączyła starych i nowych plików.
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

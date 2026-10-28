@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v14 · 28.10.2026';
+  const APP_VERSION = 'v15 · 28.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -199,7 +199,9 @@
 
   // ---------- Renderowanie ----------
   const scrollMem = {};
+  let renderedDay = null;
   function render() {
+    renderedDay = C.todayKey();
     app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; if (el.dataset.autoend) scrollMem[el.dataset.scroll + ':x'] = el.scrollLeft; });
     const r = route();
     let html;
@@ -1059,9 +1061,10 @@
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      render();   // v12: po powrocie do aplikacji (np. następnego dnia) wszystkie ekrany liczą się od nowa – także lista zakupów
-    }
+    // v12: po powrocie do aplikacji następnego dnia wszystkie ekrany liczą się od nowa (także lista zakupów).
+    // v15: tylko gdy zmienił się dzień. Na Androidzie wybór pliku (PDF, .xlsx, kopia) chowa aplikację; przerysowanie
+    // po powrocie podmieniało pole pliku, zanim telefon przekazał wybrany plik – plik „znikał” i importu nie dało się zacząć.
+    if (document.visibilityState === 'visible' && renderedDay !== C.todayKey()) render();
   });
   render();
 
