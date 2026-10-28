@@ -4,7 +4,7 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.diet.v1';
-  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, aliases: {} });
+  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, aliases: {}, body: [] });
   let db = empty();
   const listeners = [];
 
@@ -332,20 +332,51 @@
     }
     return [head].concat(rows);
   }
+  // Arkusz „Skład ciała”: wiersz na pomiar (od najstarszego), wartości jako liczby; puste = brak wartości.
+  function bodyRows(fromK, toK) {
+    const head = ['Data', 'Godzina'].concat(BODY.map((m) => m.name + (m.unit ? ' [' + m.unit + ']' : ''))).concat(['Zakres tłuszczu [%]', 'Zakres masy tłuszczowej [kg]']);
+    const rng = (r, dec) => (r ? fmtNum(r[0], dec) + '–' + fmtNum(r[1], dec) : '');
+    return [head].concat(bodyList().filter((e) => e.d >= fromK && e.d <= toK).map((e) => [dateDots(e.d), e.t || ''].concat(BODY.map((m) => (e.v[m.id] == null ? '' : e.v[m.id]))).concat([rng(e.fatR, 0), rng(e.massR, 1)])));
+  }
   async function exportXlsx(fromK, toK) {
     const rows = journalRows(fromK, toK);
     const colL = (i) => { let s = ''; i++; while (i) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
-    const sheetRows = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => `<c r="${colL(ci)}${ri + 1}" t="inlineStr"${ri === 0 ? ' s="1"' : ' s="2"'}><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`).join('') + '</row>').join('');
-    const widths = rows[0].map((h, i) => `<col min="${i + 1}" max="${i + 1}" width="${i === 0 ? 12 : i === 1 ? 14 : 34}" customWidth="1"/>`).join('');
+    // Komórka: liczba (typ liczbowy, do obliczeń w arkuszu) albo tekst.
+    const cell = (v, ref, hdr) => (typeof v === 'number' && !hdr ? `<c r="${ref}" s="2"><v>${v}</v></c>` : `<c r="${ref}" t="inlineStr"${hdr ? ' s="1"' : ' s="2"'}><is><t xml:space="preserve">${xmlEsc(v == null ? '' : v)}</t></is></c>`);
+    const sheetXml = (rws, widthOf) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${rws[0].map((h, i) => `<col min="${i + 1}" max="${i + 1}" width="${widthOf(i)}" customWidth="1"/>`).join('')}</cols><sheetData>${rws.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => cell(v, colL(ci) + (ri + 1), ri === 0)).join('') + '</row>').join('')}</sheetData></worksheet>`;
+    // v16: drugi arkusz „Skład ciała” – pomiary z tego samego zakresu dat (decyzja właściciela).
+    const body = bodyRows(fromK, toK);
     const zip = new window.JSZip();
-    zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+    zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
     zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-    zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dziennik" sheetId="1" r:id="rId1"/></sheets></workbook>');
-    zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+    zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dziennik" sheetId="1" r:id="rId1"/><sheet name="Skład ciała" sheetId="2" r:id="rId3"/></sheets></workbook>');
+    zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>');
     zip.file('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf/><xf fontId="1" applyFont="1"><alignment wrapText="1" vertical="top"/></xf><xf applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>');
-    zip.file('xl/worksheets/sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths}</cols><sheetData>${sheetRows}</sheetData></worksheet>`);
+    zip.file('xl/worksheets/sheet1.xml', sheetXml(rows, (i) => (i === 0 ? 12 : i === 1 ? 14 : 34)));
+    zip.file('xl/worksheets/sheet2.xml', sheetXml(body, (i) => (i === 0 ? 12 : i === 1 ? 9 : 16)));
     return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
+
+  // ---------- Skład ciała (v16) ----------
+  // Pomiar: { d: 'RRRR-MM-DD', t: 'GG:MM' (z wydruku, opcjonalnie), v: { weight, bmi, fat, fatmass, ffm, tbw, visc, bmr }, fatR, massR }.
+  // Jeden pomiar na dzień – zapis w tym samym dniu zastępuje poprzedni. Osobno od Wagi (decyzja właściciela).
+  const BODY = [
+    { id: 'weight', name: 'Waga', unit: 'kg', dec: 1, good: 0, min: 30, max: 250 },
+    { id: 'bmi', name: 'BMI', unit: '', dec: 1, good: 0, min: 10, max: 60 },
+    { id: 'fat', name: 'Tkanka tłuszczowa', unit: '%', dec: 1, good: -1, min: 3, max: 60 },
+    { id: 'fatmass', name: 'Masa tłuszczowa', unit: 'kg', dec: 1, good: -1, min: 1, max: 120 },
+    { id: 'ffm', name: 'Masa beztłuszczowa (FFM)', unit: 'kg', dec: 1, good: 1, min: 20, max: 150 },
+    { id: 'tbw', name: 'Woda w organizmie (TBW)', unit: 'kg', dec: 1, good: 1, min: 15, max: 100 },
+    { id: 'visc', name: 'Tłuszcz trzewny', unit: 'poz.', dec: 0, good: -1, min: 1, max: 30 },
+    { id: 'bmr', name: 'Podstawowa przemiana materii (BMR)', unit: 'kcal', dec: 0, good: 0, min: 800, max: 4000 }
+  ];
+  const bodyList = () => (db.body || []).slice().sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+  function bodySave(e, origD) {
+    db.body = (db.body || []).filter((x) => x.d !== e.d && x.d !== origD).concat([JSON.parse(JSON.stringify(e))]);
+    save();
+  }
+  function bodyRemove(d) { const e = (db.body || []).find((x) => x.d === d); if (!e) return null; db.body = db.body.filter((x) => x.d !== d); save(); return e; }
+  function bodyRestore(e) { if (!e) return; db.body = (db.body || []).filter((x) => x.d !== e.d).concat([e]); save(); }
 
   // ---------- Kopia ----------
   const exportData = () => JSON.parse(JSON.stringify(db));
@@ -354,7 +385,8 @@
     db = Object.assign(empty(), d); tidy(); save();
   }
   const summary = () => menus().length + ' ' + C.plural(menus().length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' +
-    Object.keys(db.journal).length + ' ' + C.plural(Object.keys(db.journal).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(db.weights).length + ' ' + C.plural(Object.keys(db.weights).length, 'wpis', 'wpisy', 'wpisów') + ' wagi';
+    Object.keys(db.journal).length + ' ' + C.plural(Object.keys(db.journal).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(db.weights).length + ' ' + C.plural(Object.keys(db.weights).length, 'wpis', 'wpisy', 'wpisów') + ' wagi, ' +
+    (db.body || []).length + ' ' + C.plural((db.body || []).length, 'pomiar', 'pomiary', 'pomiarów') + ' składu ciała';
 
   window.Diet = {
     load, save, onChange: (fn) => listeners.push(fn),
@@ -364,6 +396,7 @@
     jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: () => Object.keys(db.journal).sort()[0] || null,
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune,
+    BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,
     exportXlsx, journalRows, exportData, importData, summary
   };
 })();

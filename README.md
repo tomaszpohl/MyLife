@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 15
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 16
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -33,6 +33,8 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 **Podobne składniki (od v14):** po wyborze pierwszego dnia diety aplikacja grupuje nazwy składników z importowanego pliku o wspólnym pierwszym słowie (bez wielkości liter i polskich znaków, np. „Mozzarella light Sottile Gusto BIEDRONKA” i „mozzarella, z pełnego mleka”; „pomidor” i „pomidory, cherry”). W oknie „Podobne składniki” w każdej grupie zaznaczasz nazwy, które mają być jednym składnikiem, i wybierasz wspólną nazwę – jedną z zaznaczonych albo **Własną…**. Domyślnie nic nie jest zaznaczone; bez zaznaczeń jadłospis dodaje się bez zmian. Połączone nazwy zmieniają się we wszystkich przepisach tego jadłospisu i sumują na liście zakupów. W jednej grupie można zrobić jedno połączenie. Porównywane są tylko nazwy z tego pliku. Połączenia są **zapamiętywane** – przy kolejnym imporcie te same nazwy są od razu zaznaczone ze wspólną nazwą (odznaczenie usuwa zapamiętane połączenie). „Wstecz” wraca do wyboru pierwszego dnia.
 
+**Zdjęcie wydruku – Skład ciała (od v16):** najlepiej zdjęcie całego paska wydruku, na płasko, z bliska (papier na większość kadru), w dobrym świetle, bez odblasku. Lekkie przekrzywienie, ciemniejsze zdjęcie i mniejsza rozdzielczość nie przeszkadzają. Odczyt trwa zwykle kilka sekund. Aplikacja sprawdza wartości z zależnościami z wydruku (masa tłuszczowa = waga × % tłuszczu, FFM = waga − masa tłuszczowa, woda ≈ 73% FFM, BMR w kJ i kcal, BMI ze wzrostu) i wybiera wariant, który się zgadza. Gdy coś się nie zgadza albo nie dało się sprawdzić (tłuszcz trzewny to pojedyncza cyfra), okno pokazuje ostrzeżenie przy polu – zawsze porównaj wartości z wydrukiem przed zapisem. Odczyt jest dopasowany do wydruku Tanita BC-418 (po angielsku); zdjęcie nie jest zapisywane, a dane osobowe z wydruku (typ ciała, płeć, wiek, wzrost) są pomijane. Przy pierwszym uruchomieniu nowej wersji z internetem telefon pobiera silnik odczytu (ok. 7 MB) – potem działa bez internetu.
+
 | Ekran | Funkcje |
 |---|---|
 | **Dieta** | Dzisiejsze posiłki z aktualnego jadłospisu (z kcal) – dotknięcie posiłku otwiera jego przepis (z przyciskiem „Zmień posiłek w planie”) – i wejścia do funkcji. Bez aktualnego jadłospisu: osobny ekran „Brak aktualnego jadłospisu” z przyciskami „Importuj w Ustawieniach” i „Lista jadłospisów” (bez kafli funkcji, jak w makiecie). |
@@ -42,7 +44,8 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 | **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda), pod ilością miara domowa przeliczona z PDF (np. „≈ 3 łyżki”, „≈ 2 sztuki”; bez miary, gdy PDF jej nie podaje lub to „szczypta”); odhaczanie z paskiem postępu, kupione na końcu. Przy każdym posiłku (po rozwinięciu dnia) „Zmień” – to samo okno co w Planie posiłków; zmiana jest wspólna z Planem, oznaczona „· zmieniony”, a lista liczy się z nowego dania. |
 | **Dziennik** | Dzień: dotknięcie nazwy posiłku („Pokaż przepis”) otwiera pełny przepis z przyciskiem „Wróć do dziennika”; ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (wymagany tylko rodzaj; czas i dystans opcjonalne, suma z podanych). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
 | **Waga** | Wpis na dziś (±0,1 kg), porównanie z poprzednim wpisem, wykres przewijany w poziomie (dotknięcie punktu = data i waga), historia ze zmianą (spadek zielony, wzrost czerwony) i usuwaniem. |
-| **Ustawienia** | Pozycja „Dieta: import i eksport” (zwinięta, po rozwinięciu najpierw Import, potem Eksport). Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis), a gdy w pliku są składniki o podobnych nazwach – okno „Podobne składniki” (od v14, opis niżej). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
+| **Skład ciała** (od v16) | Kafel na ekranie Dieta (po Wadze; także na ekranie „Brak aktualnego jadłospisu”). **Nowy pomiar:** „Zrób zdjęcie wyników” (aparat telefonu albo zdjęcie z galerii) – aplikacja odczytuje wydruk analizatora Tanita BC-418 na telefonie, bez internetu, i pokazuje „Odczytane wartości” do sprawdzenia (data i godzina z wydruku, pola do poprawy, oznaczenie nieodczytanych i niepewnych wartości) albo „Dodaj wyniki ręcznie”. Wskaźniki: waga, BMI, tkanka tłuszczowa %, masa tłuszczowa, masa beztłuszczowa (FFM), woda (TBW), tłuszcz trzewny, BMR (kcal); zakres pożądany tłuszczu z wydruku. Jeden pomiar na dzień (ponowny zapis zastępuje). **Pomiar z dnia:** lista dni, kafelki wskaźników ze zmianą względem poprzedniego pomiaru (zielona = korzystna, czerwona = niekorzystna), edycja i usuwanie z „Cofnij”. **Wykres** wybranego wskaźnika i zwijana **Historia zmian**. Pomiary są osobno od Wagi. |
+| **Ustawienia** | Pozycja „Dieta: import i eksport” (zwinięta, po rozwinięciu najpierw Import, potem Eksport). Eksport dziennika diety do .xlsx (arkusz „Dziennik”: dzień po dniu – posiłki ze statusem, odstępstwa, aktywność; od v16 arkusz „Skład ciała”: pomiar w wierszu, wartości jako liczby) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis), a gdy w pliku są składniki o podobnych nazwach – okno „Podobne składniki” (od v14, opis niżej). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
 
 ## Moduł Finanse (od v8)
 
@@ -77,7 +80,7 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v15.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v16.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -98,7 +101,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v15 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v16 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -113,22 +116,27 @@ mylife/
 ├─ diet-pdf.js           – odczyt jadłospisu z PDF (układ „Indywidualny plan żywieniowy”)
 ├─ diet-core.js          – dane diety: jadłospisy, aktywacje, plan, dziennik, waga, zakupy, eksport .xlsx
 ├─ diet-ui.js            – ekrany modułu Dieta i sekcje diety w Ustawieniach
+├─ body-ui.js            – Dieta · Skład ciała (pomiary, wykres, historia, okno odczytanych wartości)
+├─ body-ocr.js           – przygotowanie zdjęcia wydruku i rozpoznanie wartości Tanita BC-418
+├─ ocr-worker.js         – odczyt tekstu ze zdjęcia w osobnym wątku (Tesseract)
 ├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik
 ├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
 ├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
 ├─ lib/                  – pdf.js 6.2.108 (Apache 2.0) i JSZip 3.10.1 (MIT), działają offline
+│  └─ tesseract/         – silnik odczytu tekstu tesseract.js-core 7.0 (WebAssembly) i model „eng” (tessdata_fast), Apache 2.0, ok. 7 MB
 ├─ sw.js                 – praca offline (service worker)
 ├─ manifest.webmanifest  – instalacja jako aplikacja
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v16`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v17`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v16 (28.10.2026)**: Dieta · Skład ciała – pomiary z wydruku Tanita BC-418: odczyt ze zdjęcia na telefonie (bez internetu), wpis ręczny, pomiar z dnia z kafelkami i zmianą, wykres, historia, edycja i usuwanie z „Cofnij”; arkusz „Skład ciała” w eksporcie .xlsx; pomiary w kopii modułu Dieta. Silnik odczytu (ok. 7 MB) zapisuje się w pamięci telefonu raz i nie jest pobierany ponownie przy kolejnych wersjach.
 - **v15 (28.10.2026)**: poprawka – na telefonie z Androidem wybrany plik nie trafiał do aplikacji (import jadłospisu PDF, import finansów .xlsx i wczytanie kopii danych). Przyczyną było przerysowanie ekranu po powrocie z okna wyboru pliku (od v12); teraz ekran przelicza się po powrocie tylko wtedy, gdy zmienił się dzień. Service worker pobiera pliki nowej wersji prosto z serwera.
 - **v14 (28.10.2026)**: import diety – nazwy produktów w kilku liniach odczytywane w całości (np. fasola czerwona w Dniu 11 pliku z 06.07.2026); okno „Podobne składniki” do łączenia podobnych nazw składników w jedną, z zapamiętywaniem połączeń.
 - **v13 (28.10.2026)**: podzadania w Planerze dnia (Nowe i Edytuj zadanie, Dzień, Tydzień, Miesiąc; odhaczanie osobno dla każdego terminu, automatyczne wykonanie zadania po odhaczeniu wszystkich podzadań); Dieta → Dziennik: dotknięcie posiłku otwiera pełny przepis z przyciskiem „Wróć do dziennika”.

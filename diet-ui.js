@@ -116,6 +116,7 @@
         <div style="align-self:stretch;display:flex;flex-direction:column;gap:10px;margin-top:8px">
           <a class="primary" style="flex:none" href="#/settings">Importuj w Ustawieniach</a>
           <a class="btn2 accent" style="height:52px;font-size:16px;font-weight:600" href="#/diet/menus">Lista jadłospisów</a>
+          ${window.BodyUI ? '<a class="btn2" style="height:48px;font-size:15px" href="#/diet/body">Skład ciała</a>' : ''}
         </div>
       </div></main>`;
   }
@@ -139,6 +140,7 @@
         ${fn('#/diet/shop', J.cart, 'Lista zakupów', 'Z wybranych dni lub posiłków')}
         ${fn('#/diet/journal', J.clip, 'Dziennik', 'Zjedzone posiłki, odstępstwa, aktywność')}
         ${fn('#/diet/weight', J.trend, 'Waga', 'Wpisy, wykres i porównanie')}
+        ${window.BodyUI ? (() => { const t = window.BodyUI.tile(); return fn(t.href, t.icon, t.title, t.desc); })() : ''}
       </div>${detail}</main>`;
   }
 
@@ -515,7 +517,7 @@
           <div class="sgsep"></div>
           <div class="sgpart">
         <div class="eyebrow">Eksport diety</div>
-        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: jeden arkusz, wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans).</div>
+        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans). Drugi arkusz „Skład ciała” – pomiary z tego samego okresu.</div>
         <div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
           ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>
         <div style="font-size:12px;color:var(--muted)">Zakres: od ${esc(D.dateLong(St.expFrom))} do dziś (${esc(D.dateLong(T))})</div>
@@ -780,6 +782,7 @@
     return false;
   }
   function onEscape() {
+    if (window.BodyUI && A.route().arg === 'body' && window.BodyUI.onEscape()) return true;
     if (U.settings.sim) { U.settings.sim = null; return true; }
     if (U.settings.parsed) { U.settings.parsed = null; return true; }
     if (U.plan.sheet) { U.plan.sheet = null; return true; }
@@ -793,6 +796,7 @@
   function onRoute(r) {
     U.menu.detail = null; U.plan.sheet = null; U.plan.rec = null; U.journal.rec = null; U.home.detail = null; U.list.edit = null; U.list.msg = ''; U.list.undo = null; U.weight.saved = false;
     if (r.name === 'diet' && r.arg === 'weight') { U.weight.kg = ''; U.weight.tip = null; }
+    if (window.BodyUI) window.BodyUI.onRoute(r);
   }
 
   function view(r) {
@@ -803,6 +807,7 @@
       case 'shop': return viewShop();
       case 'journal': return viewJournal();
       case 'weight': return viewWeight();
+      case 'body': if (window.BodyUI) return window.BodyUI.view(); return viewHome();
       default: return viewHome();
     }
   }

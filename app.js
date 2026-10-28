@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v15 · 28.10.2026';
+  const APP_VERSION = 'v16 · 28.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -847,6 +847,7 @@
       case 'count': el.value = digits(el.value, 3); break;
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
+        else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
     }
   });
@@ -879,6 +880,7 @@
       }
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onChange(el, k);
+        else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onChange(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onChange(el, k);
     }
   });
@@ -1049,6 +1051,7 @@
   window.App = { I, svg, esc, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
+  if (window.BodyUI) { window.BodyUI.init(window.App); }
   if (window.Fin) { window.Fin.load(); }
   if (window.FinUI) { window.FinUI.init(window.App); }
   window.addEventListener('hashchange', () => {
