@@ -3,6 +3,8 @@
   'use strict';
   const C = window.Core;
   const app = document.getElementById('app');
+  // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
+  const APP_VERSION = 'v12 · 28.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -562,7 +564,8 @@
           </div>
           <div style="display:flex;flex-direction:column">
             <div class="kv"><span>Miejsce zapisu</span><span>Pamięć aplikacji</span></div>
-            <div class="kv" style="padding-bottom:0"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
+            <div class="kv"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
+            <div class="kv" style="padding-bottom:0"><span>Wersja aplikacji</span><span>${APP_VERSION}</span></div>
           </div>
           <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę i finanse. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
@@ -972,12 +975,16 @@
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      if (route().name === 'home' || route().name === 'plan') render();
+      render();   // v12: po powrocie do aplikacji (np. następnego dnia) wszystkie ekrany liczą się od nowa – także lista zakupów
     }
   });
   render();
 
+  // v12: po wgraniu nowej wersji service worker przejmuje stronę – przeładowanie, żeby od razu działał nowy kod.
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => { r.update().catch(() => {}); }).catch(() => {});
   }
 })();

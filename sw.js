@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v11';
+const VERSION = 'mylife-v12';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
   './diet-pdf.js', './diet-core.js', './diet-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js',
@@ -39,7 +39,8 @@ self.addEventListener('fetch', (e) => {
 
   // Pliki aplikacji: najpierw sieć (świeża wersja), bez sieci – kopia z pamięci.
   e.respondWith(
-    fetch(req)
+    // v12: „no-cache” – zawsze sprawdź u serwera świeżą wersję (bez starej kopii z pamięci przeglądarki).
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); } return res; })
       .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match('./index.html')))
   );
