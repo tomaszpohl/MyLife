@@ -238,10 +238,30 @@
     const form = !whole ? f[3] : n === 1 ? f[0] : (m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14)) ? f[1] : f[2];
     return '≈ ' + fmtNum(n) + ' ' + form;
   }
-  function shopItems() {
-    const agg = {};
+  // v11: na liście liczą się tylko posiłki zaznaczone w widocznych 7 dniach (pojedynczo albo całym dniem).
+  // Zaznaczenia z dni, które już minęły, albo posiłków, których nie ma w planie, są pomijane i usuwane.
+  function shopSelected() {
+    const days = shopDays(), out = [];
     Object.keys(db.shopping.sel).forEach((key) => {
       if (!db.shopping.sel[key]) return;
+      const [k, slot] = key.split('|');
+      if (days.indexOf(k) < 0) return;
+      const p = planFor(k);
+      if (p && p.meals.some((x) => x.slot === slot && x.dish)) out.push(key);
+    });
+    return out;
+  }
+  function shopPrune() {
+    const valid = shopSelected();
+    if (valid.length !== Object.keys(db.shopping.sel).length) {
+      const sel = {}; valid.forEach((k) => { sel[k] = true; });
+      db.shopping = Object.assign({}, db.shopping, { sel }); save();
+    }
+    return valid;
+  }
+  function shopItems() {
+    const agg = {};
+    shopSelected().forEach((key) => {
       const [k, slot] = key.split('|');
       const p = planFor(k); if (!p) return;
       const meal = p.meals.find((x) => x.slot === slot); if (!meal || !meal.dish) return;
@@ -312,7 +332,7 @@
     planFor, slotOptions, setOverride,
     jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: () => Object.keys(db.journal).sort()[0] || null,
     weights, setWeight, removeWeight,
-    shopDays, shopping, shopSet, shopItems,
+    shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune,
     exportXlsx, journalRows, exportData, importData, summary
   };
 })();

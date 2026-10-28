@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 10
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 11
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -73,7 +73,7 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v10.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v11.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -115,13 +115,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v11`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` (np. `mylife-v12`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v11 (28.10.2026)**: poprawka listy zakupów – lista powstaje tylko z posiłków zaznaczonych (pojedynczo lub całym dniem) w widocznych 7 dniach; zaznaczenia z dni, które już minęły, nie trafiają na listę i są czyszczone.
 - **v10 (25.10.2026)**: Poduszka bezpieczeństwa (nowy ekran i pozycja paska Finansów), Majątek z jednym punktem wykresu na dzień i filtrem historii wg pozycji, paleta 32 kolorów i wybór koloru własnej kategorii (powtórzone kolory zaimportowanych kategorii zmienione), kategoria wydatku jako lista z wyszukiwarką, przycisk „Dodaj wydatek”, kwoty zawsze z groszami.
 - **v9 (24.10.2026)**: import danych finansowych z .xlsx (wydatki, przychody miesięczne, majątek; własne kategorie z pliku), Miesiąc w planerze z zaległymi dniami na czerwono, jedną kropką i stanem wykonania, „Zmień” przy posiłkach na liście zakupów, Ustawienia z zwijanymi pozycjami „Dieta: import i eksport” i „Finanse: import danych”.
 - **v8 (22.10.2026)**: moduł Finanse według makiety „Etap 3 – Finanse” (Finanse, Majątek, Wydatki z kategoriami domyślnymi lub własnymi, Wynik finansowy), dolny pasek szybkiej nawigacji w Diecie i Finansach, wstecz krok po kroku przez całą historię, kopia danych z modułem Finanse.

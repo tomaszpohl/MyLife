@@ -329,7 +329,7 @@
       const bn = items.filter((x) => bought[x.key]).length;
       const pct = items.length ? Math.round(100 * bn / items.length) : 0;
       const sorted = items.slice().sort((a, b) => (bought[a.key] ? 1 : 0) - (bought[b.key] ? 1 : 0) || a.name.localeCompare(b.name, 'pl'));
-      const keys = Object.keys(sh.sel).filter((x) => sh.sel[x]);
+      const keys = D.shopSelected();
       const dayCount = new Set(keys.map((x) => x.split('|')[0])).size;
       return `<main class="screen">${topbar('Lista zakupów')}
         <div class="dscroll" data-scroll="diet-shop-list">
@@ -342,7 +342,8 @@
         </div>
         <div class="footbar"><button class="btn2" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div></main>`;
     }
-    const sel = sh.sel || {};
+    D.shopPrune();   // usuń zaznaczenia z dni, które już minęły
+    const sel = D.shopping().sel || {};
     let total = 0, allKeys = [];
     const rows = plans.map(({ k, p }) => {
       if (!p) return `<div class="dcard tight"><div class="dhead"><span>${esc(D.dayShort(k))}</span><span style="font-size:12px;color:var(--muted)">Brak jadłospisu</span></div></div>`;
@@ -611,7 +612,7 @@
       const sel = {}; if (!all) keys.forEach((x) => { sel[x] = true; });
       D.shopSet({ sel }); R();
     },
-    dshopgen: () => { D.shopSet({ stage: 'list', bought: {} }); R(); },
+    dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {} }); R(); },
     dshopback: () => { D.shopSet({ stage: 'select' }); R(); },
     dbuy: (el) => { const b = Object.assign({}, D.shopping().bought); if (b[el.dataset.key]) delete b[el.dataset.key]; else b[el.dataset.key] = true; D.shopSet({ bought: b }); R(); },
     // Dziennik
