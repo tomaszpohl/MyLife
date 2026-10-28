@@ -4,7 +4,7 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.diet.v1';
-  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' } });
+  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, aliases: {} });
   let db = empty();
   const listeners = [];
 
@@ -61,6 +61,37 @@
     save();
     return m;
   }
+  // ---------- Podobne składniki przy imporcie (v14) ----------
+  // Grupy nazw składników z jednego pliku o wspólnym pierwszym słowie (decyzja właściciela: szeroko, tylko w obrębie pliku).
+  // Pierwsze słowo bez wielkości liter i polskich znaków, skrócone do 5 liter („pomidor” = „pomidory”).
+  const STOPW = { z: 1, w: 1, i: 1, na: 1, do: 1, bez: 1, po: 1, od: 1, typu: 1 };
+  const plain = (s) => String(s).toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l');
+  function simKey(name) {
+    const w = plain(name).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter((x) => x && !STOPW[x])[0] || '';
+    return w.slice(0, 5);
+  }
+  function similarGroups(parsed) {
+    const uses = {};
+    Object.values(parsed.dishes).forEach((d) => d.ing.forEach((g) => { (uses[g.name] = uses[g.name] || {})[d.id] = 1; }));
+    const groups = {};
+    Object.keys(uses).forEach((n) => { const k = simKey(n); if (k) (groups[k] = groups[k] || []).push(n); });
+    return Object.keys(groups).filter((k) => groups[k].length > 1)
+      .map((k) => ({ key: k, names: groups[k].sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' })).map((n) => ({ name: n, count: Object.keys(uses[n]).length })) }))
+      .sort((a, b) => a.names[0].name.localeCompare(b.names[0].name, 'pl', { sensitivity: 'base' }));
+  }
+  // Zapamiętane połączenia (decyzja właściciela): nazwa z pliku -> wspólna nazwa; podpowiadane przy następnych importach.
+  const aliasOf = (name) => (db.aliases || {})[name] || null;
+  // merges: [{ names: [..], target }] – zmiana nazw składników we wszystkich daniach pliku (oryginał w `orig`).
+  // offered: wszystkie nazwy pokazane w oknie – odznaczone tracą zapamiętane połączenie.
+  function applyMerges(parsed, merges, offered) {
+    db.aliases = db.aliases || {};
+    (offered || []).forEach((n) => { delete db.aliases[n]; });
+    const map = {};
+    merges.forEach((m) => { const t = String(m.target || '').trim().slice(0, 80); if (!t || m.names.length < 2) return; m.names.forEach((n) => { map[n] = t; db.aliases[n] = t; }); });
+    Object.values(parsed.dishes).forEach((d) => d.ing.forEach((g) => { if (map[g.name] && map[g.name] !== g.name) { g.orig = g.name; g.name = map[g.name]; } }));
+    return Object.keys(map).length;
+  }
+
   // Usunięcie jadłospisu (przeciągnięcie w prawo): aktualnego nie można usunąć. Planowana aktywacja jest anulowana,
   // minione dni (dziennik, statystyki, eksport) zachowują jego dania. Zwraca dane do „Cofnij”.
   function deleteMenu(mid) {
@@ -328,7 +359,7 @@
   window.Diet = {
     load, save, onChange: (fn) => listeners.push(fn),
     fmtNum, dayShort, dateLong, dateDots, slotShort,
-    menus, getMenu, addMenu, deleteMenu, restoreMenu, renameMenu, actText, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
+    menus, getMenu, addMenu, similarGroups, applyMerges, aliasOf, simKey, deleteMenu, restoreMenu, renameMenu, actText, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
     planFor, slotOptions, setOverride,
     jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: () => Object.keys(db.journal).sort()[0] || null,
     weights, setWeight, removeWeight,

@@ -523,7 +523,7 @@
         ${St.expMsg ? `<div class="okbox" role="status">${St.expErr ? I.warn : I.ok}<span>${esc(St.expMsg)}</span></div>` : ''}
           </div></div>` : ''}
       </section>
-      ${St.parsed ? firstDayDialog() : ''}`;
+      ${St.parsed ? (St.sim ? similarDialog() : firstDayDialog()) : ''}`;
   }
   // Okno „Pierwszy dzień diety” (makieta: Ustawienia → Import diety).
   function firstDayDialog() {
@@ -536,6 +536,36 @@
         <div class="fdgrid" role="radiogroup" aria-label="Pierwszy dzień diety">${St.parsed.days.map((d) => `<button role="radio" class="${d.n === f ? 'on' : ''}" aria-checked="${d.n === f}" data-a="dfirst" data-n="${d.n}">Dzień ${d.n}</button>`).join('')}</div>
         <div style="font-size:12px;line-height:1.5;color:var(--dim)">Kolejność: ${esc(order)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dfirstcancel">Anuluj</button><button class="primary" style="height:48px" data-a="dfirstok">Dodaj jadłospis</button></div>
+      </div></div>`;
+  }
+  // Okno „Podobne składniki” (v14): po wyborze pierwszego dnia, gdy w pliku są nazwy o wspólnym pierwszym słowie.
+  // W każdej grupie zaznacza się nazwy do połączenia i wybiera wspólną nazwę (jedną z nich albo własną).
+  function simChecked(gi) { const G = U.settings.sim; return G.groups[gi].names.filter((x) => G.sel[gi][x.name]).map((x) => x.name); }
+  function simTarget(gi) {
+    const G = U.settings.sim, ch = simChecked(gi);
+    if (G.own[gi] != null) return G.own[gi];
+    if (G.target[gi] && ch.indexOf(G.target[gi]) >= 0) return G.target[gi];
+    return ch.slice().sort((a, b) => a.length - b.length)[0] || '';
+  }
+  function simMerges() { const G = U.settings.sim; return G.groups.map((g, gi) => ({ names: simChecked(gi), target: simTarget(gi).trim() })).filter((m) => m.names.length >= 2); }
+  function similarDialog() {
+    const G = U.settings.sim, n = simMerges().length;
+    const groups = G.groups.map((g, gi) => {
+      const ch = simChecked(gi), tgt = simTarget(gi), own = G.own[gi] != null;
+      const rows = g.names.map((x, ni) => { const on = !!G.sel[gi][x.name]; return `<button class="simrow${on ? ' on' : ''}" role="checkbox" aria-checked="${on}" data-a="dsimtog" data-g="${gi}" data-n="${ni}">
+          <span class="cbox" aria-hidden="true">${on ? J.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="ct">${x.count} ${C.plural(x.count, 'przepis', 'przepisy', 'przepisów')}</span></button>`; }).join('');
+      const pick = ch.length >= 2 ? `<div class="simpick"><div class="eyebrow">Wspólna nazwa</div>
+          <div class="simchips" role="radiogroup" aria-label="Wspólna nazwa">${ch.map((nm) => `<button role="radio" class="${!own && tgt === nm ? 'on' : ''}" aria-checked="${!own && tgt === nm}" data-a="dsimtgt" data-g="${gi}" data-v="${esc(nm)}">${esc(nm)}</button>`).join('')}<button role="radio" class="${own ? 'on' : ''}" aria-checked="${own}" data-a="dsimown" data-g="${gi}">Własna…</button></div>
+          ${own ? `<input class="quick" style="flex:none" type="text" maxlength="80" aria-label="Własna wspólna nazwa" placeholder="Np. mozzarella" value="${esc(G.own[gi])}" data-in="diet-simown" data-g="${gi}">` : ''}</div>` : '';
+      return `<div class="simgroup">${rows}${pick}</div>`;
+    }).join('');
+    return `<div class="modal-wrap" role="dialog" aria-modal="true" aria-label="Podobne składniki">
+      <div class="modal tall">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">Podobne składniki</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--muted)">W pliku są składniki o podobnych nazwach (${G.groups.length} ${C.plural(G.groups.length, 'grupa', 'grupy', 'grup')}). Zaznacz w grupie nazwy, które mają być jednym składnikiem we wszystkich przepisach i na liście zakupów, i wybierz wspólną nazwę. Niezaznaczone zostaną bez zmian.</div>
+        <div class="simlist" data-scroll="diet-sim">${groups}</div>
+        <div id="simsum" style="font-size:12px;color:var(--dim)">${n ? 'Połączone zostaną ' + n + ' ' + C.plural(n, 'grupa', 'grupy', 'grup') + '.' : 'Nic nie zostanie połączone.'}${G.err ? ' <span style="color:var(--danger)">Wpisz własną nazwę.</span>' : ''}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dsimback">Wstecz</button><button class="primary" style="height:48px" data-a="dsimok">Dodaj jadłospis</button></div>
       </div></div>`;
   }
   const sizeTxt = (b) => (b >= 1048576 ? D.fmtNum(b / 1048576, 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
@@ -680,19 +710,53 @@
       St.busy = false; R();
     },
     dfirst: (el) => { U.settings.firstDay = +el.dataset.n; R(); },
-    dfirstcancel: () => { const St = U.settings; St.parsed = null; R(); },
+    dfirstcancel: () => { const St = U.settings; St.parsed = null; St.sim = null; R(); },
     dfirstok: () => {
       const St = U.settings; if (!St.parsed) return;
-      const m = D.addMenu(St.parsed, St.fileName, St.fileSize, St.firstDay);
-      St.impMsg = 'Zaimportowano plik „' + St.fileName + '” jako jadłospis „' + m.name + '”. Pierwszym dniem diety jest Dzień ' + m.startDay + '. Jadłospis dodano do listy ze statusem nieaktywny.';
-      St.impErr = false; St.parsed = null; St.pending = null; St.file = null; R();
+      // v14: najpierw okno „Podobne składniki” (gdy są grupy); zapamiętane połączenia są od razu zaznaczone.
+      const groups = D.similarGroups(St.parsed);
+      if (groups.length) {
+        const sim = { groups, sel: {}, target: {}, own: {}, err: false };
+        groups.forEach((g, gi) => {
+          sim.sel[gi] = {};
+          const al = g.names.map((x) => D.aliasOf(x.name)).filter(Boolean);
+          g.names.forEach((x) => { if (D.aliasOf(x.name)) sim.sel[gi][x.name] = true; });
+          if (al.length >= 2) { const t = al[0]; if (g.names.some((x) => x.name === t)) sim.target[gi] = t; else sim.own[gi] = t; }
+        });
+        St.sim = sim; R(); return;
+      }
+      finishImport(0);
+    },
+    dsimtog: (el) => { const G = U.settings.sim, gi = +el.dataset.g, nm = G.groups[gi].names[+el.dataset.n].name; G.sel[gi][nm] = !G.sel[gi][nm]; G.err = false; R(); },
+    dsimtgt: (el) => { const G = U.settings.sim, gi = +el.dataset.g; G.target[gi] = el.dataset.v; delete G.own[gi]; G.err = false; R(); },
+    dsimown: (el) => { const G = U.settings.sim, gi = +el.dataset.g; if (G.own[gi] == null) G.own[gi] = ''; R(); const i = document.querySelector('[data-in="diet-simown"][data-g="' + gi + '"]'); if (i) i.focus(); },
+    dsimback: () => { U.settings.sim = null; R(); },
+    dsimok: () => {
+      const St = U.settings, G = St.sim; if (!G) return;
+      const merges = simMerges();
+      if (merges.some((m) => !m.target)) { G.err = true; R(); return; }
+      const offered = [].concat(...G.groups.map((g) => g.names.map((x) => x.name)));
+      finishImport(D.applyMerges(St.parsed, merges, offered) ? merges.length : 0);
     }
   };
+
+  function finishImport(merged) {
+    const St = U.settings;
+    const m = D.addMenu(St.parsed, St.fileName, St.fileSize, St.firstDay);
+    St.impMsg = 'Zaimportowano plik „' + St.fileName + '” jako jadłospis „' + m.name + '”. Pierwszym dniem diety jest Dzień ' + m.startDay + '.' + (merged ? ' Połączono podobne składniki: ' + merged + ' ' + C.plural(merged, 'grupa', 'grupy', 'grup') + '.' : '') + ' Jadłospis dodano do listy ze statusem nieaktywny.';
+    St.impErr = false; St.parsed = null; St.sim = null; St.pending = null; St.file = null; R();
+  }
 
   // ---------- Wejście z pól tekstowych ----------
   function onInput(el, k) {
     const v = el.value;
     if (k === 'diet-ren') { U.list.draft = v; U.list.err = false; }
+    else if (k === 'diet-simown') {
+      const G = U.settings.sim; if (!G) return;
+      G.own[+el.dataset.g] = v.slice(0, 80);
+      const n = simMerges().length, sum = document.getElementById('simsum');   // bez przerysowania (klawiatura zostaje)
+      if (sum) sum.textContent = n ? 'Połączone zostaną ' + n + ' ' + C.plural(n, 'grupa', 'grupy', 'grup') + '.' : 'Nic nie zostanie połączone.';
+    }
     else if (k === 'diet-dev') U.journal.dev = v;
     else if (k === 'diet-actname') U.journal.actName = v;
     else if (k === 'diet-actmin') { el.value = v.replace(/\D/g, '').slice(0, 3); U.journal.actMin = el.value; }
@@ -716,6 +780,7 @@
     return false;
   }
   function onEscape() {
+    if (U.settings.sim) { U.settings.sim = null; return true; }
     if (U.settings.parsed) { U.settings.parsed = null; return true; }
     if (U.plan.sheet) { U.plan.sheet = null; return true; }
     if (U.plan.rec) { U.plan.rec = null; return true; }

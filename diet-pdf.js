@@ -82,6 +82,28 @@
     return (kcal ? kcal + ' kcal · ' : '') + date;
   }
 
+  // Wiersze tabeli składników -> składniki (v14).
+  // Nazwa produktu bywa w kilku liniach, a waga / miara / kcal stoją w pionie na środku komórki
+  // (np. „fasola czerwona (nerkowata), …, po” / „odsączeniu, płukana wodą z kranu” z wartościami pomiędzy).
+  // Każda linia bez wartości należy do najbliższego w pionie wiersza z wartościami na tej samej stronie;
+  // linie składane są od góry do dołu.
+  function tableRows(rows) {
+    const vals = rows.filter((r) => r.c.weight !== '' || r.c.kcal !== '');
+    const parts = new Map(vals.map((v) => [v, [{ y: v.y, text: v.c.product }]]));
+    rows.forEach((r, i) => {
+      if (parts.has(r) || !r.c.product) return;
+      const same = vals.filter((v) => v.page === r.page);
+      let best = null;
+      if (same.length) best = same.reduce((a, b) => (Math.abs(b.y - r.y) < Math.abs(a.y - r.y) ? b : a));
+      else best = vals.find((v) => rows.indexOf(v) > i) || vals[vals.length - 1];
+      if (best) parts.get(best).push({ y: best.page === r.page ? r.y : (rows.indexOf(best) > i ? Infinity : -Infinity), text: r.c.product });
+    });
+    return vals.map((v) => {
+      const name = parts.get(v).filter((p) => p.text).sort((a, b) => b.y - a.y).map((p) => p.text).join(' ').replace(/\s+/g, ' ').trim();
+      return { name, grams: num(v.c.weight), measure: v.c.measure || '', kcal: num(v.c.kcal) };
+    });
+  }
+
   function parse(pages) {
     // Wszystkie wiersze dokumentu po kolei, bez numerów stron.
     const lines = [];
@@ -99,7 +121,7 @@
     if (kt) res.kcalTarget = +kt[1];
     res.title = (head.match(/Indywidualny plan żywieniowy[^0-9]*/i) || [''])[0].trim();
 
-    let day = null, meal = null, mode = null, para = [], pendingProduct = '';
+    let day = null, meal = null, mode = null, para = [];
     const finishMeal = () => {
       if (!meal) return;
       const ing = meal.ing;
@@ -156,11 +178,8 @@
       if (mode === 'rows') {
         if (/^produkt\b/i.test(t) || /^\[g\]/.test(t) || /^waga\b/.test(t)) continue;
         const c = cells(L);
-        if (/^RAZEM$/i.test(c.product)) { meal.totalGrams = num(c.weight); meal.totalKcal = num(c.kcal); mode = 'done'; continue; }
-        if (c.weight === '' && c.kcal === '') { pendingProduct = (pendingProduct ? pendingProduct + ' ' : '') + c.product; continue; }
-        const name = ((pendingProduct ? pendingProduct + ' ' : '') + c.product).trim();
-        pendingProduct = '';
-        meal.ing.push({ name, grams: num(c.weight), measure: c.measure || '', kcal: num(c.kcal) });
+        if (/^RAZEM$/i.test(c.product)) { meal.ing = tableRows(meal.rows || []); meal.totalGrams = num(c.weight); meal.totalKcal = num(c.kcal); mode = 'done'; continue; }
+        (meal.rows = meal.rows || []).push({ page: L.page, y: L.y, c });
         continue;
       }
     }
