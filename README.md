@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 16
+# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 17
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -8,7 +8,7 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 
 | Ekran | Funkcje |
 |---|---|
-| **Ekran główny** | Nazwa MyLife, data, moduły: Plan dnia, Finanse i Dieta. |
+| **Ekran główny** | Nazwa MyLife, data, zębatka Ustawień (od v17), moduły: Plan dnia, Finanse, Dieta i Trening. |
 | **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. **Podzadania (v13):** przy zadaniu licznik „wykonane/wszystkie” i strzałka; po rozwinięciu odhaczanie i usuwanie podzadań (z „Cofnij”). Rozpoczęcie zmiany kolejności zwija rozwinięte podzadania. |
 | **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. Zadania z podzadaniami mają licznik i strzałkę – po rozwinięciu podgląd podzadań z odhaczonymi wykonanymi. |
 | **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”; podgląd podzadań jak w Tygodniu. |
@@ -49,7 +49,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 ## Moduł Finanse (od v8)
 
-Na ekranach Diety i Finansów na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga; Finanse: Finanse · Majątek · Wydatki · Poduszka · Wynik). Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
+Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Wynik; Trening: Trening · Historia · Postępy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
 
 | Ekran | Funkcje |
 |---|---|
@@ -75,12 +75,25 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 
 **Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
+## Moduł Trening (od v17)
+
+Kafel „Trening” na ekranie głównym (fiolet). Moduł startuje pusty.
+
+| Ekran | Funkcje |
+|---|---|
+| **Trening** | Liczba treningów i czas od ostatniego („dziś”, „wczoraj”, „N dni temu”), „Dodaj trening”, funkcje: Historia treningów i Postępy. |
+| **Historia treningów** | Karty treningów od najnowszego: data, nazwa, chipy (ćwiczenia, serie, minuty kondycji), lista ćwiczeń ze szczegółami (np. „3×10 · 50 kg + 2×6 · 60 kg”, „30 min · interwał 60 s / 90 s”). Dotknięcie karty otwiera edycję. |
+| **Nowy / Edytuj trening** | Data (nie później niż dziś), nazwa treningu (opcjonalna), ćwiczenia: nazwa (wymagana; podpowiedzi z wcześniejszych treningów), rodzaj **Siłowe** – wiersze serii: liczba serii (1–99) × ciężar (0–999 kg, 0 = masa ciała) × powtórzenia (1–999), „Dodaj serię”, podsumowanie serii i objętości; albo **Kondycyjne** – czas (1–600 min) i opcjonalny interwał (praca 1–3600 s / odpoczynek 0–3600 s). „Zapisz trening” jest szary, dopóki formularz nie jest poprawny – dotknięcie pokazuje błędy. „Usuń trening” z potwierdzeniem, potem komunikat z „Cofnij”. Formularz bez dolnego paska; po zapisie powrót do ekranu, z którego go otwarto. |
+| **Postępy** | Lista ćwiczeń siłowych (nazwy łączone bez rozróżniania wielkości liter), dla każdego treningu największy ciężar z serii (przy remisie więcej powtórzeń), karty Rekord i Od pierwszego, wykres (punkt wybiera wynik), zwijana tabela: data, max ciężar, powtórzenia, zmiana. Masa ciała liczy się jako 0 kg. |
+
+Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening).
+
 ## Instalacja na telefonie (Android)
 
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v16.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v17.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -101,7 +114,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v16 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v17 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -122,6 +135,8 @@ mylife/
 ├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik
 ├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
 ├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
+├─ train-core.js         – dane treningów, postępy (największy ciężar), kopia
+├─ train-ui.js           – ekrany modułu Trening
 ├─ lib/                  – pdf.js 6.2.108 (Apache 2.0) i JSZip 3.10.1 (MIT), działają offline
 │  └─ tesseract/         – silnik odczytu tekstu tesseract.js-core 7.0 (WebAssembly) i model „eng” (tessdata_fast), Apache 2.0, ok. 7 MB
 ├─ sw.js                 – praca offline (service worker)
@@ -129,13 +144,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v17`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v18`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
-Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
+Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A` · moduły: Finanse `#F2B94B`, Dieta `#FF8F73`, Trening `#B9A2FF`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v17 (28.10.2026)**: moduł Trening (Trening, Historia treningów, Postępy, formularz treningu z ćwiczeniami siłowymi i kondycyjnymi, usuwanie z „Cofnij”, kopia danych), zębatka Ustawień na ekranie głównym, dolny pasek przewijany z wyśrodkowaną pozycją, w Diecie pozycja „Skład”.
 - **v16 (28.10.2026)**: Dieta · Skład ciała – pomiary z wydruku Tanita BC-418: odczyt ze zdjęcia na telefonie (bez internetu), wpis ręczny, pomiar z dnia z kafelkami i zmianą, wykres, historia, edycja i usuwanie z „Cofnij”; arkusz „Skład ciała” w eksporcie .xlsx; pomiary w kopii modułu Dieta. Silnik odczytu (ok. 7 MB) zapisuje się w pamięci telefonu raz i nie jest pobierany ponownie przy kolejnych wersjach.
 - **v15 (28.10.2026)**: poprawka – na telefonie z Androidem wybrany plik nie trafiał do aplikacji (import jadłospisu PDF, import finansów .xlsx i wczytanie kopii danych). Przyczyną było przerysowanie ekranu po powrocie z okna wyboru pliku (od v12); teraz ekran przelicza się po powrocie tylko wtedy, gdy zmienił się dzień. Service worker pobiera pliki nowej wersji prosto z serwera.
 - **v14 (28.10.2026)**: import diety – nazwy produktów w kilku liniach odczytywane w całości (np. fasola czerwona w Dniu 11 pliku z 06.07.2026); okno „Podobne składniki” do łączenia podobnych nazw składników w jedną, z zapamiętywaniem połączeń.

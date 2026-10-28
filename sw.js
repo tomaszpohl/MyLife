@@ -1,11 +1,11 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v16';
+const VERSION = 'mylife-v17';
 // v16: odczyt zdjęć (Tesseract, ok. 7 MB) w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji.
 const OCR_CACHE = 'mylife-ocr-1';
 const OCR_FILES = ['./lib/tesseract/tesseract-core-simd-lstm.js', './lib/tesseract/tesseract-core-simd-lstm.wasm', './lib/tesseract/eng.traineddata'];
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
-  './diet-pdf.js', './diet-core.js', './diet-ui.js', './body-ocr.js', './body-ui.js', './ocr-worker.js', './fin-core.js', './fin-import.js', './fin-ui.js',
+  './diet-pdf.js', './diet-core.js', './diet-ui.js', './body-ocr.js', './body-ui.js', './ocr-worker.js', './train-core.js', './train-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js',
   './lib/jszip.min.js', './lib/pdf.min.mjs', './lib/pdf.worker.min.mjs',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/badge-96.png'
 ];

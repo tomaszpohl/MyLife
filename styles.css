@@ -719,3 +719,67 @@ a.dcard { color: var(--text); }
 .bbusy { z-index: 30; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: rgba(5, 8, 12, 0.94); }
 .bspin { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--line-2); border-top-color: var(--accent); animation: bspin 0.9s linear infinite; }
 @keyframes bspin { to { transform: rotate(360deg); } }
+/* ---------- v17: Trening, ekran główny z zębatką, przewijany dolny pasek ---------- */
+:root { --violet: #B9A2FF; --violet-bg: #221C3A; --violet-line: #4A3F7A; --violet-ink: #1A1230; --violet-soft: #D9CCFF; }
+.hometop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-right: -10px; }
+.module.train { border-color: var(--violet-line); }
+.navbar { overflow-x: auto; scrollbar-width: none; }
+.navbar::-webkit-scrollbar { display: none; }
+.navbar .nb { flex: 1 0 60px; min-width: 60px; }
+.navbar.violet .nb.on { color: var(--violet); }
+.tstats { display: flex; gap: 8px; }
+.tstats > .dcard { flex: 1; min-width: 0; padding: 10px 12px; gap: 2px; }
+.tstats .v { font-family: var(--display); font-size: 22px; font-weight: 700; }
+.tstats.in > div { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; background: var(--bg); display: flex; flex-direction: column; gap: 2px; }
+.tstats.in .l { font-size: 11px; color: var(--muted); }
+.tstats.in .v { font-size: 20px; }
+.tstats .v.g { color: var(--ok); } .tstats .v.b { color: var(--danger); }
+.tprimary { flex: none; height: 52px; border-radius: 14px; border: none; background: var(--violet); color: var(--violet-ink); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600; }
+.tprimary.off { background: var(--line); color: var(--muted); }
+.tico, .tfn .dico { background: var(--violet-bg); color: var(--violet); width: 48px; height: 48px; border-radius: 14px; }
+.tcard { gap: 10px; color: var(--text); }
+.tdate { font-size: 12px; color: var(--violet); font-weight: 600; }
+.tname { font-family: var(--display); font-size: 17px; font-weight: 600; }
+.tchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tchips span { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--violet-bg); color: var(--violet-soft); font-size: 12px; }
+.tlines { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.tlines > div { display: flex; flex-direction: column; gap: 1px; padding: 8px 0; border-bottom: 1px solid #1A232E; font-size: 14px; }
+.tlines .d { font-size: 12px; color: var(--muted); }
+.tempty { align-items: center; padding: 24px 16px; gap: 8px; text-align: center; }
+.tmsg { background: var(--violet-bg); color: var(--violet-soft); }
+.tmsg button { color: var(--violet); }
+.tchart .wdot span { border-color: var(--violet); }
+.tchart .wdot.best span { background: var(--violet); }
+.tchart .wdot.on span { background: var(--text); border-color: var(--violet); width: 14px; height: 14px; border-radius: 7px; }
+.select.open.tv { border-color: var(--violet); }
+.bdopt.tv.on { background: var(--violet-bg); color: var(--violet-soft); }
+.trow.on { background: var(--violet-bg); }
+.trow .v { width: 74px; } .trow .r { flex: none; width: 54px; text-align: right; font-size: 13px; color: var(--text-2); } .trow .d { width: 58px; }
+.tex { padding: 12px 14px 14px; }
+.tin { height: 44px; min-width: 0; background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; padding: 0 10px; color: var(--text); font-family: var(--display); font-size: 16px; font-weight: 600; text-align: center; }
+.tin.txt { font-family: inherit; font-size: 15px; font-weight: 400; text-align: left; padding: 0 12px; width: 100%; }
+.tin.bad, .bfdate.bad { border-color: #6A2F36; }
+.tin.n { flex: none; width: 58px; } .tin.kg { flex: 1; } .tin.r { flex: none; width: 76px; } .tin.w96 { flex: none; width: 96px; }
+.terr { font-size: 12px; color: var(--danger); }
+.terr[hidden], .tsum[hidden] { display: none; }
+.tkind { display: flex; padding: 3px; gap: 3px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); }
+.tkind button { flex: 1; height: 40px; border-radius: 9px; border: none; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }
+.tkind button.on { background: var(--violet-bg); color: var(--violet-soft); }
+.tsethead { display: flex; gap: 8px; font-size: 11px; letter-spacing: .08em; color: var(--dim); }
+.tsetwrap { display: flex; flex-direction: column; gap: 3px; }
+.tset { display: flex; gap: 8px; align-items: center; }
+.taddset { height: 44px; border-radius: 12px; background: var(--surface-2); border: 1px dashed var(--violet-line); color: var(--violet); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.taddset svg { width: 16px; height: 16px; }
+.tsum { font-size: 12px; color: var(--muted); }
+.tswitch { min-height: 48px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); color: var(--text); font-size: 14px; text-align: left; }
+.tswitch .s { display: block; font-size: 12px; color: var(--muted); }
+.tswitch .tr { flex: none; width: 44px; height: 26px; border-radius: 13px; background: var(--line-2); position: relative; }
+.tswitch .tr span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 10px; background: var(--text); transition: left .15s; }
+.tswitch.on { border-color: var(--violet-line); }
+.tswitch.on .tr { background: var(--violet); }
+.tswitch.on .tr span { left: 21px; }
+.tcol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tcol label { font-size: 12px; color: var(--muted); }
+.taddex { flex: none; height: 52px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--violet); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.tdel { flex: none; margin-top: 8px; height: 48px; border-radius: 14px; background: #2A1519; border: 1px solid #6A2F36; color: #FF9C8A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.tdelyes { flex: 1; height: 48px; border-radius: 12px; border: none; background: #FF9C8A; color: #3A1A1F; font-size: 14px; font-weight: 600; }

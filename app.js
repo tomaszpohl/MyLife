@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v16 · 28.10.2026';
+  const APP_VERSION = 'v17 · 28.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -60,7 +60,8 @@
       ['plan', '#/diet/plan', 'Plan', '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>'],
       ['shop', '#/diet/shop', 'Zakupy', '<path d="M6 7h13l-1.5 8h-10L6 7Z"></path><path d="M6 7 5 4H3"></path><circle cx="9" cy="19" r="1.3"></circle><circle cx="16" cy="19" r="1.3"></circle>'],
       ['journal', '#/diet/journal', 'Dziennik', '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"></path><path d="M5 17a3 3 0 0 1 3-3h11"></path>'],
-      ['weight', '#/diet/weight', 'Waga', '<rect x="3.5" y="4" width="17" height="16" rx="4"></rect><path d="M8.5 9.5a4.5 3 0 0 1 7 0"></path><path d="m12 9.5 1.5-1.5"></path>']
+      ['weight', '#/diet/weight', 'Waga', '<rect x="3.5" y="4" width="17" height="16" rx="4"></rect><path d="M8.5 9.5a4.5 3 0 0 1 7 0"></path><path d="m12 9.5 1.5-1.5"></path>'],
+      ['body', '#/diet/body', 'Skład', '<circle cx="12" cy="5" r="2"></circle><path d="M12 8v6M8 11h8"></path><path d="m10 21 2-7 2 7"></path>']
     ] },
     fin: { cls: 'gold', items: [
       ['home', '#/fin', 'Finanse', '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2"></path><path d="M4 7.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 1 4 7.5Z"></path><circle cx="16" cy="14" r="1"></circle>'],
@@ -70,8 +71,9 @@
       ['result', '#/fin/result', 'Wynik', '<rect x="3.5" y="6" width="17" height="12" rx="3"></rect><circle cx="12" cy="12" r="2.5"></circle>']
     ] }
   };
+  // v17: pasek przewijany poziomo (pozycje min. 60 px), aktywna pozycja wyśrodkowana; Trening ma własny pasek (fiolet).
   function navbar(mod, active) {
-    const m = NB[mod];
+    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : NB[mod];
     return `<nav class="navbar ${m.cls}" aria-label="Szybka nawigacja">${m.items.map(([k, href, label, body]) => k === active
       ? `<div class="nb on" aria-current="page">${svg(22, 1.8, body)}<span>${label}</span></div>`
       : `<a class="nb" href="${href}">${svg(22, 1.8, body)}<span>${label}</span></a>`).join('')}</nav>`;
@@ -183,6 +185,7 @@
     if (r[0] === 'diet' && r[1] === 'menu') return '#/diet/menus';
     if (r[0] === 'diet' && r[1]) return '#/diet';
     if (r[0] === 'fin' && r[1]) return '#/fin';
+    if (r[0] === 'train' && r[1]) return '#/train';
     return '#/';
   }
   function navReplace(h) { if (curHash() === h) { render(); return; } navMode = 'replace'; location.replace(h); }
@@ -216,12 +219,15 @@
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
+    else if (r.name === 'train' && window.TrainUI) { const k = window.TrainUI.navKey(r); html = k ? withNavbar(window.TrainUI.view(r), 'train', k) : window.TrainUI.view(r); }
     else html = viewHome();
     app.innerHTML = html + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
     app.querySelectorAll('[data-scroll]').forEach((el) => {
       if (scrollMem[el.dataset.scroll]) el.scrollTop = scrollMem[el.dataset.scroll];
       if (el.dataset.autoend) el.scrollLeft = scrollMem[el.dataset.scroll + ':x'] != null ? scrollMem[el.dataset.scroll + ':x'] : el.scrollWidth;
     });
+    const nb = app.querySelector('.navbar'), on = nb && nb.querySelector('.nb.on');
+    if (on && nb.scrollWidth > nb.clientWidth) nb.scrollLeft = on.offsetLeft - (nb.clientWidth - on.offsetWidth) / 2;
   }
   let toastTimer;
   function toast(msg) {
@@ -236,10 +242,10 @@
     const label = C.DAY_NAME[d.getDay()].toUpperCase() + ' · ' + d.getDate() + ' ' + C.MONTH_SHORT[d.getMonth()].toUpperCase() + ' ' + d.getFullYear();
     const desc = 'Zadania, cykle i kalendarz';
     return `<main class="screen home">
-      <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="hometop"><div style="display:flex;flex-direction:column;gap:6px">
         <div class="eyebrow">${esc(label)}</div>
         <h1>MyLife</h1>
-      </div>
+      </div>${gearLink('margin-top:-6px')}</div>
       <div class="eyebrow" style="margin-top:4px">Moduły</div>
       <div class="modules">
         <a class="module active" href="#/plan/${S.lastPlan}">
@@ -256,6 +262,11 @@
           <div class="ico" style="background:var(--coral-bg);color:var(--coral)">${I.apple}</div>
           <div class="txt"><div class="name">Dieta</div><div class="desc">Jadłospis, zakupy, dziennik i waga</div></div>
           <div style="color:var(--coral);flex:none;display:flex">${I.chevR}</div>
+        </a>
+        <a class="module train" href="#/train">
+          <div class="ico" style="background:var(--violet-bg);color:var(--violet)">${svg(26, 1.8, window.TrainUI ? window.TrainUI.icon : '')}</div>
+          <div class="txt"><div class="name">Trening</div><div class="desc">Treningi, ćwiczenia i serie</div></div>
+          <div style="color:var(--violet);flex:none;display:flex">${I.chevR}</div>
         </a>
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
@@ -627,11 +638,11 @@
             <div class="kv"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
             <div class="kv" style="padding-bottom:0"><span>Wersja aplikacji</span><span>${APP_VERSION}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę i finanse. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse i treningi. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
-          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta, finanse)</span></span></button>
+          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta, finanse, trening)</span></span></button>
           <button class="bigbtn" data-a="askload">${I.upload}<span class="two"><span>Wczytaj kopię z pliku</span><span>Zastąpi dane na tym telefonie</span></span></button>
           <input id="importFile" class="sr-only" type="file" accept="application/json,.json" data-in="import" tabindex="-1" aria-hidden="true">
           ${S.bk ? viewBackupPicker() : ''}
@@ -645,8 +656,8 @@
 
   // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
   function viewBackupPicker() {
-    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin;
-    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse']];
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening']];
     return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
       <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
       ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
@@ -752,7 +763,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); back(); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -762,11 +773,12 @@
         if (b.tasks) modules.tasks = C.exportData();
         if (b.diet && window.Diet) modules.diet = window.Diet.exportData();
         if (b.fin && window.Fin) modules.fin = window.Fin.exportData();
+        if (b.train && window.Train) modules.train = window.Train.exportData();
         const name = 'mylife-kopia-' + C.todayKey() + '.json';
         downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
         try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
         S.bk = null;
-        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
       } else {
         // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
         const f = document.getElementById('importFile'); if (f) f.click();
@@ -774,7 +786,7 @@
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true }; render(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -848,6 +860,7 @@
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
         else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onInput(el, k);
+        else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
     }
   });
@@ -860,17 +873,18 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin } : { tasks: true, diet: true, fin: true };
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train } : { tasks: true, diet: true, fin: true, train: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
           // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
-          if (!data || (!data.tasks && !data.diet && !data.fin)) throw new Error('To nie jest kopia MyLife.');
-          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : ''].filter(Boolean);
+          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train)) throw new Error('To nie jest kopia MyLife.');
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : ''].filter(Boolean);
           const done = [];
           if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
           if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
           if (want.fin && data.fin && window.Fin) { window.Fin.importData(data.fin); done.push('finanse: ' + window.Fin.summary()); }
+          if (want.train && data.train && window.Train) { window.Train.importData(data.train); done.push('trening: ' + window.Train.summary()); }
           if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
           S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
           S.bk = null; render();
@@ -881,6 +895,7 @@
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onChange(el, k);
         else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onChange(el, k);
+        else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onChange(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onChange(el, k);
     }
   });
@@ -888,6 +903,7 @@
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
     if (e.target.id === 'subnew' && e.key === 'Enter') { e.preventDefault(); S.ui.subDraft = e.target.value.slice(0, 60); actions.fsubadd(); return; }
@@ -1054,6 +1070,8 @@
   if (window.BodyUI) { window.BodyUI.init(window.App); }
   if (window.Fin) { window.Fin.load(); }
   if (window.FinUI) { window.FinUI.init(window.App); }
+  if (window.Train) { window.Train.load(); }
+  if (window.TrainUI) { window.TrainUI.init(window.App); }
   window.addEventListener('hashchange', () => {
     navSync();
     const r = route();
@@ -1061,6 +1079,7 @@
     S.del = null; S.bk = null;
     if (window.DietUI) window.DietUI.onRoute(r);
     if (window.FinUI) window.FinUI.onRoute(r);
+    if (window.TrainUI) window.TrainUI.onRoute(r);
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {
