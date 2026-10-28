@@ -50,7 +50,9 @@
       date: dateK || todayKey(),
       repeat: { type: 'none', interval: 1, unit: 'week', weekdays: [], endMode: 'never', endDate: null, count: 10 },
       done: {},
-      skip: {}
+      skip: {},
+      subs: [],
+      subDone: {}
     };
   }
 
@@ -219,6 +221,7 @@
     if (!isRecurring(t)) {
       t.date = toK;
       if (t.done) delete t.done[fromK];
+      if (t.subDone && t.subDone[fromK]) { t.subDone[toK] = t.subDone[fromK]; delete t.subDone[fromK]; }
       save();
       return t;
     }
@@ -228,6 +231,8 @@
     delete copy.legacyTime;
     copy.repeat = { type: 'none', interval: 1, unit: 'week', weekdays: [], endMode: 'never', endDate: null, count: 10 };
     copy.done = {}; copy.skip = {}; copy.movedFrom = { id: t.id, k: fromK };
+    copy.subDone = {};   // v13: kopia ma własną listę podzadań; postęp z przełożonego terminu idzie razem z nią
+    if (t.subDone && t.subDone[fromK]) copy.subDone[toK] = JSON.parse(JSON.stringify(t.subDone[fromK]));
     db.tasks.push(copy);
     save();
     return copy;
@@ -251,6 +256,41 @@
     return list.filter((x) => !x.done).concat(list.filter((x) => x.done));
   }
   function setDayOrder(k, ids) { db.order[k] = ids.slice(); save(); }
+
+  // ---------- Podzadania (v13) ----------
+  // Lista podzadań należy do zadania (wspólna dla wszystkich terminów cyklu): t.subs = [{ id, title }].
+  // Odhaczenie liczone osobno dla każdego terminu (decyzja właściciela): t.subDone = { 'RRRR-MM-DD': { idPodzadania: true } }.
+  // Odhaczenie ostatniego podzadania oznacza zadanie jako wykonane w tym terminie; odznaczenie podzadania cofa to.
+  const newSubId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  function subsFor(t, k) {
+    const dn = (t && t.subDone && t.subDone[k]) || {};
+    return ((t && t.subs) || []).map((x) => ({ id: x.id, title: x.title, done: !!dn[x.id] }));
+  }
+  function subCount(t, k) { const l = subsFor(t, k); return { done: l.filter((x) => x.done).length, total: l.length }; }
+  function applySubToggle(t, k, sid) {
+    t.subDone = t.subDone || {};
+    const m = t.subDone[k] = t.subDone[k] || {};
+    const on = !m[sid];
+    if (on) m[sid] = true; else delete m[sid];
+    if (!Object.keys(m).length) delete t.subDone[k];
+    t.done = t.done || {};
+    const all = (t.subs || []).length > 0 && t.subs.every((x) => m[x.id]);
+    if (on && all) t.done[k] = true;
+    else if (!on) delete t.done[k];
+  }
+  function toggleSub(id, k, sid) { const t = get(id); if (!t) return; applySubToggle(t, k, sid); save(); }
+  function addSub(id, title) {
+    const t = get(id); if (!t) return null;
+    const s = { id: newSubId(), title: String(title).trim().slice(0, 60) };
+    if (!s.title) return null;
+    t.subs = (t.subs || []).concat([s]);
+    save(); return s;
+  }
+  function stripSub(t, sid) {
+    t.subs = (t.subs || []).filter((x) => x.id !== sid);
+    Object.keys(t.subDone || {}).forEach((k) => { delete t.subDone[k][sid]; if (!Object.keys(t.subDone[k]).length) delete t.subDone[k]; });
+  }
+  function removeSub(id, sid) { const t = get(id); if (!t) return; stripSub(t, sid); save(); }
 
   function exportJSON() {
     const out = JSON.stringify({ app: 'MyLife', exported: new Date().toISOString(), ...db }, null, 2);
@@ -280,6 +320,7 @@
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
+    newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub,
     exportJSON, importJSON, exportData, importData, wipe, lastBackup
   };
 })();

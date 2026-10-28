@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 12
+# MyLife – Plan dnia, Dieta i Finanse (aplikacja na Androida, PWA) · wersja 13
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -9,11 +9,11 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 | Ekran | Funkcje |
 |---|---|
 | **Ekran główny** | Nazwa MyLife, data, moduły: Plan dnia, Finanse i Dieta. |
-| **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. |
-| **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. |
-| **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”. |
-| **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), notatka. |
-| **Edytuj zadanie** | Jak Nowe zadanie, z wypełnionymi polami. Na dole przyciski „Usuń zadanie” i „Zapisz zmiany”. |
+| **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. **Podzadania (v13):** przy zadaniu licznik „wykonane/wszystkie” i strzałka; po rozwinięciu odhaczanie i usuwanie podzadań (z „Cofnij”). Rozpoczęcie zmiany kolejności zwija rozwinięte podzadania. |
+| **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. Zadania z podzadaniami mają licznik i strzałkę – po rozwinięciu podgląd podzadań z odhaczonymi wykonanymi. |
+| **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”; podgląd podzadań jak w Tygodniu. |
+| **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), **podzadania** (lista z numerami, pole „Dodaj podzadanie” + plus albo Enter, licznik), notatka. |
+| **Edytuj zadanie** | Jak Nowe zadanie, z wypełnionymi polami. Karta podzadań z polem „wykonane” – zmiany podzadań zapisują się od razu. Na dole przyciski „Usuń zadanie” i „Zapisz zmiany”. |
 | **Własne powtarzanie** | Co N dni / tygodni / miesięcy, wybór dni tygodnia, koniec (nigdy / do dnia / po N powtórzeniach). |
 | **Ustawienia** (zębatka w nagłówku) | Przechowywanie danych (miejsce zapisu, data ostatniej kopii, ostrzeżenie), zapis kopii do pliku JSON, wczytanie kopii z potwierdzeniem. Strzałka wstecz wraca do ekranu, z którego otwarto Ustawienia. |
 
@@ -22,6 +22,8 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 Przełożenie zadania cyklicznego dotyczy tylko tego jednego terminu. Przełożony termin staje się osobnym zadaniem jednorazowym.
 
 **Kolejność zadań** jest zapamiętywana dla każdego dnia osobno.
+
+**Podzadania (od v13):** lista podzadań należy do zadania i jest wspólna dla wszystkich terminów zadania cyklicznego, ale **odhaczenie liczy się osobno dla każdego terminu** (każdy termin startuje od zera). Odhaczenie ostatniego podzadania **oznacza zadanie jako wykonane**, a odznaczenie podzadania cofa to. W Edytuj zadanie „wykonane” dotyczy terminu, z którego otwarto edycję (przy zadaniu cyklicznym obok licznika widać datę). Przełożony termin zadania cyklicznego dostaje kopię podzadań razem z postępem. Podzadania są częścią kopii zapasowej modułu Zadania.
 
 **Nawigacja (od v7):** strzałka wstecz prowadzi do poprzedniego widoku (np. Dzień otwarty z Tygodnia wraca do Tygodnia, Ustawienia do ekranu, z którego je otwarto, Plan posiłków do Jadłospisu albo Diety). Przełączniki Dzień / Tydzień / Miesiąc nie są osobnym krokiem – Dzień wybrany przełącznikiem wraca do ekranu głównego. Wstecz cofa krok po kroku przez wszystkie otwarte ekrany (także po przejściach dolnym paskiem), aż do ekranu głównego; bez historii prowadzi do ekranu nadrzędnego. Przycisk telefonu „wstecz” działa tak samo. Obok strzałki jest przycisk **Pulpit główny** (ikona domu) – na wszystkich ekranach poza głównym, także w widoku przepisu.
 
@@ -36,7 +38,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 | **Jadłospis** | Pod nagłówkiem nazwa i status jadłospisu. Dni „Dzień 1…14” (kolejność jak w PDF) z posiłkami i sumą kcal; szczegóły dania: kcal, porcja (gdy podana), składniki „gramatura (miara domowa)”, przepis w krokach (zdaniach). |
 | **Plan posiłków** | Dzień / Tydzień / Miesiąc. Dotknięcie posiłku otwiera przepis z przyciskiem „Zmień posiłek”. Jadłospis liczony od daty aktywacji, zaczynając od „pierwszego dnia diety” wybranego przy imporcie; po ostatnim dniu wraca Dzień 1. „Zmień” – dania tego samego posiłku z jadłospisu (warianty z kcal). Dni ze zmianą oznaczone kropką. |
 | **Lista zakupów** | Najbliższe 7 dni: zaznaczanie dni lub posiłków, „Generuj listę” – składniki zsumowane w gramach, alfabetycznie, wszystkie (także sól i woda), pod ilością miara domowa przeliczona z PDF (np. „≈ 3 łyżki”, „≈ 2 sztuki”; bez miary, gdy PDF jej nie podaje lub to „szczypta”); odhaczanie z paskiem postępu, kupione na końcu. Przy każdym posiłku (po rozwinięciu dnia) „Zmień” – to samo okno co w Planie posiłków; zmiana jest wspólna z Planem, oznaczona „· zmieniony”, a lista liczy się z nowego dania. |
-| **Dziennik** | Dzień: ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (wymagany tylko rodzaj; czas i dystans opcjonalne, suma z podanych). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
+| **Dziennik** | Dzień: dotknięcie nazwy posiłku („Pokaż przepis”) otwiera pełny przepis z przyciskiem „Wróć do dziennika”; ✓ zjedzone / ✕ pominięte, odstępstwa, aktywność (wymagany tylko rodzaj; czas i dystans opcjonalne, suma z podanych). Statystyki od wybranego dnia: zjedzone, pominięte, realizacja; dla każdego dania (warianty o tej samej nazwie razem) z sortowaniem. |
 | **Waga** | Wpis na dziś (±0,1 kg), porównanie z poprzednim wpisem, wykres przewijany w poziomie (dotknięcie punktu = data i waga), historia ze zmianą (spadek zielony, wzrost czerwony) i usuwaniem. |
 | **Ustawienia** | Pozycja „Dieta: import i eksport” (zwinięta, po rozwinięciu najpierw Import, potem Eksport). Eksport dziennika diety do .xlsx (jeden arkusz, dzień po dniu: posiłki ze statusem, odstępstwa, aktywność) od wybranego dnia do dziś. Import PDF: wybór pliku, „Importuj jadłospis” → okno „Pierwszy dzień diety” (wybór Dnia 1…N, podgląd kolejności, Anuluj / Dodaj jadłospis). Aplikacja nie przechowuje listy zaimportowanych plików. Nazwa nowego jadłospisu: „2150 kcal · 19.03.2026” (kcal z pliku, data z nazwy pliku). |
 
@@ -73,7 +75,7 @@ Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v12.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v13.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -94,7 +96,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v12 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v13 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -118,13 +120,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v13`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v14`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v13 (28.10.2026)**: podzadania w Planerze dnia (Nowe i Edytuj zadanie, Dzień, Tydzień, Miesiąc; odhaczanie osobno dla każdego terminu, automatyczne wykonanie zadania po odhaczeniu wszystkich podzadań); Dieta → Dziennik: dotknięcie posiłku otwiera pełny przepis z przyciskiem „Wróć do dziennika”.
 - **v12 (28.10.2026)**: numer wersji w Ustawieniach; aktualizacja aplikacji bez starych plików z pamięci telefonu (pobieranie „no-cache” i automatyczne przeładowanie po nowej wersji); po powrocie do aplikacji (np. następnego dnia) każdy ekran, także lista zakupów, liczy się od nowa – lista zakupów nie pokazuje posiłków z minionych dni.
 - **v11 (28.10.2026)**: poprawka listy zakupów – lista powstaje tylko z posiłków zaznaczonych (pojedynczo lub całym dniem) w widocznych 7 dniach; zaznaczenia z dni, które już minęły, nie trafiają na listę i są czyszczone.
 - **v10 (25.10.2026)**: Poduszka bezpieczeństwa (nowy ekran i pozycja paska Finansów), Majątek z jednym punktem wykresu na dzień i filtrem historii wg pozycji, paleta 32 kolorów i wybór koloru własnej kategorii (powtórzone kolory zaimportowanych kategorii zmienione), kategoria wydatku jako lista z wyszukiwarką, przycisk „Dodaj wydatek”, kwoty zawsze z groszami.

@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v12 · 28.10.2026';
+  const APP_VERSION = 'v13 · 28.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -91,6 +91,7 @@
     sel: C.todayKey(),
     monthCursor: null,
     weekOpen: {},
+    subOpen: {},        // v13: rozwinięte podzadania (klucz: widok|id|termin)
     lastPlan: 'day',
     draft: null,        // edytowane zadanie (formularz)
     rdraft: null,       // kopia robocza dla „Własne powtarzanie”
@@ -116,6 +117,41 @@
     return C.DAY_SHORT[d.getDay()].charAt(0) + C.DAY_SHORT[d.getDay()].slice(1).toLowerCase() + ', ' + base;
   }
   const repLine = (t) => { const r = C.repeatLabel(t); return r ? `<div class="rep">${I.repeat}<span>${esc(r)}</span></div>` : ''; };
+
+  // ---------- Podzadania (v13) ----------
+  const subKey = (p, id, k) => p + '|' + id + '|' + k;
+  // Licznik „wykonane/wszystkie” ze strzałką rozwijania (Dzień, Tydzień, Miesiąc).
+  function subToggle(t, k, p) {
+    const c = C.subCount(t, k); if (!c.total) return '';
+    const key = subKey(p, t.id, k), open = !!S.subOpen[key];
+    return `<button class="subtog" data-a="subtog" data-s="${esc(key)}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} podzadania: ${esc(t.title)}, wykonane ${c.done} z ${c.total}"><span class="cnt">${c.done}/${c.total}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>`;
+  }
+  const subOpenFor = (t, k, p) => C.subCount(t, k).total > 0 && !!S.subOpen[subKey(p, t.id, k)];
+  // Podgląd podzadań (Tydzień, Miesiąc): tylko odhaczenie wykonanych, bez zmian.
+  function subPreview(t, k) {
+    return `<div class="subro" role="group" aria-label="Podzadania: ${esc(t.title)}">${C.subsFor(t, k).map((u) => `<div class="${u.done ? 'done' : ''}"><span class="b" aria-hidden="true">${u.done ? I.check : ''}</span><span class="tt">${esc(u.title)}</span>${u.done ? '<span class="sr-only">, wykonane</span>' : ''}</div>`).join('')}</div>`;
+  }
+  // Lista podzadań w widoku Dzień: odhaczanie i usuwanie (z „Cofnij”).
+  function subPanel(t, k) {
+    return `<div class="subpanel" role="group" aria-label="Podzadania: ${esc(t.title)}">${C.subsFor(t, k).map((u) => `<div class="subrow${u.done ? ' done' : ''}">
+        <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
+        <div class="st">${esc(u.title)}</div>
+        <button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button></div>`).join('')}</div>`;
+  }
+  // Termin, którego dotyczy odhaczanie w Edytuj zadanie: dzień, z którego otwarto edycję, albo najbliższy termin od dziś.
+  function occKey(t) {
+    if (!C.isRecurring(t)) return t.date;
+    if (S.editK && C.occursOn(t, S.editK)) return S.editK;
+    let k = C.todayKey() < t.date ? t.date : C.todayKey();
+    for (let i = 0; i < 800 && !C.occursOn(t, k); i++) k = C.addDays(k, 1);
+    return k;
+  }
+  function syncDraftSubs() {
+    const t = S.draft && C.get(S.draft.id); if (!t) return;
+    S.draft.subs = JSON.parse(JSON.stringify(t.subs || []));
+    S.draft.subDone = JSON.parse(JSON.stringify(t.subDone || {}));
+    S.draft.done = JSON.parse(JSON.stringify(t.done || {}));
+  }
 
   // ---------- Router ----------
   function route() {
@@ -249,7 +285,7 @@
     const extra = isMove ? ' · przełożono na ' + S.undo.text : (S.undo && S.undo.text ? ' · ' + S.undo.text : '');
     const summary = C.tasksWord(items.length) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
     let pill = '';
-    if (S.undo) pill = `<button class="pillbtn" data-a="undo" aria-label="${isMove ? 'Cofnij przełożenie zadania' : 'Cofnij usunięcie zadania'}"><span class="pill">${I.undo}<span>Cofnij</span></span></button>`;
+    if (S.undo) pill = `<button class="pillbtn" data-a="undo" aria-label="${isMove ? 'Cofnij przełożenie zadania' : S.undo.kind === 'sub' ? 'Cofnij usunięcie podzadania' : 'Cofnij usunięcie zadania'}"><span class="pill">${I.undo}<span>Cofnij</span></span></button>`;
     else if (k !== today) pill = `<button class="pillbtn" data-a="pick" data-k="${today}"><span class="pill">${I.arrow}<span>Dziś</span></span></button>`;
     const rows = items.map((x) => {
       const t = x.task;
@@ -259,8 +295,9 @@
         <div class="row${x.done ? ' done' : ''}" data-swipe>
           <button class="grip" data-grip="${t.id}" aria-label="Zmień kolejność: ${esc(t.title)}" aria-describedby="grip-help">${I.grip}</button>
           <button class="body" data-a="edit" data-id="${t.id}" data-k="${x.k}" aria-label="Edytuj zadanie: ${esc(t.title)}"><span class="title">${esc(t.title)}</span>${repLine(t)}</button>
+          ${subToggle(t, x.k, 'd')}
           <button class="check" data-a="done" data-id="${t.id}" data-k="${x.k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(t.title)}"><span class="box">${x.done ? I.check : ''}</span></button>
-        </div></div>`;
+        </div>${subOpenFor(t, x.k, 'd') ? subPanel(t, x.k) : ''}</div>`;
     }).join('');
     return `<main class="screen">${planTop()}
       <div class="head-pad">${seg('day')}
@@ -388,7 +425,7 @@
         lines = it.slice(0, 2).map((x) => `<div class="wline${x.done ? ' done' : ''}"><div class="nm">${esc(x.task.title)}</div></div>`).join('');
         if (it.length > 2) lines += `<div class="more">+${it.length - 2} więcej</div>`;
       }
-      const items = open ? `<div class="items">${it.length ? it.map((x) => `<button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>`).join('') : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
+      const items = open ? `<div class="items">${it.length ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
       return `<div class="wday"><div class="top">
           <button class="open" data-a="openday" data-k="${k}" aria-label="Otwórz dzień: ${esc(dayTitle(k))}">${badge}</button>
           <button class="tog" data-a="wtoggle" data-k="${k}" aria-expanded="${open}" aria-label="${open ? 'Zwiń zadania' : 'Rozwiń wszystkie zadania'}: ${esc(dayTitle(k))}">
@@ -436,7 +473,7 @@
     }
     const items = C.forDay(S.sel);
     const list = items.length
-      ? items.map((x) => `<button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>`).join('')
+      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('')
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
       <div class="head-pad tight">${seg('month')}
@@ -496,6 +533,7 @@
           </div>
           <div class="hint">${I.repeatM}<span>${esc(C.repeatSummary(d))}</span></div>
         </div>
+        ${subCard(d, editing)}
         <div class="field"><label class="eyebrow" for="notatka">Notatka</label>
           <textarea id="notatka" class="note-input" placeholder="Opcjonalnie" data-in="note">${esc(d.note)}</textarea></div>
       </div>
@@ -506,6 +544,26 @@
         : `<button class="primary" data-a="save">Zapisz zadanie</button>`}</div>
       ${S.del ? viewDelSheet() : ''}
     </main>`;
+  }
+
+  // Karta „Podzadania” (v13): Nowe zadanie – lista zapisywana razem z zadaniem;
+  // Edytuj zadanie – dodatkowo „wykonane”, a każda zmiana zapisuje się od razu.
+  function subCard(d, editing) {
+    const fk = editing ? occKey(d) : null;
+    const list = editing ? C.subsFor(d, fk) : (d.subs || []).map((x) => ({ id: x.id, title: x.title, done: false }));
+    const n = list.length, dn = list.filter((x) => x.done).length;
+    const head = !n ? '' : editing ? 'wykonane ' + dn + ' z ' + n + (C.isRecurring(d) ? ' · ' + relDate(fk) : '') : n + ' ' + C.plural(n, 'podzadanie', 'podzadania', 'podzadań');
+    const draft = S.ui.subDraft || '';
+    return `<div class="panel subcard">
+        <div class="subhead"><div class="eyebrow">Podzadania</div><div class="cnt">${esc(head)}</div></div>
+        ${n ? '' : '<div class="empty-s">Brak podzadań. Dodaj pierwsze poniżej.</div>'}
+        ${list.map((u, i) => `<div class="subrow${u.done ? ' done' : ''}">
+          ${editing ? `<button class="subchk" data-a="fsubdone" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>` : `<span class="num" aria-hidden="true">${i + 1}</span>`}
+          <div class="st">${esc(u.title)}</div>
+          <button class="subdel" data-a="fsubdel" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button></div>`).join('')}
+        <div class="subadd"><input id="subnew" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Nowe podzadanie" placeholder="Dodaj podzadanie" value="${esc(draft)}" data-in="subdraft">
+          <button id="subaddbtn" class="subplus${draft.trim() ? ' on' : ''}" data-a="fsubadd" aria-label="Dodaj podzadanie do listy">${I.plus}</button></div>
+      </div>`;
   }
 
   // ---------- Własne powtarzanie ----------
@@ -618,6 +676,24 @@
       const all = keys.every((k) => S.weekOpen[k]); keys.forEach((k) => { S.weekOpen[k] = !all; }); render();
     },
     done: (el) => { C.toggleDone(el.dataset.id, el.dataset.k); render(); },
+    // Podzadania (v13)
+    subtog: (el) => { const key = el.dataset.s; S.subOpen[key] = !S.subOpen[key]; render(); },
+    subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
+    subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); setUndo(snap, 'sub', ''); render(); },
+    fsubadd: () => {
+      const v = (S.ui.subDraft || '').trim(); if (!v || !S.draft) return;
+      if (S.draft.id && C.get(S.draft.id)) { C.addSub(S.draft.id, v); syncDraftSubs(); }
+      else S.draft.subs = (S.draft.subs || []).concat([{ id: C.newSubId(), title: v.slice(0, 60) }]);
+      S.ui.subDraft = ''; render();
+      const inp = document.getElementById('subnew'); if (inp) inp.focus();
+    },
+    fsubdone: (el) => { const d = S.draft; if (!d || !d.id) return; C.toggleSub(d.id, occKey(C.get(d.id) || d), el.dataset.sid); syncDraftSubs(); render(); },
+    fsubdel: (el) => {
+      const d = S.draft; if (!d) return;
+      if (d.id && C.get(d.id)) { C.removeSub(d.id, el.dataset.sid); syncDraftSubs(); }
+      else d.subs = (d.subs || []).filter((x) => x.id !== el.dataset.sid);
+      render();
+    },
     undo: () => { if (S.undo) { C.restore(S.undo.snap); S.undo = null; render(); } },
     new: () => { S.draft = null; go('#/task/new'); },
     edit: (el) => { S.draft = null; S.editK = el.dataset.k || null; go('#/task/' + el.dataset.id); },
@@ -765,6 +841,7 @@
     switch (k) {
       case 'title': d.title = el.value; break;
       case 'note': d.note = el.value; break;
+      case 'subdraft': { S.ui.subDraft = el.value.slice(0, 60); const b = document.getElementById('subaddbtn'); if (b) b.classList.toggle('on', !!S.ui.subDraft.trim()); break; }
       case 'count': el.value = digits(el.value, 3); break;
       default:
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
@@ -809,6 +886,7 @@
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
+    if (e.target.id === 'subnew' && e.key === 'Enter') { e.preventDefault(); S.ui.subDraft = e.target.value.slice(0, 60); actions.fsubadd(); return; }
     if (e.target.id === 'quick' && e.key === 'Enter') {
       const v = e.target.value.trim(); if (!v) return;
       const t = C.blankTask(S.sel); t.title = v; C.upsert(t);
@@ -834,9 +912,16 @@
     C.setDayOrder(listEl.dataset.list, out);
   }
   app.addEventListener('pointerdown', (e) => {
-    const g = e.target.closest('[data-grip]');
+    let g = e.target.closest('[data-grip]');
     if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault(); e.stopPropagation();
+    // v13: rozpoczęcie zmiany kolejności zwija rozwinięte podzadania (wiersze mają wtedy równą wysokość).
+    const openKeys = Object.keys(S.subOpen).filter((x) => x.indexOf('d|') === 0 && S.subOpen[x]);
+    if (openKeys.length) {
+      openKeys.forEach((x) => { delete S.subOpen[x]; });
+      const gid = g.dataset.grip; render();
+      g = app.querySelector('[data-grip="' + gid + '"]'); if (!g) return;
+    }
     const wrap = g.closest('.row-wrap');
     const group = groupOf(wrap);
     const pitch = group.length > 1 ? group[1].getBoundingClientRect().top - group[0].getBoundingClientRect().top : wrap.offsetHeight + 8;

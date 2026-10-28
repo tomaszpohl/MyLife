@@ -609,3 +609,47 @@ a.dcard { color: var(--text); }
 .fsecbtn { flex: none; width: 100%; height: 52px; border-radius: 14px; background: var(--accent-bg); border: 1px solid #1F4A57; color: #BFEFF8; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600; }
 .flinkl { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
 .navbar.gold .nb span { font-size: 11px; }
+
+/* ---------- v13: podzadania (Planer dnia) ---------- */
+.row { z-index: 1; }
+.row-del, .row-move { bottom: auto; height: 64px; }
+.subtog { flex: none; height: 44px; min-width: 44px; padding: 0 4px 0 6px; display: flex; align-items: center; gap: 2px; background: none; border: none; color: var(--muted); font-size: 12px; }
+.subtog .cnt { font-weight: 600; color: var(--text-2); }
+.subtog .chev { display: flex; transition: transform .15s; }
+.subtog .chev svg { width: 18px; height: 18px; }
+.subtog .chev.up { transform: rotate(180deg); }
+.subpanel { position: relative; margin-top: -14px; padding: 18px 4px 6px 36px; background: #0D1319; border: 1px solid var(--line); border-top: none; border-radius: 0 0 14px 14px; display: flex; flex-direction: column; }
+.subrow { display: flex; align-items: center; gap: 2px; min-height: 44px; }
+.subrow .st { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; color: var(--text-2); overflow-wrap: anywhere; }
+.subrow.done .st { color: var(--dim); text-decoration: line-through; }
+.subchk, .subdel { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; color: var(--muted); }
+.subchk .box { width: 22px; height: 22px; box-sizing: border-box; border-radius: 7px; border: 2px solid var(--check); display: flex; align-items: center; justify-content: center; color: var(--accent-ink); }
+.subchk .box svg { width: 14px; height: 14px; }
+.subrow.done .subchk .box { background: var(--accent); border-color: var(--accent); }
+.subwrap { display: flex; flex-direction: column; gap: 4px; }
+.subline { display: flex; align-items: flex-start; gap: 6px; }
+.subline > .witem, .subline > .mitem { flex: 1; min-width: 0; }
+.subline > .subtog { margin: -10px -6px -10px 0; }
+.subro { display: flex; flex-direction: column; gap: 6px; padding: 2px 0 4px 0; }
+.subro > div { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.3; color: var(--text-2); }
+.subro > div.done { color: var(--dim); text-decoration: line-through; }
+.subro .b { flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 5px; border: 2px solid var(--check); display: flex; align-items: center; justify-content: center; color: var(--accent-ink); }
+.subro .b svg { width: 10px; height: 10px; }
+.subro > div.done .b { background: var(--accent); border-color: var(--accent); }
+.subro .tt { flex: 1; min-width: 0; }
+.subcard { gap: 6px; padding-bottom: 12px; }
+.subhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.subhead .cnt { font-size: 12px; color: var(--muted); }
+.subcard .empty-s { font-size: 13px; color: var(--muted); padding: 2px 0 4px; }
+.subcard .subrow { border-top: 1px solid var(--line); }
+.subcard .subrow .st { font-size: 15px; color: var(--text); }
+.subcard .subrow.done .st { color: var(--dim); }
+.subcard .num { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 12px; font-weight: 600; font-family: var(--display); }
+.subadd { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.subadd input { flex: 1; min-width: 0; height: 48px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; padding: 0 14px; color: var(--text); font-size: 15px; font-family: inherit; }
+.subplus { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: none; background: var(--line); color: var(--dim); }
+.subplus svg { width: 18px; height: 18px; }
+.subplus.on { background: var(--accent); color: var(--accent-ink); }
+/* v13: przepis z Dziennika */
+.jrecbtn { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0; background: none; border: none; text-align: left; color: var(--text); }
+.jrecbtn .jrc { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
