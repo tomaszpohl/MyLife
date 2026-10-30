@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v17';
+const VERSION = 'mylife-v18';
 // v16: odczyt zdjęć (Tesseract, ok. 7 MB) w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji.
 const OCR_CACHE = 'mylife-ocr-1';
 const OCR_FILES = ['./lib/tesseract/tesseract-core-simd-lstm.js', './lib/tesseract/tesseract-core-simd-lstm.wasm', './lib/tesseract/eng.traineddata'];

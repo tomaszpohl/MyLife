@@ -2,7 +2,8 @@
    localStorage „mylife.train.v1” = { version: 1, next, list: [trening] }.
    Trening: { id, d: 'RRRR-MM-DD', name, ex: [ćwiczenie] }.
    Ćwiczenie siłowe:     { name, kind: 'str', sets: [{ n (serie), kg (0 = masa ciała), reps }] }.
-   Ćwiczenie kondycyjne: { name, kind: 'car', min, iv (interwał), work (s), rest (s) }.
+   Ćwiczenie kondycyjne: { name, kind: 'car', min, iv, ivs: [{ work (s), rest (s), rounds }], watts (W, opcjonalnie) }.
+   Od v18 (30.10): czas ALBO interwały (kilka wierszy; czas = suma rund × (praca + odpoczynek)), średnia moc.
    Moduł startuje pusty (decyzja właściciela). */
 (function () {
   'use strict';
@@ -11,8 +12,23 @@
   const empty = () => ({ version: 1, next: 1, list: [] });
   let db = empty();
 
+  // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
+  function norm(d) {
+    (d.list || []).forEach((w) => (w.ex || []).forEach((x) => {
+      if (x.kind !== 'car') return;
+      if (!Array.isArray(x.ivs)) {
+        x.ivs = [];
+        if (x.iv && x.work) { const sec = (x.work || 0) + (x.rest || 0); x.ivs.push({ work: x.work, rest: x.rest || 0, rounds: Math.max(1, Math.round((x.min || 0) * 60 / (sec || 1))) }); }
+      }
+      delete x.work; delete x.rest;
+      if (!x.ivs.length) x.iv = false;
+      if (x.watts === undefined) x.watts = null;
+    }));
+    return d;
+  }
+  const ivMinutes = (ivs) => Math.round((ivs || []).reduce((t, v) => t + (v.rounds || 0) * ((v.work || 0) + (v.rest || 0)), 0) / 60 * 10) / 10;
   function load() {
-    try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && Array.isArray(o.list)) db = Object.assign(empty(), o); } } catch (e) { console.warn('Trening: nie udało się wczytać danych', e); }
+    try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && Array.isArray(o.list)) db = norm(Object.assign(empty(), o)); } } catch (e) { console.warn('Trening: nie udało się wczytać danych', e); }
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert('Nie udało się zapisać treningów na telefonie: ' + e.message); }
@@ -30,11 +46,15 @@
   function restore(w) { if (!w) return; db.list = db.list.filter((x) => x.id !== w.id).concat([w]); if (db.next <= w.id) db.next = w.id + 1; save(); }
 
   // Podsumowanie treningu: liczba ćwiczeń, serii i minut kondycji.
+  // Podsumowanie treningu: liczba ćwiczeń, serii, minut kondycji i suma ciężaru (Σ serie × powt. × kg, tylko siłowe).
   function stats(w) {
-    const sets = w.ex.filter((x) => x.kind === 'str').reduce((s, x) => s + x.sets.reduce((t, r) => t + (r.n || 0), 0), 0);
+    const str = w.ex.filter((x) => x.kind === 'str');
+    const sets = str.reduce((s, x) => s + x.sets.reduce((t, r) => t + (r.n || 0), 0), 0);
+    const vol = str.reduce((s, x) => s + volOf(x), 0);
     const mins = w.ex.filter((x) => x.kind === 'car').reduce((s, x) => s + (x.min || 0), 0);
-    return { ex: w.ex.length, sets, mins };
+    return { ex: w.ex.length, sets, mins, vol };
   }
+  const volOf = (x) => (x.kind === 'str' ? x.sets.reduce((t, r) => t + (r.n || 0) * (r.reps || 0) * (r.kg || 0), 0) : 0);
   // Dni od ostatniego treningu (null = brak treningów).
   function daysSinceLast() { const l = list()[0]; return l ? C.diffDays(l.d, C.todayKey()) : null; }
 
@@ -64,11 +84,11 @@
   const exportData = () => JSON.parse(JSON.stringify(db));
   function importData(d) {
     if (!d || !Array.isArray(d.list)) throw new Error('Plik nie zawiera treningów.');
-    db = Object.assign(empty(), JSON.parse(JSON.stringify(d)));
+    db = norm(Object.assign(empty(), JSON.parse(JSON.stringify(d))));
     db.next = Math.max(db.next || 1, ...db.list.map((w) => w.id + 1), 1);
     save();
   }
   const summary = () => db.list.length + ' ' + C.plural(db.list.length, 'trening', 'treningi', 'treningów');
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, daysSinceLast, progress, exNames, exportData, importData, summary };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, exportData, importData, summary };
 })();

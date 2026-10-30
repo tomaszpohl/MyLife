@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 17
+# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 18
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -81,9 +81,10 @@ Kafel „Trening” na ekranie głównym (fiolet). Moduł startuje pusty.
 
 | Ekran | Funkcje |
 |---|---|
-| **Trening** | Liczba treningów i czas od ostatniego („dziś”, „wczoraj”, „N dni temu”), „Dodaj trening”, funkcje: Historia treningów i Postępy. |
-| **Historia treningów** | Karty treningów od najnowszego: data, nazwa, chipy (ćwiczenia, serie, minuty kondycji), lista ćwiczeń ze szczegółami (np. „3×10 · 50 kg + 2×6 · 60 kg”, „30 min · interwał 60 s / 90 s”). Dotknięcie karty otwiera edycję. |
-| **Nowy / Edytuj trening** | Data (nie później niż dziś), nazwa treningu (opcjonalna), ćwiczenia: nazwa (wymagana; podpowiedzi z wcześniejszych treningów), rodzaj **Siłowe** – wiersze serii: liczba serii (1–99) × ciężar (0–999 kg, 0 = masa ciała) × powtórzenia (1–999), „Dodaj serię”, podsumowanie serii i objętości; albo **Kondycyjne** – czas (1–600 min) i opcjonalny interwał (praca 1–3600 s / odpoczynek 0–3600 s). „Zapisz trening” jest szary, dopóki formularz nie jest poprawny – dotknięcie pokazuje błędy. „Usuń trening” z potwierdzeniem, potem komunikat z „Cofnij”. Formularz bez dolnego paska; po zapisie powrót do ekranu, z którego go otwarto. |
+| **Trening** | Kafle **Liczba treningów** (dotknięcie → Historia treningów) i **Ostatni trening** z datą (dotknięcie → Trening z dnia), „Dodaj trening”, funkcje: Historia treningów i Postępy. |
+| **Trening z dnia** (od v18) | Data, nazwa, suma ciężaru, chipy; każde ćwiczenie: siłowe – serie × powtórzenia i ciężar, „Razem: N serii · suma ciężaru”; kondycyjne – czas, interwały (rundy, praca / odpoczynek), średnia moc; przycisk „Edytuj trening”. |
+| **Historia treningów** | Karty treningów od najnowszego: data, nazwa, **suma ciężaru** (Σ serie × powtórzenia × kg, ćwiczenia siłowe), chipy (ćwiczenia, serie, minuty kondycji), lista ćwiczeń ze szczegółami (np. „3×10 · 50 kg + 2×6 · 60 kg”, „35 min · interwał 12×(60 s / 90 s) + 5×(30 s / 30 s) · śr. 180 W”). Dotknięcie karty otwiera edycję. |
+| **Nowy / Edytuj trening** | Data (nie później niż dziś), nazwa treningu (opcjonalna), ćwiczenia: nazwa (wymagana; podpowiedzi z wcześniejszych treningów), rodzaj **Siłowe** – wiersze serii: liczba serii (1–99) × ciężar (0–999 kg, 0 = masa ciała) × powtórzenia (1–999), „Dodaj serię”, podsumowanie serii i objętości; albo **Kondycyjne** – czas (1–600 min) **albo interwał**: wiersze praca (1–3600 s) / odpoczynek (0–3600 s) / rundy (1–999), „Dodaj interwał”, „Czas łącznie” liczony automatycznie (pole czasu znika); opcjonalna **średnia moc** (1–2000 W). Treningi z v17 (jeden interwał przy czasie) są przeliczane automatycznie na wiersz z liczbą rund. „Zapisz trening” jest szary, dopóki formularz nie jest poprawny – dotknięcie pokazuje błędy. „Usuń trening” z potwierdzeniem, potem komunikat z „Cofnij”. Formularz bez dolnego paska; po zapisie powrót do ekranu, z którego go otwarto. |
 | **Postępy** | Lista ćwiczeń siłowych (nazwy łączone bez rozróżniania wielkości liter), dla każdego treningu największy ciężar z serii (przy remisie więcej powtórzeń), karty Rekord i Od pierwszego, wykres (punkt wybiera wynik), zwijana tabela: data, max ciężar, powtórzenia, zmiana. Masa ciała liczy się jako 0 kg. |
 
 Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening).
@@ -93,7 +94,7 @@ Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening).
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v17.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v18.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -114,7 +115,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v17 · 28.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v18 · 30.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -144,13 +145,14 @@ mylife/
 └─ icons/                – ikony aplikacji
 ```
 Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
-Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v18`), żeby telefon pobrał nową wersję.
+Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v19`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
 Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · tekst `#E8EEF5` · tekst drugorzędny `#93A1B2` · usuwanie `#FF9C8A` · moduły: Finanse `#F2B94B`, Dieta `#FF8F73`, Trening `#B9A2FF`
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v18 (30.10.2026)**: Trening – kondycja z czasem albo kilkoma interwałami (rundy, czas łącznie) i średnią mocą, suma ciężaru w historii, nowy ekran „Trening z dnia”, kafle „Liczba treningów” i „Ostatni trening” z datą prowadzą do historii i do treningu z dnia.
 - **v17 (28.10.2026)**: moduł Trening (Trening, Historia treningów, Postępy, formularz treningu z ćwiczeniami siłowymi i kondycyjnymi, usuwanie z „Cofnij”, kopia danych), zębatka Ustawień na ekranie głównym, dolny pasek przewijany z wyśrodkowaną pozycją, w Diecie pozycja „Skład”.
 - **v16 (28.10.2026)**: Dieta · Skład ciała – pomiary z wydruku Tanita BC-418: odczyt ze zdjęcia na telefonie (bez internetu), wpis ręczny, pomiar z dnia z kafelkami i zmianą, wykres, historia, edycja i usuwanie z „Cofnij”; arkusz „Skład ciała” w eksporcie .xlsx; pomiary w kopii modułu Dieta. Silnik odczytu (ok. 7 MB) zapisuje się w pamięci telefonu raz i nie jest pobierany ponownie przy kolejnych wersjach.
 - **v15 (28.10.2026)**: poprawka – na telefonie z Androidem wybrany plik nie trafiał do aplikacji (import jadłospisu PDF, import finansów .xlsx i wczytanie kopii danych). Przyczyną było przerysowanie ekranu po powrocie z okna wyboru pliku (od v12); teraz ekran przelicza się po powrocie tylko wtedy, gdy zmienił się dzień. Service worker pobiera pliki nowej wersji prosto z serwera.

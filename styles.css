@@ -783,3 +783,17 @@ a.dcard { color: var(--text); }
 .taddex { flex: none; height: 52px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--violet); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; }
 .tdel { flex: none; margin-top: 8px; height: 48px; border-radius: 14px; background: #2A1519; border: 1px solid #6A2F36; color: #FF9C8A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .tdelyes { flex: 1; height: 48px; border-radius: 12px; border: none; background: #FF9C8A; color: #3A1A1F; font-size: 14px; font-weight: 600; }
+/* v18: Trening – suma ciężaru, Trening z dnia, interwały */
+.tstats a.dcard { color: var(--text); }
+.tvol { font-size: 13px; color: var(--violet-soft); font-weight: 500; }
+.tdhead { border-color: var(--violet-line); gap: 8px; }
+.tdex { gap: 8px; }
+.tdh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tdh .nm { font-size: 16px; font-weight: 600; min-width: 0; }
+.tdh .kind { flex: none; height: 24px; padding: 0 9px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted); font-size: 11px; }
+.tdrows { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.tdrows > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #1A232E; font-size: 14px; }
+.tdrows .b { color: var(--text-2); font-family: var(--display); font-weight: 600; }
+.tin.w64 { flex: none; width: 64px; }
+.ttotal { font-size: 13px; color: var(--violet-soft); font-weight: 600; }
+.ttotal[hidden] { display: none; }
