@@ -19,7 +19,11 @@
     shield: ic(22, 1.8, '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z"></path><path d="m8.8 12.2 2.3 2.3 4.2-4.7"></path>'),
     check: ic(16, 2.6, '<path d="m5 12 5 5 9-10"></path>'),
     search: ic(16, 2, '<circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path>'),
-    cal: ic(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')
+    cal: ic(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>'),
+    target: ic(22, 1.8, '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="0.8"></circle>'),
+    invest: ic(22, 1.8, '<path d="M3.5 20h17"></path><path d="M6 20v-6M12 20V8M18 20v-9"></path><path d="m5 9 5-4 4 2 5-4"></path>'),
+    pen: ic(18, 2, '<path d="M4 20h4L19 9l-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path>'),
+    trash: ic(18, 2, '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path>')
   };
 
   // ---------- Stan ekranów (tymczasowy) ----------
@@ -30,7 +34,9 @@
     exp: { tab: 'list', lm: null, open: {}, msg: '', undo: null, period: 'month', ref: null, from: null, to: null, catOpen: {} },
     res: { period: 'month', mk: null, yr: null, from: null, to: null, incOpen: true, msg: '', undo: null, add: null },
     worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null, hf: 'all' },
-    cush: { dlg: null },   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
+    cush: { dlg: null },
+    goals: { dlg: null },   // v19: okno celu { id, name, target, saved, confirm }
+    inv: { mode: 'm', mk: null, yr: null, from: null, dlg: null },   // v19: okno wpisu { id, amt, goal, d, confirm, dd, custom }   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
     add: null,      // okno „Nowe wydatki”: { draft: { date, desc, amt, cat }, drafts: [], err, from: 'home'|'exp' }
     cats: null,     // okno „Kategorie wydatków”: { name, err }
     cal: null,      // otwarty kalendarz: { id, vm }
@@ -77,7 +83,9 @@
     efrom: (k) => { U.exp.from = k; if (U.exp.to < k) U.exp.to = k; },
     eto: (k) => { U.exp.to = k; if (U.exp.from > k) U.exp.from = k; },
     rfrom: (k) => { U.res.from = k; if (U.res.to < k) U.res.to = k; },
-    rto: (k) => { U.res.to = k; if (U.res.from > k) U.res.from = k; }
+    rto: (k) => { U.res.to = k; if (U.res.from > k) U.res.from = k; },
+    vfrom: (k) => { U.inv.from = k; },
+    vdate: (k) => { if (U.inv.dlg) U.inv.dlg.d = k; }
   };
   const rangeBtns = (fromK, toK, fromId, toId) => `<div style="display:flex;gap:8px">
       <button class="frange" data-a="fcalopen" data-c="${fromId}" data-k="${fromK}" aria-haspopup="dialog" aria-label="Okres od: ${esc(F.dlabelY(fromK))}"><span>OD</span><b>${esc(F.dlabelY(fromK))}</b></button>
@@ -119,6 +127,8 @@
         ${fn('#/fin/exp', J.cart, 'Wydatki', 'Lista dni, dodawanie i usuwanie')}
         ${fn('#/fin/exp/cat', J.pie, 'Wydatki wg kategorii', 'Dzień, tydzień, miesiąc lub własny okres')}
         ${fn('#/fin/cush', J.shield, 'Poduszka bezpieczeństwa', esc(cushDesc()))}
+        ${fn('#/fin/goals', J.target, 'Cele', esc(goalsDesc()))}
+        ${fn('#/fin/inv', J.invest, 'Inwestycje', esc(invDesc()))}
         ${fn('#/fin/result', J.cash, 'Wynik finansowy', 'Przychody − koszty = wynik miesiąca')}
       </div>
       ${U.add ? addOverlay() : ''}${U.cats ? catsOverlay() : ''}</main>`;
@@ -126,6 +136,125 @@
 
   const pf = (x) => String(Math.round(x * 10) / 10).replace('.', ',') + '%';
   function cushDesc() { const tg = F.cushTarget(), sm = F.cushSum(); return tg > 0 ? 'Realizacja ' + pf(sm / tg * 100) + ' · ' + F.money(sm) + ' z ' + F.money(tg) : 'Ustaw cel poduszki'; }
+
+  function goalsDesc() { const g = F.goals(); return g.length ? g.length + ' ' + C.plural(g.length, 'cel', 'cele', 'celów') + ' · osiągnięte: ' + F.goalsTotal().done : 'Kwoty docelowe i postęp realizacji'; }
+  function invDesc() { const [a, b] = monthRange(ym(today())); return F.invs().length ? 'W tym miesiącu: ' + F.money(F.sum(F.invIn(a, b).map((e) => ({ amt: e.amt })))) : 'Kwoty, cele i wykres kołowy'; }
+
+  // ---------- Cele (v19) ----------
+  const okC = 'var(--ok)', goldC = 'var(--gold)';
+  function goalCheck(D) {
+    const t = cnum(D.target), s = D.saved === '' ? 0 : cnum(D.saved), nameOk = String(D.name).trim() !== '';
+    const ok = nameOk && t !== null && t > 0 && s !== null;
+    const msg = ok ? 'Realizacja: ' + pf(s / t * 100) + (s >= t ? ' – cel osiągnięty' : ' · brakuje ' + F.money(F.r2(t - s)))
+      : (!nameOk ? 'Podaj nazwę celu.' : (t === null || t <= 0 ? 'Podaj kwotę docelową większą od zera.' : 'Podaj poprawną odłożoną kwotę.'));
+    return { ok, t, s, msg };
+  }
+  function viewGoals() {
+    const list = F.goals(), T = F.goalsTotal();
+    const cards = list.map((g) => {
+      const p = g.target > 0 ? g.saved / g.target * 100 : 0, done = g.saved >= g.target, col = done ? okC : goldC;
+      const note = done ? (g.saved > g.target ? 'Cel osiągnięty – nadwyżka ' + F.money(F.r2(g.saved - g.target)) : 'Cel osiągnięty') : 'Brakuje ' + F.money(F.r2(g.target - g.saved));
+      return `<div class="dcard" style="gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
+          <button class="iconbtn soft" data-a="fgedit" data-id="${g.id}" aria-label="${esc('Edytuj cel ' + g.name)}">${J.pen}</button></div>
+        <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font-size:15px"><b style="font-family:var(--display)">${F.money(g.saved)}</b> <span style="color:var(--muted);font-size:13px">z ${F.money(g.target)}</span></div><b style="font-family:var(--display);font-size:18px;color:${col}">${pf(p)}</b></div>
+        <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, p))}" aria-label="${esc('Realizacja celu ' + g.name)}"><span style="width:${Math.min(100, Math.round(p * 10) / 10)}%;background:${col}"></span></div>
+        <div style="font-size:13px;color:${done ? okC : 'var(--muted)'}">${note}</div></div>`;
+    }).join('');
+    const D = U.goals.dlg;
+    let modal = '';
+    if (D) {
+      const c = goalCheck(D);
+      const fld = (lab, key, val, mode, ph, max) => `<label class="ffield"><span style="font-size:13px;color:var(--muted)">${lab}</span><input class="finput${mode ? ' amt' : ''}" type="text"${mode ? ` inputmode="${mode}"` : ''} maxlength="${max}" value="${esc(val)}" placeholder="${ph}" data-in="fin-g${key}" autocomplete="off"></label>`;
+      modal = `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="${D.id ? 'Edytuj cel' : 'Nowy cel'}">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">${D.id ? 'Edytuj cel' : 'Nowy cel'}</div>
+        ${fld('Nazwa celu *', 'name', D.name, '', 'np. Wakacje', 40)}
+        ${fld('Kwota docelowa (zł) *', 'target', D.target, 'decimal', '0,00', 12)}
+        ${fld('Odłożono dotychczas (zł)', 'saved', D.saved, 'decimal', '0,00', 12)}
+        <div data-gpv role="status" style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--text-2)' : '#F2D9A0'}">${esc(c.msg)}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fgclose">Anuluj</button><button class="primary gold${c.ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fgsave">${D.id ? 'Zapisz zmiany' : 'Dodaj cel'}</button></div>
+        ${D.id ? (D.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć cel „${esc(D.name)}”? Tej operacji nie można cofnąć.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fgdelno">Nie</button><button class="btn-del" style="height:44px;font-size:14px" data-a="fgdelyes">Tak, usuń</button></div></div>`
+          : `<button class="btn-del" style="height:44px;font-size:14px" data-a="fgdelask">${J.trash}Usuń cel</button>`) : ''}
+      </div></div>`;
+    }
+    return `<main class="screen" style="position:relative">${topbar('Cele')}
+      <div class="dscroll" data-scroll="fin-goals">
+        <button class="primary gold" style="flex:none" data-a="fgnew">${J.plusL}<span>Dodaj cel</span></button>
+        ${list.length ? `<div class="dcard gold" style="gap:8px">
+            <div class="dhead" style="min-height:0;align-items:baseline"><div class="eyebrow">Wszystkie cele</div><div style="font-family:var(--display);font-size:24px;font-weight:700;color:${T.pct >= 100 ? okC : goldC}">${pf(T.pct)}</div></div>
+            <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, T.pct))}" aria-label="Łączna realizacja celów"><span style="width:${Math.min(100, Math.round(T.pct * 10) / 10)}%;background:${T.pct >= 100 ? okC : goldC}"></span></div>
+            <div style="font-size:13px;color:var(--muted)">${F.money(T.saved)} z ${F.money(T.target)} · ${list.length} ${C.plural(list.length, 'cel', 'cele', 'celów')}</div></div>`
+          : '<div class="dcard"><div class="para" style="font-size:14px">Brak celów. Dodaj pierwszy cel i ustaw kwotę docelową.</div></div>'}
+        ${cards}
+      </div>${modal}</main>`;
+  }
+
+  // ---------- Inwestycje (v19) ----------
+  function invCheck(D) {
+    const a = cnum(D.amt), dateOk = /^\d{4}-\d{2}-\d{2}$/.test(D.d) && D.d <= today(), goalOk = String(D.goal).trim() !== '';
+    const ok = a !== null && a > 0 && goalOk && dateOk;
+    return { ok, a, msg: ok ? '' : (a === null || a <= 0 ? 'Podaj kwotę większą od zera.' : (!goalOk ? 'Podaj cel inwestycji.' : 'Podaj poprawną datę (nie późniejszą niż dziś).')) };
+  }
+  function viewInvest() {
+    const V = U.inv, T = today();
+    if (!V.mk) V.mk = ym(T);
+    if (!V.yr) V.yr = +T.slice(0, 4);
+    if (!V.from) V.from = addMonths(ym(T), -2) + '-01';
+    let a, b, label, nextOff = false;
+    if (V.mode === 'm') { [a, b] = monthRange(V.mk); label = 'Zainwestowano w miesiącu'; nextOff = V.mk >= ym(T); }
+    else if (V.mode === 'y') { a = V.yr + '-01-01'; b = V.yr + '-12-31'; label = 'Zainwestowano w roku'; nextOff = V.yr >= +T.slice(0, 4); }
+    else { a = V.from; b = T; label = 'Zainwestowano od ' + F.dlabelY(V.from); }
+    const per = F.invIn(a, b), total = F.r2(per.reduce((t, e) => t + e.amt, 0));
+    const CO = F.invColors(), grp = {};
+    per.forEach((e) => { const k = F.gkey(e.goal); grp[k] = F.r2((grp[k] || 0) + e.amt); });
+    const gk = Object.keys(grp).sort((x, y) => grp[y] - grp[x]);
+    let acc = 0;
+    const stops = gk.map((k) => { const p = total > 0 ? grp[k] / total * 100 : 0, s0 = acc; acc += p; return CO.color(k) + ' ' + s0.toFixed(2) + '% ' + Math.min(100, acc).toFixed(2) + '%'; });
+    const legend = gk.map((k) => ({ name: CO.names[k], color: CO.color(k), amt: F.money(grp[k]), pct: pf(grp[k] / total * 100) }));
+    const rows = per.slice().reverse().sort((x, y) => (x.d < y.d ? 1 : x.d > y.d ? -1 : 0));   // ta sama data – później dodany wyżej
+    const D = V.dlg;
+    let modal = '';
+    if (D) {
+      const c = invCheck(D), opts = F.invGoalOpts(), gsel = String(D.goal).trim();
+      const cOk = String(D.custom || '').trim() !== '';
+      modal = `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="${D.id ? 'Edytuj inwestycję' : 'Nowa inwestycja'}">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">${D.id ? 'Edytuj inwestycję' : 'Nowa inwestycja'}</div>
+        <label class="ffield"><span style="font-size:13px;color:var(--muted)">Kwota inwestycji (zł) *</span><input class="finput amt" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${esc(D.amt)}" data-in="fin-vamt" autocomplete="off"></label>
+        <div class="ffield"><span style="font-size:13px;color:var(--muted)">Cel inwestycji *</span>
+          <button class="select fdd${D.dd ? ' open' : ''}" data-a="fvdd" aria-haspopup="listbox" aria-expanded="${!!D.dd}" aria-label="${esc('Cel inwestycji: ' + (gsel || 'Wybierz cel inwestycji'))}"><span style="color:${gsel ? 'var(--text)' : 'var(--muted)'};min-width:0">${esc(gsel || 'Wybierz cel inwestycji')}</span><span class="frot${D.dd ? ' up' : ''}">${J.down}</span></button>
+          ${D.dd ? `<div class="fddbox"><div class="fddlist" role="listbox" aria-label="Cele inwestycji">${opts.map((o) => { const on = F.gkey(D.goal) === o.k; return `<div style="display:flex;align-items:center;gap:4px"><button role="option" aria-selected="${on}" class="fddopt${on ? ' on' : ''}" data-a="fvpick" data-v="${esc(o.name)}"><span style="flex:1;min-width:0">${esc(o.name)}</span><span style="font-size:11px;color:var(--dim)">${o.tag}</span></button>${o.tag === 'własny' ? `<button class="iconbtn soft" data-a="fvgdel" data-v="${esc(o.name)}" aria-label="${esc('Usuń własny cel ' + o.name)}">${J.x}</button>` : ''}</div>`; }).join('')}</div>
+            <label for="fvcustom" style="font-size:12px;color:var(--muted);padding:4px 2px 0">Własny cel – wpisz nazwę i dodaj do listy</label>
+            <div style="display:flex;gap:8px"><input id="fvcustom" class="finput" type="text" maxlength="30" placeholder="np. Fundusz emerytalny" value="${esc(D.custom || '')}" data-in="fin-vcustom" autocomplete="off"><button class="fadd gold${cOk ? "" : " off"}" style="flex:none" data-a="fvgadd">Dodaj</button></div></div>` : ''}</div>
+        <div class="ffield"><span style="font-size:13px;color:var(--muted)">Data *</span>
+          <button class="frange" data-a="fcalopen" data-c="vdate" data-k="${D.d}" aria-haspopup="dialog" aria-label="${esc('Data inwestycji: ' + F.dlabelY(D.d))}"><span>DATA</span><b>${esc(F.dlabelY(D.d))}</b></button>
+          ${calOpen('vdate') ? calendar('vdate', D.d, {}) : ''}</div>
+        <div data-vpv role="status" style="font-size:13px;line-height:1.4;color:#F2D9A0">${esc(c.msg)}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fvclose">Anuluj</button><button class="primary gold${c.ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fvsave">${D.id ? 'Zapisz zmiany' : 'Dodaj inwestycję'}</button></div>
+        ${D.id ? (D.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć ten wpis? Tej operacji nie można cofnąć.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fvdelno">Nie</button><button class="btn-del" style="height:44px;font-size:14px" data-a="fvdelyes">Tak, usuń</button></div></div>`
+          : `<button class="btn-del" style="height:44px;font-size:14px" data-a="fvdelask">${J.trash}Usuń inwestycję</button>`) : ''}
+      </div></div>`;
+    }
+    return `<main class="screen" style="position:relative">${topbar('Inwestycje')}
+      <div class="dscroll" data-scroll="fin-inv">
+        <button class="primary gold" style="flex:none" data-a="fvnew">${J.plusL}<span>Dodaj inwestycję</span></button>
+        <div class="dcard" style="gap:10px">
+          <div class="eyebrow">Statystyki</div>
+          ${seg([['m', 'Miesiąc'], ['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold"')}
+          ${V.mode !== 'f' ? `<div class="navrow">
+              <button class="iconbtn soft" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
+              <div class="big">${esc(V.mode === 'm' ? monthTitle(V.mk) : String(V.yr))}</div>
+              <button class="iconbtn soft" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
+            : `<button class="frange" data-a="fcalopen" data-c="vfrom" data-k="${V.from}" aria-haspopup="dialog" aria-label="${esc('Od dnia: ' + F.dlabelY(V.from))}"><span>OD DNIA</span><b>${esc(F.dlabelY(V.from))}</b></button>${calOpen('vfrom') ? calendar('vfrom', V.from, {}) : ''}`}
+          <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
+            <div style="font-size:12px;color:var(--muted)">${per.length} ${C.plural(per.length, 'wpis', 'wpisy', 'wpisów')}${gk.length ? ' · ' + gk.length + ' ' + C.plural(gk.length, 'cel', 'cele', 'celów') : ''}</div></div>
+          ${per.length ? `<div style="display:flex;justify-content:center;padding:6px 0"><div class="fpie" role="img" aria-label="${esc('Wykres kołowy: ' + legend.map((l) => l.name + ' ' + l.pct).join(', '))}" style="background:conic-gradient(${stops.join(', ')})"><div><span>RAZEM</span><b>${F.money(total)}</b></div></div></div>
+            <div class="flegend">${legend.map((l) => `<div>${dot(l.color)}<span style="flex:1;min-width:0">${esc(l.name)}</span><span style="text-align:right"><b>${l.amt}</b><small>${l.pct}</small></span></div>`).join('')}</div>`
+            : '<div class="para" style="text-align:center;font-size:14px;padding:8px 0">Brak inwestycji w wybranym okresie.</div>'}
+        </div>
+        ${per.length ? `<div class="dcard tight" style="padding-bottom:6px"><div class="dhead"><div class="eyebrow">Wpisy w okresie</div></div>
+          ${rows.map((e) => `<button class="frow fvrow" data-a="fvedit" data-id="${e.id}" aria-label="${esc('Edytuj inwestycję: ' + e.goal + ', ' + F.money(e.amt) + ', ' + F.dlabelY(e.d))}">${dot(CO.color(F.gkey(e.goal)))}<span class="ft"><span>${esc(e.goal)}</span><span>${esc(F.dlabelY(e.d))}</span></span><b style="font-size:15px">${F.money(e.amt)}</b></button>`).join('')}</div>` : ''}
+      </div>${modal}</main>`;
+  }
 
   // ---------- Okno „Nowe wydatki” (Finanse i Wydatki) ----------
   function addOverlay() {
@@ -690,6 +819,28 @@
       M.err = false; M.done = { exp: !!r.exp, inc: !!r.inc, worth: !!r.worth };
       Object.assign(M, { file: null, pending: null, parts: null }); R_();
     },
+    // Cele (v19)
+    fgnew: () => { U.goals.dlg = { id: null, name: '', target: '', saved: '', confirm: false }; R_(); },
+    fgedit: (el) => { const g = F.goals().find((x) => x.id === el.dataset.id); if (g) U.goals.dlg = { id: g.id, name: g.name, target: String(g.target).replace('.', ','), saved: String(g.saved).replace('.', ','), confirm: false }; R_(); },
+    fgclose: () => { U.goals.dlg = null; R_(); },
+    fgsave: () => { const D = U.goals.dlg, c = goalCheck(D); if (!c.ok) return; F.goalSave({ id: D.id, name: D.name, target: c.t, saved: c.s }); U.goals.dlg = null; R_(); },
+    fgdelask: () => { U.goals.dlg.confirm = true; R_(); },
+    fgdelno: () => { U.goals.dlg.confirm = false; R_(); },
+    fgdelyes: () => { F.goalRemove(U.goals.dlg.id); U.goals.dlg = null; R_(); },
+    // Inwestycje (v19)
+    fvmode: (el) => { U.inv.mode = el.dataset.v; U.cal = null; R_(); },
+    fvnav: (el) => { const V = U.inv, d = +el.dataset.d, T = today(); if (V.mode === 'm') { const n = addMonths(V.mk, d); if (n <= ym(T)) V.mk = n; } else { const n = V.yr + d; if (n <= +T.slice(0, 4)) V.yr = n; } R_(); },
+    fvnew: () => { U.inv.dlg = { id: null, amt: '', goal: '', d: today(), confirm: false, dd: false, custom: '' }; U.cal = null; R_(); },
+    fvedit: (el) => { const e = F.invs().find((x) => x.id === el.dataset.id); if (e) U.inv.dlg = { id: e.id, amt: String(e.amt).replace('.', ','), goal: e.goal, d: e.d, confirm: false, dd: false, custom: '' }; U.cal = null; R_(); },
+    fvclose: () => { U.inv.dlg = null; U.cal = null; R_(); },
+    fvdd: () => { U.inv.dlg.dd = !U.inv.dlg.dd; R_(); },
+    fvpick: (el) => { Object.assign(U.inv.dlg, { goal: el.dataset.v, dd: false }); R_(); },
+    fvgdel: (el) => { const D = U.inv.dlg; F.invGoalRemove(el.dataset.v); if (F.gkey(D.goal) === F.gkey(el.dataset.v) && !F.invGoalOpts().some((o) => o.k === F.gkey(D.goal))) D.goal = ''; R_(); },
+    fvgadd: () => { const D = U.inv.dlg, nm = F.invGoalAdd(D.custom); if (!nm) return; Object.assign(D, { goal: nm, dd: false, custom: '' }); R_(); },
+    fvsave: () => { const D = U.inv.dlg, c = invCheck(D); if (!c.ok) return; F.invSave({ id: D.id, amt: c.a, goal: D.goal, d: D.d }); U.inv.dlg = null; U.cal = null; R_(); },
+    fvdelask: () => { U.inv.dlg.confirm = true; R_(); },
+    fvdelno: () => { U.inv.dlg.confirm = false; R_(); },
+    fvdelyes: () => { F.invRemove(U.inv.dlg.id); U.inv.dlg = null; R_(); },
     frundo: () => { if (U.res.undo) { F.restoreIncome(U.res.undo); U.res.undo = null; U.res.msg = 'Przywrócono przychód.'; } R_(); }
   };
 
@@ -711,6 +862,11 @@
     else if (k === 'fin-wedit') { el.value = amtClean(v, 12); U.worth.edit.val = el.value; }
     else if (k === 'fin-wname') U.worth.add.name = v;
     else if (k === 'fin-wval') { el.value = amtClean(v, 12); U.worth.add.val = el.value; }
+    else if (k === 'fin-gname') U.goals.dlg.name = v.slice(0, 40);
+    else if (k === 'fin-gtarget') { el.value = amtClean(v, 12); U.goals.dlg.target = el.value; }
+    else if (k === 'fin-gsaved') { el.value = amtClean(v, 12); U.goals.dlg.saved = el.value; }
+    else if (k === 'fin-vamt') { el.value = amtClean(v, 12); U.inv.dlg.amt = el.value; }
+    else if (k === 'fin-vcustom') { U.inv.dlg.custom = v.slice(0, 30); const b = document.querySelector('[data-a=fvgadd]'); if (b) b.classList.toggle('off', !v.trim()); return; }
     else if (k === 'fin-idesc') U.res.add.desc = v;
     else if (k === 'fin-iamt') { el.value = amtClean(v, 10); U.res.add.amt = el.value; }
     live();
@@ -733,6 +889,8 @@
       if (D.t === 'goal') { const m = cnum(D.m), n = parseInt(D.n, 10), ok = m > 0 && n >= 1 && n <= 120; if (b) b.classList.toggle('dim', !ok); const pv = q('[data-cpv]'); if (pv) pv.textContent = ok ? 'Kwota docelowa: ' + F.money(F.r2(m * n)) : 'Podaj kwotę miesięczną i liczbę miesięcy (1–120).'; }
       else if (b) { const pc = cnum(D.pct), ok = pc !== null && pc > 0 && pc <= 100 && (D.t !== 'new' || (String(D.name || '').trim() && cnum(D.amt) !== null)) && (D.t !== 'link' || !!D.aid); b.classList.toggle('dim', !ok); }
     }
+    if (U.goals.dlg) { const c = goalCheck(U.goals.dlg), b = q('[data-a=fgsave]'), pv = q('[data-gpv]'); if (b) b.classList.toggle('dim', !c.ok); if (pv) { pv.textContent = c.msg; pv.style.color = c.ok ? 'var(--text-2)' : '#F2D9A0'; } }
+    if (U.inv.dlg) { const c = invCheck(U.inv.dlg), b = q('[data-a=fvsave]'), pv = q('[data-vpv]'); if (b) b.classList.toggle('dim', !c.ok); if (pv) pv.textContent = c.msg; }
     if (U.add) { const b = q('[data-a=fadddraft]'), b2 = q('[data-a=faddnow]'), ok = F.parseAmt(U.add.draft.amt) > 0 && !!U.add.draft.cat; if (b) { b.classList.toggle('accent', ok); b.classList.toggle('off', !ok); } if (b2) b2.classList.toggle('off', !ok); }
     if (U.res.add) { const b = q('[data-a=fraddsave]'); if (b) b.classList.toggle('dim', !(F.parseAmt(U.res.add.amt) > 0 && !!U.res.add.cat)); }
     const W = U.worth;
@@ -765,6 +923,8 @@
     if (U.cal) { U.cal = null; return true; }
     if (U.cats) { U.cats = null; return true; }
     if (U.cush.dlg) { U.cush.dlg = null; return true; }
+    if (U.goals.dlg) { U.goals.dlg = null; return true; }
+    if (U.inv.dlg) { if (U.inv.dlg.dd) U.inv.dlg.dd = false; else U.inv.dlg = null; return true; }
     if (U.add) { U.add = null; return true; }
     if (U.worth.edit || U.worth.add) { U.worth.edit = null; U.worth.add = null; return true; }
     if (U.res.add) { U.res.add = null; return true; }
@@ -774,7 +934,7 @@
   function onRoute(r) {
     U.add = null; U.cats = null; U.cal = null; U.home.msg = '';
     U.exp.msg = ''; U.exp.undo = null; U.res.msg = ''; U.res.undo = null; U.res.add = null;
-    U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null;
+    U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null; U.goals.dlg = null; U.inv.dlg = null;
     if (r.name === 'fin' && r.arg === 'exp') U.exp.tab = r.arg2 === 'cat' ? 'cat' : 'list';
   }
 
@@ -784,10 +944,12 @@
       case 'exp': return viewExpenses();
       case 'result': return viewResult();
       case 'cush': return viewCushion();
+      case 'goals': return viewGoals();
+      case 'inv': return viewInvest();
       default: return viewHome();
     }
   }
-  const navKey = (r) => (['worth', 'exp', 'result', 'cush'].indexOf(r.arg) >= 0 ? r.arg : 'home');
+  const navKey = (r) => (['worth', 'exp', 'result', 'cush', 'goals', 'inv'].indexOf(r.arg) >= 0 ? r.arg : 'home');
 
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },

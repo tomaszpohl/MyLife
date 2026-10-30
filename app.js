@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v18 · 30.10.2026';
+  const APP_VERSION = 'v19 · 30.10.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -68,6 +68,8 @@
       ['worth', '#/fin/worth', 'Majątek', '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>'],
       ['exp', '#/fin/exp', 'Wydatki', '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"></path><path d="M9 8h6M9 12h6"></path>'],
       ['cush', '#/fin/cush', 'Poduszka', '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z"></path><path d="m8.8 12.2 2.3 2.3 4.2-4.7"></path>'],
+      ['goals', '#/fin/goals', 'Cele', '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="0.8"></circle>'],
+      ['inv', '#/fin/inv', 'Inwestycje', '<path d="M3.5 20h17"></path><path d="M6 20v-6M12 20V8M18 20v-9"></path><path d="m5 9 5-4 4 2 5-4"></path>'],
       ['result', '#/fin/result', 'Wynik', '<rect x="3.5" y="6" width="17" height="12" rx="3"></rect><circle cx="12" cy="12" r="2.5"></circle>']
     ] }
   };

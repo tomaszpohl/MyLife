@@ -797,3 +797,21 @@ a.dcard { color: var(--text); }
 .tin.w64 { flex: none; width: 64px; }
 .ttotal { font-size: 13px; color: var(--violet-soft); font-weight: 600; }
 .ttotal[hidden] { display: none; }
+
+/* v19: Finanse · Cele i Inwestycje (makieta FinGoals, FinInvest) */
+.primary.gold { background: var(--gold); color: var(--gold-bg); }
+.primary.gold.dim { background: var(--line); color: var(--dim); }
+.fconfirm { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; background: var(--danger-bg); border: 1px solid #6A2F36; font-size: 14px; line-height: 1.4; color: #F6C5CB; }
+.fconfirm .btn-cancel { flex: 1; }
+.fpie { width: 190px; height: 190px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; }
+.fpie > div { width: 120px; height: 120px; border-radius: 50%; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+.fpie span { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.fpie b { font-family: var(--display); font-size: 15px; }
+.flegend { display: flex; flex-direction: column; gap: 8px; }
+.flegend > div { display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 28px; }
+.flegend > div > span:last-child { display: flex; flex-direction: column; align-items: flex-end; }
+.flegend small { font-size: 12px; color: var(--muted); }
+.fvrow { width: 100%; background: none; border-left: none; border-right: none; border-bottom: none; color: var(--text); text-align: left; min-height: 56px; gap: 10px; padding: 0; font: inherit; }
+.fconfirm .btn-cancel, .fconfirm .btn-del { flex: 1 1 0; width: auto; min-width: 0; }
+.fadd.gold { background: var(--gold); color: var(--gold-bg); }
+.fadd.gold.off { background: var(--line); color: var(--dim); }

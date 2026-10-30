@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 18
+# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 19
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -49,7 +49,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 ## Moduł Finanse (od v8)
 
-Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Wynik; Trening: Trening · Historia · Postępy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
+Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Cele · Inwestycje · Wynik; Trening: Trening · Historia · Postępy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
 
 | Ekran | Funkcje |
 |---|---|
@@ -58,6 +58,8 @@ Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji*
 | **Wydatki** | Lista: miesiące, suma i liczba wydatków, dni rozwijane do szczegółów (opis, kategoria, kwota), usuwanie z „Cofnij”. Kategorie: okres Dzień / Tydzień / Miesiąc / Zakres (od–do), suma, średnia dzienna, pasek podziału i kategorie z udziałem % (dotknięcie pokazuje składniki). „Dodaj wydatki”: data, opis, kwota, kategoria (zwijana lista z wyszukiwarką – bez znaczenia wielkość liter i polskie znaki); „Dodaj wydatek” zapisuje jeden od razu (okno zostaje otwarte, gdy na liście są pozycje do zapisania), „Dodaj do listy” zbiera kilka pozycji, „Zapisz wszystkie” zapisuje je razem. |
 | **Kategorie wydatków** | Domyślne (Jedzenie, Dom i rachunki, Transport, Zdrowie, Rozrywka, Ubrania, Inne) albo własne (dodawanie z wyborem koloru z palety 32 – pokazywane tylko kolory jeszcze nieużyte, usuwanie, nazwa do 24 znaków, bez powtórzeń). Wydatki z usuniętej kategorii trafiają do „Bez kategorii”. |
 | **Poduszka bezpieczeństwa** | Cel = kwota miesięczna × liczba miesięcy (1–120). Realizacja w % z paskiem, „Brakuje …” / „Cel osiągnięty”, na ile miesięcy wystarczy. Składniki to aktywa z Majątku (kwota zmienia się w obu miejscach) z udziałem w %: „Dodaj składnik” (tworzy aktywo), „Dodaj składnik z Aktywów”, edycja kwoty i udziału, „Usuń z poduszki” (aktywo zostaje). Przy składniku: realizacja jego części celu i udział w całej poduszce. |
+| **Cele** (od v19) | „Dodaj cel”: nazwa (wymagana, do 40 znaków), kwota docelowa (> 0), odłożono dotychczas (opcjonalnie, domyślnie 0) – z podglądem realizacji w oknie. Karta „Wszystkie cele”: łączny % (nadwyżki ponad cel nie zawyżają sumy), kwota i liczba celów. Każdy cel: odłożono z kwoty docelowej, %, pasek (bursztynowy, zielony po osiągnięciu), „Brakuje …” / „Cel osiągnięty – nadwyżka …”. Ołówek = edycja; „Usuń cel” z potwierdzeniem w oknie. Kwota „odłożono” jest wpisywana ręcznie – cele nie są powiązane z Majątkiem. |
+| **Inwestycje** (od v19) | „Dodaj inwestycję”: kwota (> 0), cel inwestycji z listy rozwijanej (domyślne: ETF, Obligacje, Akcje, Złoto, Kryptowaluty, Nieruchomości, Lokata, Fundusze inwestycyjne; własne – pole „Własny cel” + Dodaj, usuwanie krzyżykiem; cele z wcześniejszych wpisów), data z kalendarza (do dziś). Statystyki: Miesiąc / Rok (strzałki, bez przyszłości) / Od daty; suma, liczba wpisów i celów, wykres kołowy wg celu z legendą (kwota i % z 1 miejscem po przecinku; stałe kolory celów), lista wpisów w okresie (dotknięcie = edycja, usuwanie z potwierdzeniem). Cele łączone bez rozróżniania wielkości liter. Osobny rejestr – nie zmienia wydatków, wyniku ani majątku. Kafelek na ekranie Finanse pokazuje kwotę z bieżącego miesiąca. |
 | **Wynik finansowy** | Okres Miesiąc / Rok / Zakres; Przychody − Wydatki = Wynik i procent odkładanych przychodów; zwijana sekcja Przychody wg kategorii (Wynagrodzenie, Premia, Inwestycje i odsetki, Inne), dodawanie i usuwanie z „Cofnij”. |
 
 Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
@@ -73,7 +75,7 @@ Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
 
 Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty są pomijane (okno podsumowania podaje ich liczbę).
 
-**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
+**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse, Trening; moduł Finanse obejmuje też poduszkę, cele i inwestycje). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
 ## Moduł Trening (od v17)
 
@@ -94,7 +96,7 @@ Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening).
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v18.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v19.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -115,7 +117,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v18 · 30.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v19 · 30.10.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -133,7 +135,7 @@ mylife/
 ├─ body-ui.js            – Dieta · Skład ciała (pomiary, wykres, historia, okno odczytanych wartości)
 ├─ body-ocr.js           – przygotowanie zdjęcia wydruku i rozpoznanie wartości Tanita BC-418
 ├─ ocr-worker.js         – odczyt tekstu ze zdjęcia w osobnym wątku (Tesseract)
-├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik
+├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik, poduszka, cele, inwestycje
 ├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
 ├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
 ├─ train-core.js         – dane treningów, postępy (największy ciężar), kopia
@@ -152,6 +154,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v19 (30.10.2026)**: Finanse – nowe ekrany „Cele” (kwoty docelowe, odłożono, łączna realizacja) i „Inwestycje” (wpisy z celem i datą, statystyki Miesiąc / Rok / Od daty, wykres kołowy); kafelki na ekranie Finanse i dwie nowe pozycje dolnego paska (7). Dane w kopii modułu Finanse.
 - **v18 (30.10.2026)**: Trening – kondycja z czasem albo kilkoma interwałami (rundy, czas łącznie) i średnią mocą, suma ciężaru w historii, nowy ekran „Trening z dnia”, kafle „Liczba treningów” i „Ostatni trening” z datą prowadzą do historii i do treningu z dnia.
 - **v17 (28.10.2026)**: moduł Trening (Trening, Historia treningów, Postępy, formularz treningu z ćwiczeniami siłowymi i kondycyjnymi, usuwanie z „Cofnij”, kopia danych), zębatka Ustawień na ekranie głównym, dolny pasek przewijany z wyśrodkowaną pozycją, w Diecie pozycja „Skład”.
 - **v16 (28.10.2026)**: Dieta · Skład ciała – pomiary z wydruku Tanita BC-418: odczyt ze zdjęcia na telefonie (bez internetu), wpis ręczny, pomiar z dnia z kafelkami i zmianą, wykres, historia, edycja i usuwanie z „Cofnij”; arkusz „Skład ciała” w eksporcie .xlsx; pomiary w kopii modułu Dieta. Silnik odczytu (ok. 7 MB) zapisuje się w pamięci telefonu raz i nie jest pobierany ponownie przy kolejnych wersjach.

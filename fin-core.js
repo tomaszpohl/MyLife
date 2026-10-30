@@ -28,7 +28,7 @@
   const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
   const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] } });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [] });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -44,6 +44,7 @@
     d.worth = Object.assign({ items: [], hist: [] }, d.worth || {});
     d.cats = Object.assign({ mode: 'default', custom: [] }, d.cats || {});
     d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
+    ['goals', 'inv', 'invGoals'].forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });   // v19: cele i inwestycje
     // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
     if (!d.cats.recolored) {
       const seen = [];
@@ -174,6 +175,56 @@
   }
   function cushRemove(kid) { db.cush.items = db.cush.items.filter((x) => x.id !== kid); save(); }
 
+  // ---------- Cele (v19, makieta FinGoals) – kwota „odłożono” wpisywana ręcznie, bez powiązania z Majątkiem (decyzja właściciela) ----------
+  const goals = () => db.goals.slice();
+  function goalSave(g) {
+    const e = { id: g.id || id('g'), name: String(g.name).trim().slice(0, 40), target: r2(g.target), saved: r2(g.saved || 0) };
+    if (g.id && db.goals.some((x) => x.id === g.id)) db.goals = db.goals.map((x) => (x.id === g.id ? e : x)); else db.goals.push(e);
+    save(); return e;
+  }
+  function goalRemove(gid) { db.goals = db.goals.filter((x) => x.id !== gid); save(); }
+  // Łączna realizacja: nadwyżki ponad cel nie zawyżają sumy.
+  function goalsTotal() {
+    const t = r2(db.goals.reduce((a, g) => a + g.target, 0)), s = r2(db.goals.reduce((a, g) => a + Math.min(g.saved, g.target), 0));
+    return { target: t, saved: s, pct: t > 0 ? s / t * 100 : 0, done: db.goals.filter((g) => g.saved >= g.target).length };
+  }
+
+  // ---------- Inwestycje (v19, makieta FinInvest) – osobny rejestr, nie wpływa na wydatki, wynik ani majątek (decyzja właściciela) ----------
+  const INV_DEF = ['ETF', 'Obligacje', 'Akcje', 'Złoto', 'Kryptowaluty', 'Nieruchomości', 'Lokata', 'Fundusze inwestycyjne'];
+  const gkey = (t) => String(t || '').trim().toLocaleLowerCase('pl');
+  const invs = () => db.inv.slice();
+  const invIn = (a, b) => db.inv.filter((e) => e.d >= a && e.d <= b);
+  function invSave(e) {
+    const x = { id: e.id || id('v'), amt: r2(e.amt), goal: String(e.goal).trim().slice(0, 30), d: e.d };
+    if (e.id && db.inv.some((y) => y.id === e.id)) db.inv = db.inv.map((y) => (y.id === e.id ? x : y)); else db.inv.push(x);
+    save(); return x;
+  }
+  function invRemove(vid) { db.inv = db.inv.filter((x) => x.id !== vid); save(); }
+  const invGoals = () => db.invGoals.slice();
+  // Własny cel: duplikat (bez rozróżniania wielkości liter) wybiera istniejący – zwraca nazwę do wyboru.
+  function invGoalAdd(name) {
+    const nm = String(name || '').trim().slice(0, 30); if (!nm) return '';
+    const ex = invGoalOpts().find((o) => o.k === gkey(nm));
+    if (ex) return ex.name;
+    db.invGoals.push(nm); save(); return nm;
+  }
+  function invGoalRemove(name) { db.invGoals = db.invGoals.filter((x) => gkey(x) !== gkey(name)); save(); }
+  // Lista wyboru: domyślne, własne, z istniejących wpisów (bez powtórzeń).
+  function invGoalOpts() {
+    const out = [], seen = {};
+    const add = (n, tag) => { const k = gkey(n); if (k && !seen[k]) { seen[k] = 1; out.push({ k, name: String(n).trim(), tag }); } };
+    INV_DEF.forEach((n) => add(n, 'domyślny')); db.invGoals.forEach((n) => add(n, 'własny')); db.inv.forEach((e) => add(e.goal, 'z wpisów'));
+    return out;
+  }
+  // Stałe kolory celów (kolejność alfabetyczna wszystkich celów z wpisów).
+  const INV_PAL = ['#F2B94B', '#5BD0E8', '#7BE0A0', '#FF8F73', '#B79CFF', '#FF9CC8', '#93A1B2', '#8FD14F'];
+  function invColors() {
+    const names = {};
+    db.inv.forEach((e) => { const k = gkey(e.goal); if (!names[k]) names[k] = e.goal.trim(); });
+    const keys = Object.keys(names).sort();
+    return { names, color: (k) => INV_PAL[Math.max(0, keys.indexOf(k)) % INV_PAL.length] };
+  }
+
   // ---------- Import z pliku .xlsx (v9) – dane są dodawane do istniejących, nic nie jest nadpisywane ----------
   const nkey = (t) => String(t || '').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/\s+/g, ' ').trim();
   // parts: wynik FinImport.analyze (tylko zaznaczone). Zwraca podsumowanie.
@@ -218,7 +269,9 @@
   }
   const summary = () => db.exp.length + ' ' + C.plural(db.exp.length, 'wydatek', 'wydatki', 'wydatków') + ', ' +
     db.inc.length + ' ' + C.plural(db.inc.length, 'przychód', 'przychody', 'przychodów') + ', ' +
-    db.worth.items.length + ' ' + C.plural(db.worth.items.length, 'pozycja', 'pozycje', 'pozycji') + ' majątku';
+    db.worth.items.length + ' ' + C.plural(db.worth.items.length, 'pozycja', 'pozycje', 'pozycji') + ' majątku' +
+    (db.goals.length ? ', ' + db.goals.length + ' ' + C.plural(db.goals.length, 'cel', 'cele', 'celów') : '') +
+    (db.inv.length ? ', ' + db.inv.length + ' ' + C.plural(db.inv.length, 'inwestycja', 'inwestycje', 'inwestycji') : '');
 
   window.Fin = {
     load, CATS, ICATS, NONE, money, signed, parseAmt, dlabel, dlabelY, sum, r2,
@@ -228,6 +281,7 @@
     items, hist, histDays, itemHist, net, netOf, sumType, addItem, updateItem, removeItem,
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
+    goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
     importParts, exportData, importData, summary
   };
 })();
