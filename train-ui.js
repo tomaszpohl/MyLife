@@ -11,7 +11,8 @@
   const P = {
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"></path>',
     clock: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"></path><path d="M3.5 4.5v4h4"></path><path d="M12 8v4.5l3 1.5"></path>',
-    trend: '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>'
+    trend: '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>',
+    rep: '<path d="M17 2l3 3-3 3"></path><path d="M4 11V9a4 4 0 0 1 4-4h12"></path><path d="M7 22l-3-3 3-3"></path><path d="M20 13v2a4 4 0 0 1-4 4H4"></path>'
   };
   const K = {
     plus: ic(20, 2, '<path d="M12 5v14M5 12h14"></path>'),
@@ -56,6 +57,7 @@
         <div class="eyebrow" style="margin-top:4px">Funkcje</div>
         ${fn('#/train/history', P.clock, 'Historia treningów', 'Zapisane treningi i ćwiczenia')}
         ${fn('#/train/progress', P.trend, 'Postępy', 'Największy ciężar w ćwiczeniu, wykres i tabela')}
+        ${window.TrainRecUI ? fn('#/train/recur', P.rep, 'Aktywności cykliczne', esc(window.TrainRecUI.desc())) : ''}
       </div></main>`;
   }
 
@@ -109,7 +111,9 @@
   function viewProgress() {
     const all = TR.progress();
     if (!all.length) return `<main class="screen">${topbar('Postępy')}<div class="dscroll"><div class="dcard tempty"><div class="para" style="text-align:center">Brak ćwiczeń siłowych. Dodaj trening z ćwiczeniem siłowym, aby śledzić postępy.</div></div></div></main>`;
-    const cur = all.find((x) => x.key === T.sel) || all[0];
+    // v20: domyślnie ćwiczenie siłowe z najnowszego treningu (makieta 01.11: wykresy na najnowszych danych).
+    const newest = () => { for (const w of TR.list()) { const x = w.ex.find((e) => e.kind === 'str' && e.sets.length); if (x) return x.name.trim().toLocaleLowerCase('pl'); } return null; };
+    const cur = all.find((x) => x.key === T.sel) || all.find((x) => x.key === newest()) || all[0];
     const rows = cur.rows, n = rows.length, kgs = rows.map((r) => r.kg), best = Math.max(...kgs);
     const si = T.day != null && rows.some((r) => r.id === T.day) ? rows.findIndex((r) => r.id === T.day) : n - 1;
     const sel = rows[si];
@@ -332,8 +336,9 @@
   };
 
   window.TrainUI = {
-    init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
+    init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); if (window.TrainRecUI) window.TrainRecUI.init(app); },
     view(r) {
+      if (r.arg === 'recur' && window.TrainRecUI) return window.TrainRecUI.view();
       if (r.arg === 'history') return viewHistory();
       if (r.arg === 'progress') return viewProgress();
       if (r.arg === 'edit') return viewEdit(r.arg2);
@@ -341,10 +346,11 @@
       return viewHome();
     },
     // Dolny pasek: Trening · Historia · Postępy; formularz bez paska.
-    navKey: (r) => (r.arg === 'edit' ? null : r.arg === 'history' || r.arg === 'progress' ? r.arg : 'home'),
-    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend]],
+    navKey: (r) => (r.arg === 'edit' ? null : ['history', 'progress', 'recur'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
+    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend], ['recur', '#/train/recur', 'Aktywności', P.rep]],
     icon: P.dumbbell,
     onInput(el, k) {
+      if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
       const D = T.draft; if (!D) return;
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
@@ -360,8 +366,9 @@
       else if (k === 'train-watts') x.watts = clean(false, 4);
       live();
     },
-    onChange(el, k) { if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
+    onChange(el, k) { if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
     onEscape() {
+      if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
       if (T.confirm) { T.confirm = false; return true; }
       if (T.dd) { T.dd = false; return true; }
       return false;
@@ -369,6 +376,7 @@
     onRoute(r) {
       if (T.flash && T.flash.fresh) T.flash.fresh = false; else T.flash = null;
       T.dd = false; T.confirm = false;
+      if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
     }
   };

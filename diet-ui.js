@@ -458,14 +458,14 @@
       const y = (kg) => pad + (H - 2 * pad) * (1 - (kg - lo) / ((hi - lo) || 1));
       const pts = list.map((e, i) => [28 + i * step, y(e.kg)]);
       const grid = [hi, (hi + lo) / 2, lo];
-      const tip = W.tip != null ? list[W.tip] : null;
+      const ti = W.tip != null && W.tip < list.length ? W.tip : list.length - 1, tip = list[ti];   // v20: domyślnie zaznaczony ostatni pomiar
       chart = `<div class="wchart">
         <div class="wy" aria-hidden="true">${grid.map((g) => `<div style="top:${y(g) - 8}px">${D.fmtNum(g, 1)}</div>`).join('')}</div>
         <div class="wscroll" tabindex="0" aria-label="Wykres wagi, przewijany w poziomie" data-scroll="diet-wchart" data-autoend="1">
           <div style="position:relative;width:${w}px;height:${H}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${y(g)}px"></div>`).join('')}
             <svg width="${w}" height="${H}" viewBox="0 0 ${w} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
-            ${pts.map((p, i) => `<button class="wdot${W.tip === i ? ' on' : ''}" style="left:${p[0] - 14}px;top:${p[1] - 14}px" data-a="dwtip" data-i="${i}" aria-label="${esc(D.dayShort(list[i].k, true) + ': ' + D.fmtNum(list[i].kg, 1) + ' kg')}"><span></span></button>`).join('')}
+            ${pts.map((p, i) => `<button class="wdot${ti === i ? ' on' : ''}" style="left:${p[0] - 14}px;top:${p[1] - 14}px" data-a="dwtip" data-i="${i}" aria-label="${esc(D.dayShort(list[i].k, true) + ': ' + D.fmtNum(list[i].kg, 1) + ' kg')}"><span></span></button>`).join('')}
           </div></div>
         ${tip ? `<div class="wtip" role="status"><div>${esc(D.dayShort(tip.k, true))}${tip.k === T ? ' (dziś)' : ''}</div><div style="font-family:var(--display);font-weight:600;color:var(--text)">${D.fmtNum(tip.kg, 1)} kg</div></div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(D.dayShort(list[0].k, true))}</span><span>${list[list.length - 1].k === T ? 'dziś' : esc(D.dayShort(list[list.length - 1].k, true))}</span></div>
@@ -681,7 +681,7 @@
     },
     dwsave: () => { const v = parseFloat(String(U.weight.kg).replace(',', '.')); if (isNaN(v) || v < 20 || v > 400) return; D.setWeight(today(), v); U.weight.saved = true; U.weight.tip = null; R(); },
     dwdel: (el) => { D.removeWeight(el.dataset.k); U.weight.tip = null; if (el.dataset.k === today()) U.weight.kg = ''; R(); },
-    dwtip: (el) => { const i = +el.dataset.i; U.weight.tip = U.weight.tip === i ? null : i; R(); },
+    dwtip: (el) => { U.weight.tip = +el.dataset.i; R(); },
     // Ustawienia
     dsetgroup: () => { U.settings.open = !U.settings.open; R(); },
     dexpcal: () => { U.settings.calOpen = !U.settings.calOpen; U.cals.exp = { vm: U.settings.expFrom.slice(0, 7) }; R(); },

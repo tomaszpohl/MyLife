@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v19 · 30.10.2026';
+  const APP_VERSION = 'v20 · 01.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -121,6 +121,22 @@
     return C.DAY_SHORT[d.getDay()].charAt(0) + C.DAY_SHORT[d.getDay()].slice(1).toLowerCase() + ', ' + base;
   }
   const repLine = (t) => { const r = C.repeatLabel(t); return r ? `<div class="rep">${I.repeat}<span>${esc(r)}</span></div>` : ''; };
+
+  // ---------- Aktywności cykliczne Treningu w planerze (v20) ----------
+  const RCx = () => window.TrainRec;
+  const actsFor = (k) => (RCx() ? RCx().forDay(k) : []);
+  const actRep = (a) => `<div class="rep">${I.repeat}<span>${esc(RCx().repText(a))} · aktywność</span></div>`;
+  function actRow(x, k) {
+    const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== k, key = 'a|' + a.id + '|' + k, open = multi && !!S.subOpen[key];
+    const nd = x.ds.filter((i) => a.done[i]).length;
+    return `<div class="act-wrap" data-act="${a.id}">
+        <div class="row${x.done ? ' done' : ''}">
+          <span class="actic" aria-hidden="true">${I.repeat}</span>
+          <button class="body" data-a="actopen" data-id="${a.id}" aria-label="Edytuj aktywność: ${esc(a.name)}"><span class="title">${esc(a.name)}</span>${actRep(a)}</button>
+          ${multi ? `<button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} zaległe terminy: ${esc(a.name)}, wykonane ${nd} z ${x.ds.length}"><span class="cnt">${nd}/${x.ds.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>` : ''}
+          <button class="check" data-a="actdone" data-id="${a.id}" data-k="${k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}"><span class="box">${x.done ? I.check : ''}</span></button>
+        </div>${open ? `<div class="subpanel" role="group" aria-label="Terminy: ${esc(a.name)}">${x.ds.map((i) => { const on = !!a.done[i]; return `<div class="subrow${on ? ' done' : ''}"><button class="subchk" data-a="actsub" data-id="${a.id}" data-k="${i}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RCx().dm(i))}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(a.name + ' - ' + RCx().dm(i))}</div></div>`; }).join('')}</div>` : ''}</div>`;
+  }
 
   // ---------- Podzadania (v13) ----------
   const subKey = (p, id, k) => p + '|' + id + '|' + k;
@@ -294,15 +310,15 @@
       const cls = [dk === k ? 'sel' : '', dk === today ? 'today' : ''].join(' ');
       strip += `<button class="${cls}" data-a="pick" data-k="${dk}" aria-label="${esc(dayTitle(dk))}"${dk === k ? ' aria-current="date"' : ''}><span class="d">${C.DAY_SHORT[d.getDay()]}</span><span class="n">${d.getDate()}</span></button>`;
     }
-    const items = C.forDay(k);
-    const n = items.filter((x) => x.done).length;
+    const items = C.forDay(k), acts = actsFor(k);
+    const n = items.filter((x) => x.done).length + acts.filter((x) => x.done).length;
     const isMove = S.undo && S.undo.kind === 'move';
     const extra = isMove ? ' · przełożono na ' + S.undo.text : (S.undo && S.undo.text ? ' · ' + S.undo.text : '');
-    const summary = C.tasksWord(items.length) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
+    const summary = C.tasksWord(items.length + acts.length) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
     let pill = '';
     if (S.undo) pill = `<button class="pillbtn" data-a="undo" aria-label="${isMove ? 'Cofnij przełożenie zadania' : S.undo.kind === 'sub' ? 'Cofnij usunięcie podzadania' : 'Cofnij usunięcie zadania'}"><span class="pill">${I.undo}<span>Cofnij</span></span></button>`;
     else if (k !== today) pill = `<button class="pillbtn" data-a="pick" data-k="${today}"><span class="pill">${I.arrow}<span>Dziś</span></span></button>`;
-    const rows = items.map((x) => {
+    const taskRow = (x) => {
       const t = x.task;
       return `<div class="row-wrap" data-id="${t.id}" data-k="${x.k}" data-done="${x.done ? 1 : 0}">
         <div class="row-del" aria-hidden="true">${I.trash}<span class="lbl">Usuń</span></div>
@@ -313,7 +329,10 @@
           ${subToggle(t, x.k, 'd')}
           <button class="check" data-a="done" data-id="${t.id}" data-k="${x.k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(t.title)}"><span class="box">${x.done ? I.check : ''}</span></button>
         </div>${subOpenFor(t, x.k, 'd') ? subPanel(t, x.k) : ''}</div>`;
-    }).join('');
+    };
+    // v20: aktywności (bez uchwytu i gestów) po zadaniach do zrobienia; wykonane na końcu.
+    const rows = items.filter((x) => !x.done).map(taskRow).join('') + acts.filter((x) => !x.done).map((x) => actRow(x, k)).join('') +
+      items.filter((x) => x.done).map(taskRow).join('') + acts.filter((x) => x.done).map((x) => actRow(x, k)).join('');
     return `<main class="screen">${planTop()}
       <div class="head-pad">${seg('day')}
         <div class="strip" data-strip>${strip}</div>
@@ -428,19 +447,21 @@
     const wk = C.isoWeek(mon);
     const days = [];
     let total = 0;
-    for (let i = 0; i < 7; i++) { const k = C.addDays(mon, i); const it = C.forDay(k); total += it.length; days.push({ k, it }); }
+    for (let i = 0; i < 7; i++) { const k = C.addDays(mon, i); const it = C.forDay(k), ac = actsFor(k); total += it.length + ac.length; days.push({ k, it, ac }); }
     const allOpen = days.every((d) => S.weekOpen[d.k]);
-    const cards = days.map(({ k, it }) => {
-      const d = C.parse(k), open = !!S.weekOpen[k];
+    const cards = days.map(({ k, it, ac }) => {
+      const d = C.parse(k), open = !!S.weekOpen[k], nAll = it.length + ac.length;
+      const names = it.map((x) => ({ t: x.task.title, done: x.done })).concat(ac.map((x) => ({ t: x.a.name, done: x.done })));
       const badge = `<div class="dbadge${k === today ? ' today' : ''}"><div class="d">${C.DAY_SHORT[d.getDay()]}</div><div class="n">${d.getDate()}</div></div>`;
       let lines;
-      if (open) lines = `<div style="font-size:14px;font-weight:500;padding-top:8px">${C.tasksWord(it.length)}</div>`;
-      else if (!it.length) lines = `<div style="font-size:14px;color:var(--muted);padding-top:8px">Brak zadań</div>`;
+      if (open) lines = `<div style="font-size:14px;font-weight:500;padding-top:8px">${C.tasksWord(nAll)}</div>`;
+      else if (!nAll) lines = `<div style="font-size:14px;color:var(--muted);padding-top:8px">Brak zadań</div>`;
       else {
-        lines = it.slice(0, 2).map((x) => `<div class="wline${x.done ? ' done' : ''}"><div class="nm">${esc(x.task.title)}</div></div>`).join('');
-        if (it.length > 2) lines += `<div class="more">+${it.length - 2} więcej</div>`;
+        lines = names.slice(0, 2).map((x) => `<div class="wline${x.done ? ' done' : ''}"><div class="nm">${esc(x.t)}</div></div>`).join('');
+        if (nAll > 2) lines += `<div class="more">+${nAll - 2} więcej</div>`;
       }
-      const items = open ? `<div class="items">${it.length ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
+      const actItems = ac.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}"><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
+      const items = open ? `<div class="items">${nAll ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') + actItems : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
       return `<div class="wday"><div class="top">
           <button class="open" data-a="openday" data-k="${k}" aria-label="Otwórz dzień: ${esc(dayTitle(k))}">${badge}</button>
           <button class="tog" data-a="wtoggle" data-k="${k}" aria-expanded="${open}" aria-label="${open ? 'Zwiń zadania' : 'Rozwiń wszystkie zadania'}: ${esc(dayTitle(k))}">
@@ -479,16 +500,18 @@
     for (let k = start; k <= end; k = C.addDays(k, 1)) {
       const d = C.parse(k), inMonth = k.slice(0, 7) === S.monthCursor;
       // v9: jedna kropka, gdy są zadania do zrobienia; dzień przed dziś z niewykonanymi zadaniami – czerwony (zaległe).
-      const its = C.forDay(k), n = its.length, open = its.some((x) => !x.done);
+      const its = C.forDay(k), ac = actsFor(k), n = its.length + ac.length, open = its.some((x) => !x.done) || ac.some((x) => !x.done);
       const late = inMonth && open && k < today;
       const cls = [!inMonth ? 'muted' : k === today ? 'today' : '', inMonth && k === S.sel && k !== today ? 'sel' : '', late ? 'late' : ''].join(' ');
       const dots = open ? '<i></i>' : '';
       const st = !n ? '' : late ? ', zaległe zadania' : open ? ', do zrobienia' : ', wszystko wykonane';
       cells += `<button class="mcell ${cls}" data-a="mpick" data-k="${k}" aria-label="${d.getDate()} ${C.MONTH_GEN[d.getMonth()]}, ${C.tasksWord(n)}${st}"${k === S.sel ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
     }
-    const items = C.forDay(S.sel);
-    const list = items.length
-      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('')
+    const items = C.forDay(S.sel), macts = actsFor(S.sel);
+    const actList = macts.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}" aria-label="${esc(x.a.name)}, aktywność${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
+    const nAll = items.length + macts.length, nDone = items.filter((x) => x.done).length + macts.filter((x) => x.done).length;
+    const list = nAll
+      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
       <div class="head-pad tight">${seg('month')}
@@ -502,7 +525,7 @@
         <div class="mlegend"><span><i class="ld"></i>do zrobienia</span><span><i class="ll"></i>zaległe zadania</span></div>
       </div>
       <div class="month-panel" data-scroll="month"><div class="card">
-        <div class="hdr"><div class="t">${esc(dayTitle(S.sel))}</div><div class="c">${items.length ? items.filter((x) => x.done).length + ' z ' + items.length + ' wykonane' : C.tasksWord(0)}</div></div>
+        <div class="hdr"><div class="t">${esc(dayTitle(S.sel))}</div><div class="c">${nAll ? nDone + ' z ' + nAll + ' wykonane' : C.tasksWord(0)}</div></div>
         <button class="pillbtn" style="align-self:flex-start;margin:-8px 0 -10px 0" data-a="openday" data-k="${S.sel}"><span class="pill">${I.arrow}<span>Otwórz ten dzień</span></span></button>
         ${list}
       </div></div>
@@ -693,6 +716,10 @@
     done: (el) => { C.toggleDone(el.dataset.id, el.dataset.k); render(); },
     // Podzadania (v13)
     subtog: (el) => { const key = el.dataset.s; S.subOpen[key] = !S.subOpen[key]; render(); },
+    // v20: aktywności cykliczne w planerze – odhaczenie wspólne z ekranem Treningu; dotknięcie nazwy otwiera edycję aktywności.
+    actdone: (el) => { const x = actsFor(el.dataset.k).find((y) => y.a.id === +el.dataset.id); if (x) RCx().setDone(x.a.id, x.ds, !x.done); render(); },
+    actsub: (el) => { const a = RCx().get(el.dataset.id); if (a) RCx().setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); render(); },
+    actopen: (el) => go('#/train/recur/' + el.dataset.id),
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
     subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); setUndo(snap, 'sub', ''); render(); },
     fsubadd: () => {

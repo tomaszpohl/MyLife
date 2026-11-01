@@ -9,11 +9,12 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.train.v1';
-  const empty = () => ({ version: 1, next: 1, list: [] });
+  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] } });   // v20: rec – aktywności cykliczne
   let db = empty();
 
   // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
   function norm(d) {
+    if (!d.rec || !Array.isArray(d.rec.list)) d.rec = { next: 1, list: [] };
     (d.list || []).forEach((w) => (w.ex || []).forEach((x) => {
       if (x.kind !== 'car') return;
       if (!Array.isArray(x.ivs)) {
@@ -88,7 +89,9 @@
     db.next = Math.max(db.next || 1, ...db.list.map((w) => w.id + 1), 1);
     save();
   }
-  const summary = () => db.list.length + ' ' + C.plural(db.list.length, 'trening', 'treningi', 'treningów');
+  const summary = () => db.list.length + ' ' + C.plural(db.list.length, 'trening', 'treningi', 'treningów') +
+    (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '');
+  const recDb = () => db.rec;
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, exportData, importData, summary };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, exportData, importData, summary, recDb };
 })();

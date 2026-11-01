@@ -36,7 +36,7 @@
     worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null, hf: 'all' },
     cush: { dlg: null },
     goals: { dlg: null },   // v19: okno celu { id, name, target, saved, confirm }
-    inv: { mode: 'm', mk: null, yr: null, from: null, dlg: null },   // v19: okno wpisu { id, amt, goal, d, confirm, dd, custom }   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
+    inv: { mode: 'y', yr: null, from: null, dlg: null },   // v20: bez trybu „Miesiąc”; rok i data początkowa z najnowszego wpisu   // v19: okno wpisu { id, amt, goal, d, confirm, dd, custom }   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
     add: null,      // okno „Nowe wydatki”: { draft: { date, desc, amt, cat }, drafts: [], err, from: 'home'|'exp' }
     cats: null,     // okno „Kategorie wydatków”: { name, err }
     cal: null,      // otwarty kalendarz: { id, vm }
@@ -190,6 +190,11 @@
   }
 
   // ---------- Inwestycje (v19) ----------
+  // v20: statystyki ustawiają się na najnowszym wpisie – rok wpisu i 1. dzień jego miesiąca jako „Od daty”.
+  function invInit() {
+    const V = U.inv, mx = F.invs().reduce((m, e) => (e.d > m ? e.d : m), '');
+    V.mode = 'y'; V.yr = mx ? +mx.slice(0, 4) : +today().slice(0, 4); V.from = mx ? mx.slice(0, 8) + '01' : ym(today()) + '-01';
+  }
   function invCheck(D) {
     const a = cnum(D.amt), dateOk = /^\d{4}-\d{2}-\d{2}$/.test(D.d) && D.d <= today(), goalOk = String(D.goal).trim() !== '';
     const ok = a !== null && a > 0 && goalOk && dateOk;
@@ -197,12 +202,9 @@
   }
   function viewInvest() {
     const V = U.inv, T = today();
-    if (!V.mk) V.mk = ym(T);
-    if (!V.yr) V.yr = +T.slice(0, 4);
-    if (!V.from) V.from = addMonths(ym(T), -2) + '-01';
+    if (!V.yr || !V.from) invInit();
     let a, b, label, nextOff = false;
-    if (V.mode === 'm') { [a, b] = monthRange(V.mk); label = 'Zainwestowano w miesiącu'; nextOff = V.mk >= ym(T); }
-    else if (V.mode === 'y') { a = V.yr + '-01-01'; b = V.yr + '-12-31'; label = 'Zainwestowano w roku'; nextOff = V.yr >= +T.slice(0, 4); }
+    if (V.mode === 'y') { a = V.yr + '-01-01'; b = V.yr + '-12-31'; label = 'Zainwestowano w roku'; nextOff = V.yr >= +T.slice(0, 4); }
     else { a = V.from; b = T; label = 'Zainwestowano od ' + F.dlabelY(V.from); }
     const per = F.invIn(a, b), total = F.r2(per.reduce((t, e) => t + e.amt, 0));
     const CO = F.invColors(), grp = {};
@@ -239,10 +241,10 @@
         <button class="primary gold" style="flex:none" data-a="fvnew">${J.plusL}<span>Dodaj inwestycję</span></button>
         <div class="dcard" style="gap:10px">
           <div class="eyebrow">Statystyki</div>
-          ${seg([['m', 'Miesiąc'], ['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold"')}
+          ${seg([['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold"')}
           ${V.mode !== 'f' ? `<div class="navrow">
               <button class="iconbtn soft" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
-              <div class="big">${esc(V.mode === 'm' ? monthTitle(V.mk) : String(V.yr))}</div>
+              <div class="big">${esc(String(V.yr))}</div>
               <button class="iconbtn soft" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
             : `<button class="frange" data-a="fcalopen" data-c="vfrom" data-k="${V.from}" aria-haspopup="dialog" aria-label="${esc('Od dnia: ' + F.dlabelY(V.from))}"><span>OD DNIA</span><b>${esc(F.dlabelY(V.from))}</b></button>${calOpen('vfrom') ? calendar('vfrom', V.from, {}) : ''}`}
           <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
@@ -407,14 +409,14 @@
       const y = (v) => Y1 - (Y1 - Y0) * (v - lo) / ((hi - lo) || 1);
       const mid = Math.round((lo + hi) / 2 / 1000) * 1000, k = (v) => Math.round(v / 1000) + ' tys.';
       const grid = [hi, mid, lo];
-      const tip = W.sel != null && W.sel < n ? H[W.sel] : null;
+      const si = W.sel != null && W.sel < n ? W.sel : n - 1, tip = H[si];   // v20: domyślnie zaznaczony ostatni punkt
       chart = `<div class="wchart fchart">
         <div class="wy" aria-hidden="true">${grid.map((g) => `<div style="top:${y(g) - 8}px">${k(g)}</div>`).join('')}</div>
         <div class="wscroll" tabindex="0" aria-label="Wykres majątku, przewijany w poziomie" data-scroll="fin-wchart" data-autoend="1">
           <div style="position:relative;width:${Wd}px;height:${Ht}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${y(g)}px"></div>`).join('')}
             <svg width="${Wd}" height="${Ht}" viewBox="0 0 ${Wd} ${Ht}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${H.map((h, i) => x(i).toFixed(1) + ',' + y(h.net).toFixed(1)).join(' ')}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
-            ${H.map((h, i) => `<button class="wdot${W.sel === i ? ' on' : ''}${i === n - 1 ? ' last' : ''}" style="left:${x(i) - 14}px;top:${y(h.net) - 14}px" data-a="fwtip" data-i="${i}" aria-label="${esc(F.dlabelY(h.d) + ': ' + F.money(h.net))}"><span></span></button>`).join('')}
+            ${H.map((h, i) => `<button class="wdot${si === i ? ' on' : ''}${i === n - 1 ? ' last' : ''}" style="left:${x(i) - 14}px;top:${y(h.net) - 14}px" data-a="fwtip" data-i="${i}" aria-label="${esc(F.dlabelY(h.d) + ': ' + F.money(h.net))}"><span></span></button>`).join('')}
           </div></div>
         ${tip ? `<div class="wtip" role="status"><div>${esc(F.dlabelY(tip.d))}</div><div style="font-family:var(--display);font-weight:600;color:var(--text)">${F.money(tip.net)}</div></div>` : ''}
         <div style="font-size:11px;color:var(--muted)">${esc(F.dlabel(H[0].d))}</div></div>`;
@@ -725,7 +727,7 @@
     fecat: (el) => { const o = U.exp.catOpen; o[el.dataset.v] = !o[el.dataset.v]; R_(); },
     // Majątek
     fwsec: (el) => { const o = U.worth.open; o[el.dataset.v] = !o[el.dataset.v]; R_(); },
-    fwtip: (el) => { const i = +el.dataset.i; U.worth.sel = U.worth.sel === i ? null : i; R_(); },
+    fwtip: (el) => { U.worth.sel = +el.dataset.i; R_(); },
     fwedit: (el) => { const it = F.items().find((i) => i.id === el.dataset.id); U.worth.edit = { id: it.id, val: String(it.val).replace('.', ',') }; R_(); },
     fweditclose: () => { U.worth.edit = null; R_(); },
     fweditsave: () => { const W = U.worth, v = parseVal(W.edit.val); if (v === null) return; F.updateItem(W.edit.id, v); W.edit = null; W.sel = null; R_(); },
@@ -829,7 +831,7 @@
     fgdelyes: () => { F.goalRemove(U.goals.dlg.id); U.goals.dlg = null; R_(); },
     // Inwestycje (v19)
     fvmode: (el) => { U.inv.mode = el.dataset.v; U.cal = null; R_(); },
-    fvnav: (el) => { const V = U.inv, d = +el.dataset.d, T = today(); if (V.mode === 'm') { const n = addMonths(V.mk, d); if (n <= ym(T)) V.mk = n; } else { const n = V.yr + d; if (n <= +T.slice(0, 4)) V.yr = n; } R_(); },
+    fvnav: (el) => { const V = U.inv, n = V.yr + +el.dataset.d; if (n <= +today().slice(0, 4)) V.yr = n; R_(); },
     fvnew: () => { U.inv.dlg = { id: null, amt: '', goal: '', d: today(), confirm: false, dd: false, custom: '' }; U.cal = null; R_(); },
     fvedit: (el) => { const e = F.invs().find((x) => x.id === el.dataset.id); if (e) U.inv.dlg = { id: e.id, amt: String(e.amt).replace('.', ','), goal: e.goal, d: e.d, confirm: false, dd: false, custom: '' }; U.cal = null; R_(); },
     fvclose: () => { U.inv.dlg = null; U.cal = null; R_(); },
@@ -935,6 +937,7 @@
     U.add = null; U.cats = null; U.cal = null; U.home.msg = '';
     U.exp.msg = ''; U.exp.undo = null; U.res.msg = ''; U.res.undo = null; U.res.add = null;
     U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null; U.goals.dlg = null; U.inv.dlg = null;
+    if (r.name === 'fin' && r.arg === 'inv') invInit();
     if (r.name === 'fin' && r.arg === 'exp') U.exp.tab = r.arg2 === 'cat' ? 'cat' : 'list';
   }
 

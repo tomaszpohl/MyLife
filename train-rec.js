@@ -1,0 +1,129 @@
+/* MyLife – Trening: aktywności cykliczne (v20, makieta „TrainRecur”, design.md „01.11 – Aktywności cykliczne”).
+   Dane w bazie Treningu (mylife.train.v1 → rec = { next, list }), więc są w kopii modułu Trening.
+   Aktywność: { id, name, start: 'RRRR-MM-DD', rep: { type: 'daily'|'weekly'|'monthly'|'custom', n, unit: 'day'|'week'|'month', days: [0–6], end: 'never'|'date'|'count', until, count },
+                done: { 'termin': 'data wykonania' } }.
+   Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają na dziś jako zaległe podzadania z datą
+   (decyzja właściciela: 60 dni jak w makiecie; Tydzień i Miesiąc też pokazują aktywności). Bez godzin i przypomnień. */
+(function () {
+  'use strict';
+  const C = window.Core, TR = window.Train;
+  const LOOK = 60;
+  const DOW = ['ndz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
+  const dm = (k) => { const a = k.split('-'); return a[2] + '.' + a[1] + '.' + a[0]; };
+  const wk0 = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+
+  const list = () => TR.recDb().list;
+  const get = (id) => list().find((a) => a.id === +id) || null;
+
+  // Termin według samego powtarzania (bez limitu liczby powtórzeń).
+  function base(a, k) {
+    const r = a.rep;
+    if (k < a.start) return false;
+    if (r.end === 'date' && r.until && k > r.until) return false;
+    const s = C.parse(a.start), t = C.parse(k), dd = C.diffDays(a.start, k);
+    if (r.type === 'daily') return true;
+    if (r.type === 'weekly') return dd % 7 === 0;
+    if (r.type === 'monthly') return t.getDate() === s.getDate();
+    const n = Math.max(1, r.n || 1);
+    if (r.unit === 'day') return dd % n === 0;
+    if (r.unit === 'week') {
+      const days = r.days && r.days.length ? r.days : [s.getDay()];
+      const wk = Math.round((wk0(t) - wk0(s)) / (7 * 864e5));
+      return days.indexOf(t.getDay()) >= 0 && wk % n === 0;
+    }
+    const mm = (t.getFullYear() - s.getFullYear()) * 12 + t.getMonth() - s.getMonth();
+    return t.getDate() === s.getDate() && mm % n === 0;
+  }
+  // Limit „po N powtórzeniach”: ostatni dozwolony termin liczony raz (pamięć podręczna do zmiany danych).
+  const lastCache = {};
+  function lastOcc(a) {
+    const key = a.id + '|' + a.start + '|' + JSON.stringify(a.rep);
+    if (key in lastCache) return lastCache[key];
+    let c = 0, x = a.start, last = null;
+    const lim = Math.max(1, a.rep.count || 1);
+    for (let i = 0; i < 40000 && c < lim; i++, x = C.addDays(x, 1)) if (base(a, x)) { c++; last = x; }
+    return (lastCache[key] = last);
+  }
+  function occ(a, k) {
+    if (!base(a, k)) return false;
+    if (a.rep.end === 'count') { const l = lastOcc(a); return !!l && k <= l; }
+    return true;
+  }
+  // Terminy do pokazania w dniu D: dla dziś – zaległe z ostatnich 60 dni (niewykonane albo wykonane dziś) + dzisiejszy;
+  // dla innych dni – tylko termin tego dnia.
+  function dates(a, D) {
+    const T = C.todayKey(), out = [];
+    if (D === T) {
+      const lo = C.addDays(D, -LOOK);
+      for (let x = lo > a.start ? lo : a.start; x < D; x = C.addDays(x, 1)) if (occ(a, x)) { const v = a.done[x]; if (!v || v === D) out.push(x); }
+    }
+    if (occ(a, D)) out.push(D);
+    return out;
+  }
+  // Wiersze planera dla dnia k: { a, ds, done (wszystkie terminy), over (zaległe) }.
+  function forDay(k) {
+    return list().map((a) => ({ a, ds: dates(a, k) })).filter((x) => x.ds.length).map((x) => ({
+      a: x.a, ds: x.ds, done: x.ds.every((i) => !!x.a.done[i]), over: x.ds.filter((i) => i < k).length
+    }));
+  }
+  function setDone(id, ks, on) {
+    const a = get(id); if (!a) return;
+    const T = C.todayKey();
+    ks.forEach((x) => { if (on) a.done[x] = T; else delete a.done[x]; });
+    TR.save();
+  }
+  function repText(a) {
+    const r = a.rep, s = C.parse(a.start);
+    if (r.type === 'daily') return 'Codziennie';
+    if (r.type === 'weekly') return 'Co tydzień, ' + DOW[s.getDay()];
+    if (r.type === 'monthly') return 'Co miesiąc, ' + s.getDate() + '.';
+    const n = Math.max(1, r.n || 1);
+    let t;
+    if (r.unit === 'day') t = n === 1 ? 'Codziennie' : 'Co ' + n + ' dni';
+    else if (r.unit === 'week') {
+      const ord = [1, 2, 3, 4, 5, 6, 0].filter((d) => (r.days || []).indexOf(d) >= 0);
+      t = (n === 1 ? 'Co tydzień' : 'Co ' + n + ' tyg.') + ', ' + (ord.length ? ord.map((d) => DOW[d]).join(', ') : DOW[s.getDay()]);
+    } else t = (n === 1 ? 'Co miesiąc' : 'Co ' + n + ' mies.') + ', ' + s.getDate() + '.';
+    if (r.end === 'date' && r.until) t += ' · do ' + dm(r.until);
+    if (r.end === 'count') t += ' · ' + (r.count || 1) + ' powt.';
+    return t;
+  }
+  function upsert(e) {
+    const R = TR.recDb();
+    if (e.id && get(e.id)) R.list = R.list.map((x) => (x.id === e.id ? Object.assign({}, x, e) : x));
+    else { e.id = R.next++; e.done = e.done || {}; R.list.push(e); }
+    TR.save(); return get(e.id);
+  }
+  function remove(id) { const R = TR.recDb(); R.list = R.list.filter((x) => x.id !== +id); TR.save(); }
+
+  // Statystyki: okres 'w' (7 dni), 'm' (30 dni), 'a' (cały okres) – jak w makiecie.
+  function stat(a, per) {
+    const T = C.todayKey();
+    const lo = per === 'w' ? C.addDays(T, -6) : per === 'm' ? C.addDays(T, -29) : a.start;
+    const from = lo > a.start ? lo : a.start;
+    let planned = 0, done = 0, late = 0, missed = 0;
+    for (let x = from; x <= T; x = C.addDays(x, 1)) {
+      if (!occ(a, x)) continue;
+      const v = a.done[x];
+      if (v) { planned++; done++; if (v > x) late++; } else if (x < T) { planned++; missed++; }
+    }
+    const all = [];
+    for (let x = a.start; x <= T; x = C.addDays(x, 1)) if (occ(a, x)) all.push(x);
+    let streak = 0, best = 0, run = 0, started = false;
+    all.forEach((x) => { if (a.done[x]) { run++; if (run > best) best = run; } else if (x < T) run = 0; });
+    for (let i = all.length - 1; i >= 0; i--) {
+      const x = all[i];
+      if (a.done[x]) { streak++; started = true; } else if (x === T && !started) continue; else break;
+    }
+    const over = dates(a, T).filter((x) => x < T && !a.done[x]).length;
+    const dots = all.slice(-14).map((x) => {
+      const v = a.done[x];
+      if (v) return { c: v > x ? 'late' : 'ok', tip: dm(x) + ': ' + (v > x ? 'wykonana z opóźnieniem' : 'wykonana w terminie') };
+      if (x < T) return { c: 'miss', tip: dm(x) + ': pominięta' };
+      return { c: 'today', tip: dm(x) + ': dziś, do zrobienia' };
+    });
+    return { planned, done, late, missed, streak, best, over, dots };
+  }
+
+  window.TrainRec = { list, get, base, occ, dates, forDay, setDone, repText, upsert, remove, stat, dm };
+})();
