@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v24 · 01.11.2026';
+  const APP_VERSION = 'v24.1 · 01.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -1074,13 +1074,19 @@
   app.addEventListener('pointerdown', (e) => {
     if (e.target.closest('[data-grip]')) return;
     const strip = e.target.closest('[data-strip]');
-    if (strip) { sw = { strip: true, x0: e.clientX, y0: e.clientY }; return; }
+    if (strip) { sw = { strip: true, el: strip, x0: e.clientX, y0: e.clientY, dx: 0 }; return; }
     const row = e.target.closest('.row[data-swipe], .mcard[data-mswipe]');
     if (!row || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('.actbox')) return;
     sw = { row, wrap: row.parentElement, menu: row.hasAttribute('data-mswipe'), x0: e.clientX, y0: e.clientY, dx: 0, active: false };
   });
   app.addEventListener('pointermove', (e) => {
-    if (!sw || sw.strip) return;
+    // v24.1: pasek tygodnia przesuwa się za palcem (jak w makiecie); bez przewijania przez przeglądarkę (touch-action: pan-y).
+    if (sw && sw.strip) {
+      const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { sw.dx = dx; sw.el.style.transition = 'none'; sw.el.style.transform = 'translateX(' + Math.max(-120, Math.min(120, dx)) + 'px)'; }
+      return;
+    }
+    if (!sw) return;
     const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
     if (!sw.active) {
       if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
@@ -1106,8 +1112,10 @@
   function endSwipe(e, cancelled) {
     if (!sw) return;
     if (sw.strip) {
-      const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0; sw = null;
-      if (!cancelled && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); S.sel = C.addDays(S.sel, dx < 0 ? 7 : -7); S.undo = null; render(); }
+      const st = sw; sw = null;
+      const dx = cancelled ? st.dx : e.clientX - st.x0, dy = cancelled ? 0 : e.clientY - st.y0;
+      st.el.style.transition = 'transform .2s ease'; st.el.style.transform = '';
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); S.sel = C.addDays(S.sel, dx < 0 ? 7 : -7); S.undo = null; render(); }
       return;
     }
     const s = sw; sw = null;

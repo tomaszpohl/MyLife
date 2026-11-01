@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 24
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 24.1
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -115,7 +115,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v24.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v24.1.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -136,7 +136,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v24 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v24.1 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -177,6 +177,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v24.1 (01.11.2026)**: poprawka – przesunięcie paska dni palcem na telefonie zmienia tydzień (wcześniej przeglądarka przejmowała gest i nic się nie działo); pasek przesuwa się za palcem.
 - **v24 (01.11.2026)**: Dzień – zakres dat tygodnia pod paskiem dni i „Wróć do bieżącego tygodnia”; Jadłospis – dni zwinięte, „Rozwiń / Zwiń wszystko”; Historia treningów otwiera „Trening z dnia”; Skład ciała – „Dodaj zdjęcie z galerii”; Wyliczenie rozliczenia – „Kim jestem” i przeniesienie kwot do Należności oraz Zobowiązań (z Majątkiem); Ustawienia – opis „Zapisze dane z wybranych modułów”.
 - **v23 (01.11.2026)**: Rozliczenia grupowe – podział płatności na wybrane osoby, edycja płatności (ołówek), usuwanie płatności przeciągnięciem w prawo, w wyliczeniu paski „zapłacił” i „udział”.
 - **v22 (01.11.2026)**: daty w formacie DD.MM.RRRR w całej aplikacji; wybór daty w oknie z kalendarzem (przycisk z datą) zamiast pól daty – Nowe zadanie („Zmień dzień”), Własne powtarzanie, Skład ciała, Trening, Aktywności cykliczne, Inwestycje, Rozliczenia.
