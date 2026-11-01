@@ -10,6 +10,7 @@
   const today = () => C.todayKey();
   const ic = (w, sw, body) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
   const K = {
+    img: ic(22, 1.8, '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><circle cx="9" cy="10" r="1.8"></circle><path d="m20.5 16-5-5-8.5 8.5"></path>'),
     cam: ic(22, 1.8, '<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"></path><circle cx="12" cy="13.5" r="3.5"></circle>'),
     camL: ic(26, 1.8, '<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"></path><circle cx="12" cy="13.5" r="3.5"></circle>'),
     plus: ic(20, 2.4, '<path d="M12 5v14M5 12h14"></path>'),
@@ -209,8 +210,8 @@
       <input id="bodyPhoto" class="sr-only" type="file" accept="image/*" data-in="body-photo" tabindex="-1" aria-hidden="true">
       <div class="dscroll" data-scroll="body">
         <div class="dcard accent"><div class="eyebrow">Nowy pomiar</div>
-          <div style="font-size:14px;line-height:1.45;color:var(--text-2)">Zrób zdjęcie wydruku z analizatora składu ciała – aplikacja odczyta wartości, a Ty sprawdzisz je przed zapisem. Możesz też wpisać wyniki ręcznie.</div>
-          <button class="primary" style="flex:none" data-a="bdphoto">${K.cam}<span>Zrób zdjęcie wyników</span></button>
+          <div style="font-size:14px;line-height:1.45;color:var(--text-2)">Dodaj z galerii zdjęcie wydruku z analizatora składu ciała – aplikacja odczyta wartości, a Ty sprawdzisz je przed zapisem. Możesz też wpisać wyniki ręcznie.</div>
+          <button class="primary" style="flex:none" data-a="bdphoto">${K.img}<span>Dodaj zdjęcie z galerii</span></button>
           <button class="btn2 accent" style="height:48px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px" data-a="bdmanual">${K.plus}<span>Dodaj wyniki ręcznie</span></button>
           ${B.msg ? `<div class="bmsg" role="status"><span style="flex:1;min-width:0">${esc(B.msg)}</span>${B.undo ? '<button data-a="bdundo">Cofnij</button>' : ''}</div>` : ''}</div>
         <div class="dcard"><div class="eyebrow">Pomiar z dnia</div>${dayCard}</div>

@@ -31,7 +31,7 @@
   const U = {
     home: { detail: null },
     plan: { view: 'day', k: null, month: null, sheet: null, rec: null },
-    menu: { detail: null },
+    menu: { detail: null, open: {} },   // v24: rozwinięte dni jadłospisu (klucz: id|n), domyślnie zwinięte
     list: { filter: 'all', fOpen: false, open: null, sel: null, msg: '', edit: null, draft: '', err: false, undo: null },
     journal: { tab: 'day', k: null, rec: null, dev: '', actName: '', actMin: '', actKm: '', actErr: false, from: null, fromOpen: false, sort: 'eaten-desc', sortOpen: false },
     weight: { kg: '', saved: false, tip: null },
@@ -216,11 +216,12 @@
   function viewMenu(mid) {
     const m = D.getMenu(mid);
     if (!m) return `<main class="screen">${topbar('Jadłospis')}<div class="dscroll"><div class="para">Nie znaleziono jadłospisu.</div></div></main>`;
+    const isOpen = (n) => !!U.menu.open[mid + '|' + n], allOpen = m.days.length > 0 && m.days.every((d) => isOpen(d.n));
     const days = m.days.map((d) => {
-      const tot = d.meals.reduce((t, x) => t + m.dishes[x.dish].kcal, 0);
+      const tot = d.meals.reduce((t, x) => t + m.dishes[x.dish].kcal, 0), op = isOpen(d.n);
       return `<div class="dcard tight">
-        <div class="dhead"><div style="font-family:var(--display);font-size:16px;font-weight:600">Dzień ${d.n}</div><div style="font-size:12px;color:var(--muted)">${kcal(tot)}</div></div>
-        ${d.meals.map((x) => `<button class="dmrow" data-a="ddish" data-dish="${x.dish}" data-slot="${esc(x.slot)}" data-day="${d.n}" aria-label="${esc(x.slot + ': ' + m.dishes[x.dish].name + '. Pokaż składniki i przepis')}">
+        <button class="dhead mdtog" data-a="dmday" data-n="${d.n}" aria-expanded="${op}" aria-label="${esc('Dzień ' + d.n + ', ' + kcal(tot) + '. ' + (op ? 'Zwiń posiłki' : 'Rozwiń posiłki'))}"><span style="font-family:var(--display);font-size:16px;font-weight:600">Dzień ${d.n}</span><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">${kcal(tot)} · ${d.meals.length} ${C.plural(d.meals.length, 'posiłek', 'posiłki', 'posiłków')}<span class="frot${op ? ' up' : ''}" style="display:flex">${J.down}</span></span></button>
+        ${!op ? '' : d.meals.map((x) => `<button class="dmrow" data-a="ddish" data-dish="${x.dish}" data-slot="${esc(x.slot)}" data-day="${d.n}" aria-label="${esc(x.slot + ': ' + m.dishes[x.dish].name + '. Pokaż składniki i przepis')}">
           <span class="slot">${esc(x.slot)}</span><span class="nm">${esc(m.dishes[x.dish].name)}</span><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('')}
       </div>`;
     }).join('');
@@ -231,7 +232,8 @@
     }
     return `<main class="screen" style="position:relative">${topbar('Jadłospis')}
       <div class="dscroll" data-scroll="diet-menu-${mid}">
-        <div style="font-size:13px;color:var(--muted)">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font-size:13px;color:var(--muted);min-width:0">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
+          <button class="pillbtn" style="margin:0;flex:none" data-a="dmall" data-id="${mid}"><span class="pill">${allOpen ? 'Zwiń wszystko' : 'Rozwiń wszystko'}</span></button></div>
         ${days}
       </div>${detail}</main>`;
   }
@@ -616,6 +618,8 @@
     // Jadłospis
     ddish: (el) => { U.menu.detail = { menu: A.route().arg2, dish: el.dataset.dish, slot: el.dataset.slot, day: el.dataset.day }; R(); },
     ddishclose: () => { U.menu.detail = null; R(); },
+    dmday: (el) => { const r = A.route(), k = r.arg2 + '|' + el.dataset.n; U.menu.open[k] = !U.menu.open[k]; R(); },
+    dmall: (el) => { const m = D.getMenu(el.dataset.id); if (!m) return; const all = m.days.every((d) => U.menu.open[el.dataset.id + '|' + d.n]); m.days.forEach((d) => { U.menu.open[el.dataset.id + '|' + d.n] = !all; }); R(); },
     // Plan
     dplanview: (el) => { U.plan.view = el.dataset.v; U.plan.month = U.plan.k.slice(0, 7); R(); },
     dplannav: (el) => {

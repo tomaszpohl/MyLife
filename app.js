@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v23 · 01.11.2026';
+  const APP_VERSION = 'v24 · 01.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -374,6 +374,7 @@
     return `<main class="screen">${planTop()}
       <div class="head-pad">${seg('day')}
         <div class="strip" data-strip>${strip}</div>
+        <div class="wkrow"><span>${esc(C.dmy(mon) + ' – ' + C.dmy(C.addDays(mon, 6)))}</span>${mon !== C.mondayOf(today) ? '<button class="wkback" data-a="pick" data-k="' + today + '">Wróć do bieżącego tygodnia</button>' : ''}</div>
         <div class="dayhead"><div class="t">${esc(dayTitle(k))}</div>${pill}</div>
         <div class="sub">${esc(summary)}</div>
       </div>
@@ -705,7 +706,7 @@
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
-          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Plik JSON z wybranymi modułami (zadania, dieta, finanse, trening)</span></span></button>
+          <button class="bigbtn" data-a="export">${I.download}<span class="two"><span>Zapisz kopię do pliku</span><span>Zapisze dane z wybranych modułów</span></span></button>
           <button class="bigbtn" data-a="askload">${I.upload}<span class="two"><span>Wczytaj kopię z pliku</span><span>Zastąpi dane na tym telefonie</span></span></button>
           <input id="importFile" class="sr-only" type="file" accept="application/json,.json" data-in="import" tabindex="-1" aria-hidden="true">
           ${S.bk ? viewBackupPicker() : ''}

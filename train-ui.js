@@ -66,7 +66,7 @@
     const list = TR.list();
     const cards = list.map((w) => {
       const s = TR.stats(w), chips = chipsOf(s);
-      return `<a class="dcard tcard" href="#/train/edit/${w.id}" aria-label="Edytuj trening z dnia ${esc(dl(w.d))}">
+      return `<a class="dcard tcard" href="#/train/day/${w.id}" aria-label="Pokaż ćwiczenia z dnia ${esc(dl(w.d))}">
           <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="tdate">${esc(dl(w.d))}</div><div class="tname">${esc(w.name || 'Trening')}</div>${s.vol > 0 ? `<div class="tvol">Suma ciężaru: ${grp(s.vol)} kg</div>` : ''}</div><div style="color:var(--dim);display:flex">${K.chev}</div></div>
           <div class="tchips">${chips.map((c) => `<span>${esc(c)}</span>`).join('')}</div>
           <div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div></a>`;

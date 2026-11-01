@@ -940,3 +940,12 @@ a.dcard { color: var(--text); }
 .spbars span { width: 54px; font-size: 10px; color: var(--muted); }
 .spbars i { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; display: block; }
 .spbars b { display: block; height: 100%; border-radius: 3px; }
+
+/* v24: zakres tygodnia pod paskiem dni, „Wróć do bieżącego tygodnia” */
+.wkrow { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin-top: -4px; font-size: 12px; color: var(--muted); }
+.wkback { height: 44px; margin: -10px 0; padding: 0 4px; background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; }
+.mdtog { width: 100%; background: none; border: none; padding: 0; color: var(--text); text-align: left; min-height: 44px; }
+.smove.recv { border-color: var(--green-line); }
+.smove.owe { border-color: #5A2A30; }
+.smvrow { display: flex; align-items: center; gap: 10px; font-size: 15px; min-height: 32px; }
+.smvd { font-size: 12px; color: var(--muted); }

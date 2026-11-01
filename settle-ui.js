@@ -196,6 +196,27 @@
       </div>${modal}</main>`;
   }
 
+  // ---------- Wyliczenie: „Kim jestem” i przeniesienie kwot (v24) ----------
+  function meBlock(g) {
+    const me = SE.meOf(g), my = SE.myTransfers(g);
+    const card = (list, kind) => {
+      if (!list.length) return '';
+      const recv = kind === 'recv', pend = list.filter((x) => !x.moved).length;
+      return `<div class="dcard smove ${recv ? 'recv' : 'owe'}" style="gap:8px">
+        <div class="sname" style="font-size:16px;color:${recv ? 'var(--ok)' : 'var(--owe)'}">${recv ? 'Są dla Ciebie należności' : 'Twoje zobowiązania'}</div>
+        ${list.map((x) => `<div class="smvrow"><span style="flex:1;min-width:0;word-break:break-word">${esc(recv ? x.who : 'dla: ' + x.who)}</span>${x.moved ? '<span class="smvd">przeniesiono ✓</span>' : ''}<b>${money(x.c / 100)}</b></div>`).join('')}
+        ${pend ? `<button class="sprimary ${recv ? '' : 'owe'}" style="height:48px;font-size:15px" data-a="scmove" data-v="${kind}">${recv ? 'Przenieś do należności' : 'Przenieś do zobowiązań'}</button>
+          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${recv ? 'Powstaną wpisy w Należnościach: kto – uczestnik, kwota – z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza.' : 'Powstaną wpisy w Zobowiązaniach (komu – uczestnik, kwota z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza); trafią też do Finanse · Majątek.'}</div>`
+          : `<a class="slink" style="align-self:flex-start;display:flex;align-items:center;min-height:44px" href="#/settle/debts${recv ? '' : '/owe'}">${recv ? 'Zobacz w Należnościach' : 'Zobacz w Zobowiązaniach'} →</a>`}
+      </div>`;
+    };
+    return `<div class="eyebrow" style="margin-top:8px">Kim jestem w tym rozliczeniu</div>
+      <div class="schips" role="radiogroup" aria-label="Kim jestem w tym rozliczeniu">${g.people.map((p, i) => `<button role="radio" aria-checked="${SE.key(p) === SE.key(me)}" class="schip pick${SE.key(p) === SE.key(me) ? ' on' : ''}" data-a="scme" data-i="${i}">${esc(p)}</button>`).join('')}</div>
+      ${!me ? '<div style="font-size:12px;line-height:1.4;color:var(--muted)">Wybierz siebie, aby przenieść swoje kwoty z wyliczenia do Należności i Zobowiązań.</div>'
+        : my.recv.length || my.owe.length ? card(my.recv, 'recv') + card(my.owe, 'owe') + (U.msg ? `<div class="okbox" role="status">${esc(U.msg)}</div>` : '')
+        : '<div style="font-size:13px;color:var(--muted)">Nie masz w tym rozliczeniu nic do odebrania ani do oddania.</div>'}`;
+  }
+
   // ---------- Wyliczenie ----------
   function viewCalc(id) {
     const g = SE.group(id); if (!g) return goneView('Wyliczenie');
@@ -212,6 +233,7 @@
             <div class="sav"><div class="ava to">${esc(ini(t.to))}</div><div class="nm">${esc(t.to)}</div></div></div>
           <div style="text-align:center;font-size:13px;color:var(--muted)">${esc(t.from + ' oddaje ' + m(t.c) + ' dla ' + t.to)}</div></div>`).join('')
         : '<div class="dcard" style="border-color:#2B5A3C"><div style="text-align:center;font-size:15px;color:var(--ok)">Wszyscy są rozliczeni, nikt nikomu nic nie zalega.</div></div>'}
+      ${meBlock(g)}
       <div class="eyebrow" style="margin-top:8px">Bilans uczestników</div>
       <div class="dcard" style="gap:12px">${c.rows.map((r) => {
         const half = Math.abs(r.bal) / mx * 50, col = r.bal > 0 ? 'var(--ok)' : r.bal < 0 ? '#FF9C8A' : 'var(--muted)';
@@ -283,6 +305,8 @@
     },
     spno: () => { U.pc = null; R(); },
     spyes: (el) => { SE.removePay(curGroup(), el.dataset.id); U.pc = null; R(); },
+    scme: (el) => { const g = SE.group(curGroup()); if (g) SE.setMe(g.id, g.people[+el.dataset.i]); U.msg = ''; R(); },
+    scmove: (el) => { const k = el.dataset.v, n = SE.moveTransfers(curGroup(), k); U.msg = n ? (k === 'recv' ? 'Przeniesiono do Należności: ' : 'Przeniesiono do Zobowiązań (i do Majątku): ') + n + ' ' + C.plural(n, 'wpis', 'wpisy', 'wpisów') + '.' : ''; R(); },
     sgdask: () => { U.dc = true; R(); },
     sgdno: () => { U.dc = false; R(); },
     sgdyes: () => { SE.removeGroup(curGroup()); U.dc = false; A.go('#/settle/groups'); }

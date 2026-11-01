@@ -64,6 +64,24 @@
   function addPay(id, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays.push({ id: g.pnext++, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] }); save(); }
   // v23: edycja płatności – podmiana wpisu o tym samym id (kolejność id bez zmian).
   function updatePay(id, pid, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays = g.pays.map((x) => (x.id === +pid ? { id: x.id, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] } : x)); save(); }
+  // v24: „Kim jestem w tym rozliczeniu” i przeniesienie kwot z wyliczenia do Należności / Zobowiązań (klucze w g.moved chronią przed duplikatami).
+  function setMe(id, who) { const g = group(id); if (!g) return; g.me = who; save(); }
+  const meOf = (g) => (g.me && g.people.some((p) => key(p) === key(g.me)) ? g.me : '');
+  function myTransfers(g) {
+    const me = meOf(g); if (!me) return { recv: [], owe: [] };
+    const c = calc(g), moved = g.moved || [];
+    const recv = c.tr.filter((t) => key(t.to) === key(me)).map((t) => ({ who: t.from, c: t.c, k: key(t.from) + '|' + t.c }));
+    const owe = c.tr.filter((t) => key(t.from) === key(me)).map((t) => ({ who: t.to, c: t.c, k: 'o|' + key(t.to) + '|' + t.c }));
+    [recv, owe].forEach((l) => l.forEach((x) => { x.moved = moved.indexOf(x.k) >= 0; }));
+    return { recv, owe };
+  }
+  function moveTransfers(id, kind) {
+    const g = group(id); if (!g) return 0;
+    const pend = myTransfers(g)[kind].filter((x) => !x.moved);
+    pend.forEach((x) => addDebt(kind, x.who, x.c / 100, 'Rozliczenie grupowe: ' + g.name, C.todayKey()));
+    g.moved = (g.moved || []).concat(pend.map((x) => x.k)); save();
+    return pend.length;
+  }
   function removePay(id, pid) { const g = group(id); if (!g) return; g.pays = g.pays.filter((p) => p.id !== +pid); save(); }
   // v23: podział każdej płatności po równo na zaznaczone osoby (`for`; puste = wszyscy uczestnicy), reszta groszy po 1 gr;
   // przelewy zachłannie (największy dłużnik → największy wierzyciel), jak w makiecie.
@@ -108,5 +126,5 @@
   const summary = () => db.debts.list.length + ' ' + C.plural(db.debts.list.length, 'wpis', 'wpisy', 'wpisów') + ' należności i zobowiązań, ' +
     db.groups.list.length + ' ' + C.plural(db.groups.list.length, 'rozliczenie grupowe', 'rozliczenia grupowe', 'rozliczeń grupowych');
 
-  window.Settle = { load, key, debts, sum, addDebt, settleDebts, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, calc, forOf, exportData, importData, summary };
+  window.Settle = { load, key, debts, sum, addDebt, settleDebts, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
 })();
