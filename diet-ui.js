@@ -63,7 +63,7 @@
   const toPlanBtn = (k) => `<button class="btn2 accent" style="flex:1;height:52px;font-size:16px;font-weight:600" data-a="dtoplan" data-k="${k || ''}">Zmień posiłek w planie</button>`;
   const kcal = (n) => Math.round(n) + ' kcal';
   const gramsTxt = (g) => (g.grams != null ? D.fmtNum(g.grams) + ' g' : '') + (g.measure ? ' (' + g.measure.replace(/(\d)\.(\d)/g, '$1,$2') + ')' : '');
-  const planDayLabel = (k) => { const d = C.parse(k); return C.DAY_NAME[d.getDay()] + ', ' + d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()]; };
+  const planDayLabel = (k) => { const d = C.parse(k); return C.DAY_NAME[d.getDay()] + ', ' + C.dmy(k); };
   function noPlan(where) {
     return `<div class="dcard empty-plan">
       <div style="font-family:var(--display);font-size:16px;font-weight:600">Brak aktualnego jadłospisu</div>
@@ -256,7 +256,7 @@
         : noPlan(D.menus().length ? 'Na ten dzień nie obowiązuje żaden jadłospis. Aktywuj jadłospis na liście jadłospisów.' : null);
     } else if (P.view === 'week') {
       const mon = C.mondayOf(P.k), sun = C.addDays(mon, 6), a = C.parse(mon), b = C.parse(sun);
-      navTitle = a.getDate() + (a.getMonth() === b.getMonth() ? '' : ' ' + C.MONTH_SHORT[a.getMonth()]) + '–' + b.getDate() + ' ' + C.MONTH_GEN[b.getMonth()];
+      navTitle = C.dmy(mon) + ' – ' + C.dmy(sun);
       navSub = 'Tydzień ' + C.isoWeek(mon).week;
       body = [...Array(7)].map((_, i) => {
         const k = C.addDays(mon, i), d = C.parse(k), p = D.planFor(k);

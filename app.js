@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v20 · 01.11.2026';
+  const APP_VERSION = 'v22 · 01.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -75,7 +75,7 @@
   };
   // v17: pasek przewijany poziomo (pozycje min. 60 px), aktywna pozycja wyśrodkowana; Trening ma własny pasek (fiolet).
   function navbar(mod, active) {
-    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : NB[mod];
+    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : mod === 'settle' ? { cls: 'green', items: window.SettleUI.navItems } : NB[mod];
     return `<nav class="navbar ${m.cls}" aria-label="Szybka nawigacja">${m.items.map(([k, href, label, body]) => k === active
       ? `<div class="nb on" aria-current="page">${svg(22, 1.8, body)}<span>${label}</span></div>`
       : `<a class="nb" href="${href}">${svg(22, 1.8, body)}<span>${label}</span></a>`).join('')}</nav>`;
@@ -110,10 +110,10 @@
   try { S.lastPlan = localStorage.getItem('mylive.lastPlan') || 'day'; } catch (e) {}
 
   // ---------- Formatowanie ----------
-  const dayTitle = (k) => { const d = C.parse(k); return C.DAY_NAME[d.getDay()] + ', ' + d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()]; };
+  const dayTitle = (k) => { const d = C.parse(k); return C.DAY_NAME[d.getDay()] + ', ' + C.dmy(k); };
   function relDate(k) {
     const d = C.parse(k);
-    const base = d.getDate() + ' ' + C.MONTH_SHORT[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
+    const base = C.dmy(k);
     const diff = C.diffDays(C.todayKey(), k);
     if (diff === 0) return 'Dziś, ' + base;
     if (diff === 1) return 'Jutro, ' + base;
@@ -121,6 +121,36 @@
     return C.DAY_SHORT[d.getDay()].charAt(0) + C.DAY_SHORT[d.getDay()].slice(1).toLowerCase() + ', ' + base;
   }
   const repLine = (t) => { const r = C.repeatLabel(t); return r ? `<div class="rep">${I.repeat}<span>${esc(r)}</span></div>` : ''; };
+
+  // ---------- Wybór daty z kalendarza (v22, makieta 01.11: okno z kalendarzem, „Dziś”, dni spoza zakresu wyszarzone) ----------
+  // A.datePick({ value, min, max, onPick(k) }) – okno nad bieżącym ekranem; A.dateBtn(...) – przycisk z datą.
+  const DSH = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
+  const calFmt = (k) => (/^\d{4}-\d{2}-\d{2}$/.test(String(k)) ? DSH[C.parse(k).getDay()] + ', ' + C.dmy(k) : 'Wybierz datę');
+  function datePick(o) {
+    const v = /^\d{4}-\d{2}-\d{2}$/.test(String(o.value)) ? o.value : (o.max && C.todayKey() > o.max ? o.max : C.todayKey());
+    S.dp = { y: +v.slice(0, 4), m: +v.slice(5, 7) - 1, sel: o.value || '', min: o.min || '', max: o.max || '', cb: o.onPick };
+    render();
+  }
+  const dateBtn = (k, act, data, label) => `<button type="button" class="dpbtn" data-a="${act}"${data || ''} aria-haspopup="dialog" aria-label="${esc((label ? label + ': ' : '') + calFmt(k))}"><span>${esc(calFmt(k))}</span>${svg(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')}</button>`;
+  function viewDatePicker() {
+    const P = S.dp, T = C.todayKey(), mk = P.y + '-' + C.pad(P.m + 1);
+    const first = mk + '-01', lead = (C.dow(first) + 6) % 7, dim = C.daysInMonth(P.y, P.m);
+    const out = (k) => (P.min && k < P.min) || (P.max && k > P.max);
+    let cells = '<span></span>'.repeat(lead);
+    for (let d = 1; d <= dim; d++) {
+      const k = mk + '-' + C.pad(d), off = out(k);
+      cells += `<button class="dpc${k === P.sel ? ' sel' : ''}${k === T ? ' today' : ''}" data-a="dppick" data-k="${k}"${off ? ' disabled' : ''} aria-label="${esc(calFmt(k))}"${k === P.sel ? ' aria-pressed="true"' : ''}><span>${d}</span></button>`;
+    }
+    const prevOff = P.min && first <= P.min, nextOff = P.max && mk + '-' + C.pad(dim) >= P.max;
+    return `<div class="dpwrap"><div class="dpbox" role="dialog" aria-modal="true" aria-label="Wybierz datę">
+      <div class="dpnav"><button class="dparr" data-a="dpnav" data-d="-1" aria-label="Poprzedni miesiąc"${prevOff ? ' disabled' : ''}>${I.prev}</button>
+        <div class="dpt">${C.MONTH_NOM[P.m]} ${P.y}</div>
+        <button class="dparr" data-a="dpnav" data-d="1" aria-label="Następny miesiąc"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
+      <div class="dpdow" aria-hidden="true"><span>PN</span><span>WT</span><span>ŚR</span><span>CZ</span><span>PT</span><span>SB</span><span>ND</span></div>
+      <div class="dpgrid">${cells}</div>
+      <div style="display:flex;gap:10px;margin-top:4px"><button class="btn-cancel small" data-a="dpclose">Anuluj</button><button class="dptoday" data-a="dptoday"${out(T) ? ' disabled' : ''}>Dziś</button></div>
+    </div></div>`;
+  }
 
   // ---------- Aktywności cykliczne Treningu w planerze (v20) ----------
   const RCx = () => window.TrainRec;
@@ -204,6 +234,8 @@
     if (r[0] === 'diet' && r[1]) return '#/diet';
     if (r[0] === 'fin' && r[1]) return '#/fin';
     if (r[0] === 'train' && r[1]) return '#/train';
+    if (r[0] === 'settle' && (r[1] === 'group' || r[1] === 'calc')) return r[1] === 'calc' ? '#/settle/group/' + r[2] : '#/settle/groups';
+    if (r[0] === 'settle' && r[1]) return '#/settle';
     return '#/';
   }
   function navReplace(h) { if (curHash() === h) { render(); return; } navMode = 'replace'; location.replace(h); }
@@ -238,8 +270,9 @@
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
     else if (r.name === 'train' && window.TrainUI) { const k = window.TrainUI.navKey(r); html = k ? withNavbar(window.TrainUI.view(r), 'train', k) : window.TrainUI.view(r); }
+    else if (r.name === 'settle' && window.SettleUI) html = withNavbar(window.SettleUI.view(r), 'settle', window.SettleUI.navKey(r));
     else html = viewHome();
-    app.innerHTML = html + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
+    app.innerHTML = html + (S.dp ? viewDatePicker() : '') + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
     app.querySelectorAll('[data-scroll]').forEach((el) => {
       if (scrollMem[el.dataset.scroll]) el.scrollTop = scrollMem[el.dataset.scroll];
       if (el.dataset.autoend) el.scrollLeft = scrollMem[el.dataset.scroll + ':x'] != null ? scrollMem[el.dataset.scroll + ':x'] : el.scrollWidth;
@@ -257,7 +290,7 @@
   // ---------- Ekran główny ----------
   function viewHome() {
     const d = new Date();
-    const label = C.DAY_NAME[d.getDay()].toUpperCase() + ' · ' + d.getDate() + ' ' + C.MONTH_SHORT[d.getMonth()].toUpperCase() + ' ' + d.getFullYear();
+    const label = C.DAY_NAME[d.getDay()].toUpperCase() + ' · ' + C.dmy(C.todayKey());
     const desc = 'Zadania, cykle i kalendarz';
     return `<main class="screen home">
       <div class="hometop"><div style="display:flex;flex-direction:column;gap:6px">
@@ -286,6 +319,11 @@
           <div class="txt"><div class="name">Trening</div><div class="desc">Treningi, ćwiczenia i serie</div></div>
           <div style="color:var(--violet);flex:none;display:flex">${I.chevR}</div>
         </a>
+        ${window.SettleUI ? `<a class="module settle" href="#/settle">
+          <div class="ico" style="background:var(--green-bg);color:var(--ok)">${svg(26, 1.8, window.SettleUI.icon)}</div>
+          <div class="txt"><div class="name">Rozliczenia</div><div class="desc">Należności, zobowiązania i wspólne wydatki</div></div>
+          <div style="color:var(--ok);flex:none;display:flex">${I.chevR}</div>
+        </a>` : ''}
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
     </main>`;
@@ -380,7 +418,7 @@
   }
 
   // ---------- Panel „Przełóż zadanie” ----------
-  function longDay(k) { const d = C.parse(k); return d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()] + (d.getFullYear() !== C.parse(C.todayKey()).getFullYear() ? ' ' + d.getFullYear() : ''); }
+  function longDay(k) { return C.dmy(k); }
   function viewSheet() {
     const sh = S.sheet, t = C.get(sh.id);
     if (!t) { S.sheet = null; return ''; }
@@ -442,8 +480,8 @@
     const mon = C.mondayOf(S.sel), sun = C.addDays(mon, 6), today = C.todayKey();
     const a = C.parse(mon), b = C.parse(sun);
     const range = a.getMonth() === b.getMonth()
-      ? a.getDate() + '–' + b.getDate() + ' ' + C.MONTH_GEN[a.getMonth()]
-      : a.getDate() + ' ' + C.MONTH_SHORT[a.getMonth()] + ' – ' + b.getDate() + ' ' + C.MONTH_SHORT[b.getMonth()];
+      ? C.dmy(mon) + ' – ' + C.dmy(sun)
+      : C.dmy(mon) + ' – ' + C.dmy(sun);
     const wk = C.isoWeek(mon);
     const days = [];
     let total = 0;
@@ -505,7 +543,7 @@
       const cls = [!inMonth ? 'muted' : k === today ? 'today' : '', inMonth && k === S.sel && k !== today ? 'sel' : '', late ? 'late' : ''].join(' ');
       const dots = open ? '<i></i>' : '';
       const st = !n ? '' : late ? ', zaległe zadania' : open ? ', do zrobienia' : ', wszystko wykonane';
-      cells += `<button class="mcell ${cls}" data-a="mpick" data-k="${k}" aria-label="${d.getDate()} ${C.MONTH_GEN[d.getMonth()]}, ${C.tasksWord(n)}${st}"${k === S.sel ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+      cells += `<button class="mcell ${cls}" data-a="mpick" data-k="${k}" aria-label="${C.dmy(k)}, ${C.tasksWord(n)}${st}"${k === S.sel ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
     }
     const items = C.forDay(S.sel), macts = actsFor(S.sel);
     const actList = macts.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}" aria-label="${esc(x.a.name)}, aktywność${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
@@ -557,8 +595,8 @@
         <div class="field"><label class="eyebrow" for="tytul">Tytuł</label>
           <input id="tytul" class="title-input" type="text" autocomplete="off" placeholder="Co masz do zrobienia?" value="${esc(d.title)}" data-in="title"></div>
         <div class="group">
-          <div class="datecard"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div>
-            <input type="date" aria-label="Data zadania" value="${d.date}" data-in="date" required></div>
+          <button type="button" class="datecard dcbtn" data-a="fdate" aria-haspopup="dialog" aria-label="${esc('Data zadania: ' + calFmt(d.date) + '. Zmień dzień')}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div></div>
+            <span class="dcchg">Zmień dzień${svg(16, 2, '<path d="m9 6 6 6-6 6"></path>')}</span></button>
         </div>
         <div class="panel">
           <div class="eyebrow">Powtarzanie</div>
@@ -632,7 +670,7 @@
         <div class="panel" style="padding-bottom:8px;gap:2px"><div class="eyebrow" style="padding-bottom:6px">Koniec</div>
           ${ends.map(([id, l]) => `<div class="radio-row">
             <button class="radio" role="radio" aria-checked="${r.endMode === id}" data-a="end" data-v="${id}"><span class="dot"></span><span>${l}</span></button>
-            ${id === 'date' && r.endMode === 'date' ? `<input class="end-date" type="date" aria-label="Data końca" value="${r.endDate || ''}" min="${d.date}" data-in="enddate">` : ''}
+            ${id === 'date' && r.endMode === 'date' ? dateBtn(r.endDate, 'renddate', '', 'Data końca') : ''}
             ${id === 'count' ? `<input class="num-in" style="width:68px;height:44px;border-radius:12px" type="text" inputmode="numeric" maxlength="3" aria-label="Liczba powtórzeń" value="${r.count}" data-in="count">` : ''}
           </div>`).join('')}
         </div>
@@ -663,7 +701,7 @@
             <div class="kv"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
             <div class="kv" style="padding-bottom:0"><span>Wersja aplikacji</span><span>${APP_VERSION}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse i treningi. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse, treningi i rozliczenia. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
@@ -681,8 +719,8 @@
 
   // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
   function viewBackupPicker() {
-    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train;
-    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening']];
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train && !b.settle;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening'], ['settle', 'Rozliczenia']];
     return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
       <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
       ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
@@ -715,6 +753,13 @@
     },
     done: (el) => { C.toggleDone(el.dataset.id, el.dataset.k); render(); },
     // Podzadania (v13)
+    dpnav: (el) => { const P = S.dp, x = new Date(P.y, P.m + +el.dataset.d, 1); P.y = x.getFullYear(); P.m = x.getMonth(); render(); },
+    dppick: (el) => { const P = S.dp; S.dp = null; if (P && P.cb) P.cb(el.dataset.k); render(); },
+    dptoday: () => { const P = S.dp; S.dp = null; if (P && P.cb) P.cb(C.todayKey()); render(); },
+    dpclose: () => { S.dp = null; render(); },
+    // Nowe / Edytuj zadanie: data z kalendarza („Zmień dzień”, od dziś wzwyż); Własne powtarzanie: koniec „Do dnia” od daty początku.
+    fdate: () => { const d = S.draft, T = C.todayKey(); datePick({ value: d.date, min: d.date < T ? d.date : T, onPick: (k) => { d.date = k; } }); },
+    renddate: () => { const r = S.rdraft; datePick({ value: r.repeat.endDate || r.date, min: r.date, onPick: (k) => { r.repeat.endDate = k; } }); },
     subtog: (el) => { const key = el.dataset.s; S.subOpen[key] = !S.subOpen[key]; render(); },
     // v20: aktywności cykliczne w planerze – odhaczenie wspólne z ekranem Treningu; dotknięcie nazwy otwiera edycję aktywności.
     actdone: (el) => { const x = actsFor(el.dataset.k).find((y) => y.a.id === +el.dataset.id); if (x) RCx().setDone(x.a.id, x.ds, !x.done); render(); },
@@ -792,7 +837,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); back(); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -803,11 +848,12 @@
         if (b.diet && window.Diet) modules.diet = window.Diet.exportData();
         if (b.fin && window.Fin) modules.fin = window.Fin.exportData();
         if (b.train && window.Train) modules.train = window.Train.exportData();
+        if (b.settle && window.Settle) modules.settle = window.Settle.exportData();
         const name = 'mylife-kopia-' + C.todayKey() + '.json';
         downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
         try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
         S.bk = null;
-        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : '', b.settle ? 'rozliczenia' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
       } else {
         // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
         const f = document.getElementById('importFile'); if (f) f.click();
@@ -815,7 +861,7 @@
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true }; render(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -890,6 +936,7 @@
         if (k.indexOf('diet-') === 0 && window.DietUI) window.DietUI.onInput(el, k);
         else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onInput(el, k);
         else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onInput(el, k);
+        else if (k.indexOf('settle-') === 0 && window.SettleUI) window.SettleUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
     }
   });
@@ -902,18 +949,19 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train } : { tasks: true, diet: true, fin: true, train: true };
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train, settle: S.bk.settle } : { tasks: true, diet: true, fin: true, train: true, settle: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
           // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
-          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train)) throw new Error('To nie jest kopia MyLife.');
-          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : ''].filter(Boolean);
+          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train && !data.settle)) throw new Error('To nie jest kopia MyLife.');
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : '', want.settle && !data.settle ? 'Rozliczenia' : ''].filter(Boolean);
           const done = [];
           if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
           if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
           if (want.fin && data.fin && window.Fin) { window.Fin.importData(data.fin); done.push('finanse: ' + window.Fin.summary()); }
           if (want.train && data.train && window.Train) { window.Train.importData(data.train); done.push('trening: ' + window.Train.summary()); }
+          if (want.settle && data.settle && window.Settle) { window.Settle.importData(data.settle); done.push('rozliczenia: ' + window.Settle.summary()); }
           if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
           S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
           S.bk = null; render();
@@ -929,10 +977,13 @@
     }
   });
   app.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.SettleUI && route().name === 'settle' && window.SettleUI.onEscape()) { render(); return; }
+    if (window.SettleUI && e.target.dataset && e.target.dataset.key && window.SettleUI.onKey(e)) return;
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
     if (e.target.id === 'subnew' && e.key === 'Enter') { e.preventDefault(); S.ui.subDraft = e.target.value.slice(0, 60); actions.fsubadd(); return; }
@@ -1064,6 +1115,8 @@
     s.row.style.transition = 'transform .2s ease';
     if (s.menu) {
       const id = s.wrap.dataset.id, blocked = s.wrap.classList.contains('blocked');
+      // v21: lista rozliczeń grupowych – wiersz wraca, a przeciągnięcie ≥100 px otwiera okno potwierdzenia.
+      if (s.row.dataset.mswipe === 'settle') { s.row.style.transform = 'translateX(0)'; setTimeout(() => { s.wrap.classList.remove('swiping'); if (!cancelled && s.dx >= 100) window.SettleUI.swipeDelete(id); }, 200); return; }
       if (!cancelled && s.dx >= 100 && !blocked) { s.row.style.transform = 'translateX(110%)'; setTimeout(() => window.DietUI.swipeDelete(id), 180); }
       else {
         s.row.style.transform = 'translateX(0)';
@@ -1093,7 +1146,7 @@
 
   // ---------- Start ----------
   C.load();
-  window.App = { I, svg, esc, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
+  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   if (window.BodyUI) { window.BodyUI.init(window.App); }
@@ -1101,14 +1154,17 @@
   if (window.FinUI) { window.FinUI.init(window.App); }
   if (window.Train) { window.Train.load(); }
   if (window.TrainUI) { window.TrainUI.init(window.App); }
+  if (window.Settle) { window.Settle.load(); }
+  if (window.SettleUI) { window.SettleUI.init(window.App); }
   window.addEventListener('hashchange', () => {
     navSync();
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
-    S.del = null; S.bk = null;
+    S.del = null; S.bk = null; S.dp = null;
     if (window.DietUI) window.DietUI.onRoute(r);
     if (window.FinUI) window.FinUI.onRoute(r);
     if (window.TrainUI) window.TrainUI.onRoute(r);
+    if (window.SettleUI) window.SettleUI.onRoute(r);
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {

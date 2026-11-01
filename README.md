@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse i Trening (aplikacja na Androida, PWA) · wersja 20
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 22
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -27,6 +27,8 @@ Przełożenie zadania cyklicznego dotyczy tylko tego jednego terminu. Przełożo
 
 **Nawigacja (od v7):** strzałka wstecz prowadzi do poprzedniego widoku (np. Dzień otwarty z Tygodnia wraca do Tygodnia, Ustawienia do ekranu, z którego je otwarto, Plan posiłków do Jadłospisu albo Diety). Przełączniki Dzień / Tydzień / Miesiąc nie są osobnym krokiem – Dzień wybrany przełącznikiem wraca do ekranu głównego. Wstecz cofa krok po kroku przez wszystkie otwarte ekrany (także po przejściach dolnym paskiem), aż do ekranu głównego; bez historii prowadzi do ekranu nadrzędnego. Przycisk telefonu „wstecz” działa tak samo. Obok strzałki jest przycisk **Pulpit główny** (ikona domu) – na wszystkich ekranach poza głównym, także w widoku przepisu.
 
+**Daty (od v22):** wszystkie daty w aplikacji są w formacie **DD.MM.RRRR** (np. 19.10.2026), z dniem tygodnia tam, gdzie był (np. „pon. 19.10.2026”, „Poniedziałek, 19.10.2026”, tydzień „19.10.2026 – 25.10.2026”); nazwy miesięcy zostają tylko w nagłówkach kalendarzy i okresów („Październik 2026”). Konkretną datę wybiera się przyciskiem z datą, który otwiera **okno z kalendarzem** (miesiące strzałkami, dni spoza zakresu wyszarzone, „Dziś”, „Anuluj”): Nowe / Edytuj zadanie („Zmień dzień”, od dziś wzwyż), koniec „Do dnia” we Własnym powtarzaniu i w Aktywnościach cyklicznych (od dnia startu), data pomiaru w Składzie ciała, data treningu, data i „Od daty” w Inwestycjach, daty w Należnościach i zobowiązaniach oraz w płatnościach rozliczenia grupowego (daty historyczne – najwyżej dziś). Wydatki, Wynik i eksport diety mają jak dotąd kalendarz w ekranie.
+
 ## Moduł Dieta (od v5)
 
 Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan żywieniowy”: strona przeglądu dni, potem dzień po dniu posiłki z kcal, przepisem i tabelą składników). Odczyt działa w telefonie, bez internetu. Nazwy produktów zapisane w tabeli w kilku liniach są składane w całość (od v14), np. „fasola czerwona (nerkowata), dojrzałe nasiona, w puszce, po odsączeniu, płukana wodą z kranu”.
@@ -49,7 +51,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 ## Moduł Finanse (od v8)
 
-Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Cele · Inwestycje · Wynik; Trening: Trening · Historia · Postępy · Aktywności). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
+Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Cele · Inwestycje · Wynik; Trening: Trening · Historia · Postępy · Aktywności; Rozliczenia: Rozliczenia · Długi · Grupy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
 
 | Ekran | Funkcje |
 |---|---|
@@ -75,7 +77,7 @@ Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
 
 Formuły są czytane jako zapisane w pliku wartości. Wiersze bez daty lub kwoty są pomijane (okno podsumowania podaje ich liczbę).
 
-**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse, Trening; moduł Finanse obejmuje też poduszkę, cele i inwestycje). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
+**Kopia danych:** „Zapisz kopię do pliku” i „Wczytaj kopię z pliku” pokazują w karcie wybór modułów (Zadania, Dieta, Finanse, Trening, Rozliczenia; moduł Finanse obejmuje też poduszkę, cele i inwestycje). Przy wczytaniu najpierw wybierasz moduły, potem plik; zaznaczone moduły zastępują dane na telefonie, pozostałe zostają bez zmian. Kopie ze starszych wersji (same zadania) też się wczytują.
 
 ## Moduł Trening (od v17)
 
@@ -94,12 +96,26 @@ Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening); 
 
 **Aktywności w Planerze dnia (od v20):** widok Dzień pokazuje aktywności zaplanowane na ten dzień (ikona powtarzania, „… · aktywność”) po zadaniach do zrobienia, wykonane na końcu; dziś także z zaległymi terminami jako rozwijane podzadania z datą. Odhaczenie działa w obie strony (planer ⇄ ekran Aktywności). Aktywności nie mają uchwytu ani gestów przesuwania i usuwania; dotknięcie nazwy otwiera edycję w Treningu. Tydzień i Miesiąc też pokazują aktywności (podgląd; Miesiąc liczy je do kropek i zaległych dni).
 
+## Moduł Rozliczenia (od v21)
+
+Kafel „Rozliczenia” na ekranie głównym (zieleń). Moduł startuje pusty. Dolny pasek: Rozliczenia · Długi · Grupy.
+
+| Ekran | Funkcje |
+|---|---|
+| **Rozliczenia** | Kafle **Należności** i **Zobowiązania** z sumami (dotknięcie otwiera właściwą zakładkę), funkcje: Należności i zobowiązania, Rozliczenia grupowe. |
+| **Należności i zobowiązania** | Zakładki Należności (zielone) / Zobowiązania (czerwone), karta „Razem należy mi się” / „Razem jestem winien”, wpisy pogrupowane wg osoby (suma, liczba, od najnowszego). „Dodaj należność / zobowiązanie”: kto / komu (podpowiedzi z wcześniejszych osób; ta sama osoba bez rozróżniania wielkości liter), kwota, za co, data powstania (do dziś). Wpisów się nie edytuje. ✓ przy wpisie – „Należność oddana? / Zobowiązanie uregulowane?” – usuwa wpis; przy kilku wpisach osoby „Wszystko oddane przez … / Uregulowano wszystko dla …”. **Zobowiązania trafiają do Finanse · Majątek** jako jedna pozycja na osobę („Zobowiązanie: Imię”, kwoty się sumują); uregulowanie zmniejsza kwotę, ostatnie usuwa pozycję – z wpisami w historii Majątku. Należności są tylko tutaj. |
+| **Rozliczenia grupowe** | Lista rozliczeń (nazwa, liczba osób i płatności, uczestnicy, suma). „Nowe rozliczenie”: nazwa i co najmniej dwóch uczestników (pole + plus albo Enter, bez powtórzeń). **Przeciągnięcie wiersza w prawo** (≥ 100 px) pyta o usunięcie rozliczenia z płatnościami; krótkie przeciągnięcie nic nie robi. |
+| **Rozliczenie grupowe** | Razem i na osobę, „Pokaż wyliczenie”, uczestnicy (dodawanie; usuwanie tylko bez płatności i przy więcej niż dwóch osobach), płatności: kto płacił, ile, za co, kiedy – usuwanie z potwierdzeniem; „Usuń całe rozliczenie”. Koszty dzielone po równo. |
+| **Wyliczenie** | „Kto komu ile zalega” – minimalna lista przelewów (inicjały, strzałka, kwota) albo „Wszyscy są rozliczeni”; bilans uczestników – słupki w lewo (do dopłaty) i w prawo (do odebrania), „Zapłacił … · powinien …”. |
+
+Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening, Rozliczenia). Wczytanie kopii Rozliczeń uzgadnia też pozycje zobowiązań w Majątku.
+
 ## Instalacja na telefonie (Android)
 
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v20.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v22.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -120,7 +136,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v20 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v22 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -142,6 +158,8 @@ mylife/
 ├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
 ├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
 ├─ train-core.js         – dane treningów, postępy (największy ciężar), kopia
+├─ settle-core.js       – dane Rozliczeń: należności, zobowiązania (z pozycjami w Majątku), rozliczenia grupowe, wyliczenie
+├─ settle-ui.js         – ekrany modułu Rozliczenia
 ├─ train-rec.js          – aktywności cykliczne: terminy, zaległe, odhaczanie, statystyki
 ├─ train-rec-ui.js       – ekran „Aktywności cykliczne”
 ├─ train-ui.js           – ekrany modułu Trening
@@ -159,6 +177,8 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v22 (01.11.2026)**: daty w formacie DD.MM.RRRR w całej aplikacji; wybór daty w oknie z kalendarzem (przycisk z datą) zamiast pól daty – Nowe zadanie („Zmień dzień”), Własne powtarzanie, Skład ciała, Trening, Aktywności cykliczne, Inwestycje, Rozliczenia.
+- **v21 (01.11.2026)**: nowy moduł Rozliczenia – należności i zobowiązania (zobowiązania jako pozycje w Majątku), rozliczenia grupowe z płatnościami, wyliczeniem przelewów i bilansem, usuwanie rozliczenia przeciągnięciem; kopia danych z piątym modułem.
 - **v20 (01.11.2026)**: Trening – nowy ekran „Aktywności cykliczne” (powtarzanie, odhaczanie, zaległe podzadania z datą, statystyki) i pozycja „Aktywności” w pasku; aktywności w Planerze dnia (Dzień, Tydzień, Miesiąc). Inwestycje bez trybu „Miesiąc” – statystyki „Rok” (domyślnie) i „Od daty” ustawiają się na najnowszym wpisie. Wykresy Majątku i Wagi mają domyślnie zaznaczony ostatni punkt, Postępy – ćwiczenie z najnowszego treningu.
 - **v19 (30.10.2026)**: Finanse – nowe ekrany „Cele” (kwoty docelowe, odłożono, łączna realizacja) i „Inwestycje” (wpisy z celem i datą, statystyki Miesiąc / Rok / Od daty, wykres kołowy); kafelki na ekranie Finanse i dwie nowe pozycje dolnego paska (7). Dane w kopii modułu Finanse.
 - **v18 (30.10.2026)**: Trening – kondycja z czasem albo kilkoma interwałami (rundy, czas łącznie) i średnią mocą, suma ciężaru w historii, nowy ekran „Trening z dnia”, kafle „Liczba treningów” i „Ostatni trening” z datą prowadzą do historii i do treningu z dnia.

@@ -228,8 +228,7 @@
             <label for="fvcustom" style="font-size:12px;color:var(--muted);padding:4px 2px 0">Własny cel – wpisz nazwę i dodaj do listy</label>
             <div style="display:flex;gap:8px"><input id="fvcustom" class="finput" type="text" maxlength="30" placeholder="np. Fundusz emerytalny" value="${esc(D.custom || '')}" data-in="fin-vcustom" autocomplete="off"><button class="fadd gold${cOk ? "" : " off"}" style="flex:none" data-a="fvgadd">Dodaj</button></div></div>` : ''}</div>
         <div class="ffield"><span style="font-size:13px;color:var(--muted)">Data *</span>
-          <button class="frange" data-a="fcalopen" data-c="vdate" data-k="${D.d}" aria-haspopup="dialog" aria-label="${esc('Data inwestycji: ' + F.dlabelY(D.d))}"><span>DATA</span><b>${esc(F.dlabelY(D.d))}</b></button>
-          ${calOpen('vdate') ? calendar('vdate', D.d, {}) : ''}</div>
+          ${A.dateBtn(D.d, 'fvdate', '', 'Data inwestycji')}</div>
         <div data-vpv role="status" style="font-size:13px;line-height:1.4;color:#F2D9A0">${esc(c.msg)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fvclose">Anuluj</button><button class="primary gold${c.ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fvsave">${D.id ? 'Zapisz zmiany' : 'Dodaj inwestycję'}</button></div>
         ${D.id ? (D.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć ten wpis? Tej operacji nie można cofnąć.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fvdelno">Nie</button><button class="btn-del" style="height:44px;font-size:14px" data-a="fvdelyes">Tak, usuń</button></div></div>`
@@ -246,7 +245,7 @@
               <button class="iconbtn soft" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
               <div class="big">${esc(String(V.yr))}</div>
               <button class="iconbtn soft" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
-            : `<button class="frange" data-a="fcalopen" data-c="vfrom" data-k="${V.from}" aria-haspopup="dialog" aria-label="${esc('Od dnia: ' + F.dlabelY(V.from))}"><span>OD DNIA</span><b>${esc(F.dlabelY(V.from))}</b></button>${calOpen('vfrom') ? calendar('vfrom', V.from, {}) : ''}`}
+            : `<div class="ffield"><span class="eyebrow">Od dnia</span>${A.dateBtn(V.from, 'fvfrom', '', 'Od dnia')}</div>`}
           <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
             <div style="font-size:12px;color:var(--muted)">${per.length} ${C.plural(per.length, 'wpis', 'wpisy', 'wpisów')}${gk.length ? ' · ' + gk.length + ' ' + C.plural(gk.length, 'cel', 'cele', 'celów') : ''}</div></div>
           ${per.length ? `<div style="display:flex;justify-content:center;padding:6px 0"><div class="fpie" role="img" aria-label="${esc('Wykres kołowy: ' + legend.map((l) => l.name + ' ' + l.pct).join(', '))}" style="background:conic-gradient(${stops.join(', ')})"><div><span>RAZEM</span><b>${F.money(total)}</b></div></div></div>
@@ -358,7 +357,7 @@
       let a, b, label;
       const ref = E.ref;
       if (E.period === 'day') { a = b = ref; label = F.dlabelY(ref); }
-      else if (E.period === 'week') { a = C.mondayOf(ref); b = C.addDays(a, 6); const pa = C.parse(a), pb = C.parse(b); label = pa.getDate() + ' ' + C.MONTH_SHORT[pa.getMonth()] + ' – ' + pb.getDate() + ' ' + C.MONTH_SHORT[pb.getMonth()] + ' ' + pb.getFullYear(); }
+      else if (E.period === 'week') { a = C.mondayOf(ref); b = C.addDays(a, 6); label = C.dmy(a) + ' – ' + C.dmy(b); }
       else if (E.period === 'month') { [a, b] = monthRange(ym(ref)); label = monthTitle(ref); }
       else { a = E.from; b = E.to; label = ''; }
       const nextOff = E.period === 'day' ? ref >= T : E.period === 'week' ? C.addDays(a, 7) > T : E.period === 'month' ? ym(ref) >= ym(T) : true;
@@ -830,6 +829,8 @@
     fgdelno: () => { U.goals.dlg.confirm = false; R_(); },
     fgdelyes: () => { F.goalRemove(U.goals.dlg.id); U.goals.dlg = null; R_(); },
     // Inwestycje (v19)
+    fvdate: () => { const D = U.inv.dlg; A.datePick({ value: D.d, min: '2020-01-01', max: today(), onPick: (k) => { D.d = k; } }); },
+    fvfrom: () => { const V = U.inv; A.datePick({ value: V.from, min: '2020-01-01', max: today(), onPick: (k) => { V.from = k; } }); },
     fvmode: (el) => { U.inv.mode = el.dataset.v; U.cal = null; R_(); },
     fvnav: (el) => { const V = U.inv, n = V.yr + +el.dataset.d; if (n <= +today().slice(0, 4)) V.yr = n; R_(); },
     fvnew: () => { U.inv.dlg = { id: null, amt: '', goal: '', d: today(), confirm: false, dd: false, custom: '' }; U.cal = null; R_(); },

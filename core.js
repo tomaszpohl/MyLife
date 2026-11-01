@@ -146,7 +146,9 @@
     if (r.endMode === 'count') out += ' · ' + r.count + ' ' + plural(r.count, 'powtórzenie', 'powtórzenia', 'powtórzeń');
     return out;
   }
-  function longDate(k) { const d = parse(k); return d.getDate() + ' ' + MONTH_GEN[d.getMonth()] + ' ' + d.getFullYear(); }
+  // v22: wszystkie daty jako DD.MM.RRRR (makieta 01.11).
+  function dmy(k) { const a = String(k).split('-'); return a[2] + '.' + a[1] + '.' + a[0]; }
+  function longDate(k) { return dmy(k); }
 
   // ---------- Zapis ----------
   // Klucz zostaje „mylive.v1”, żeby zachować dane z wcześniejszych wersji (MyLive v1–v3).
@@ -316,7 +318,7 @@
   function wipe() { db = { version: 2, tasks: [], order: {} }; save(); }
 
   window.Core = {
-    DAY_SHORT, DAY_NAME, DAY_ABBR, MONTH_GEN, MONTH_NOM, MONTH_SHORT,
+    DAY_SHORT, DAY_NAME, DAY_ABBR, MONTH_GEN, MONTH_NOM, MONTH_SHORT, dmy,
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,

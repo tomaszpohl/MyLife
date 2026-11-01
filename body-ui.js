@@ -29,7 +29,7 @@
     return (n < 0 ? '−' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (p[1] ? ',' + p[1] : '');
   }
   const parseNum = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) ? v : null; };
-  const dl = (iso) => { const a = iso.split('-').map(Number); return a[2] + ' ' + MS[a[1] - 1] + ' ' + a[0]; };
+  const dl = (iso) => C.dmy(iso);
   const dlong = (iso) => DN[C.parse(iso).getDay()] + ', ' + dl(iso);
   const unitTxt = (m) => (m.unit === '' ? '' : m.unit === '%' ? '%' : ' ' + m.unit);
   const val = (m, x) => fmt(x, m.dec) + unitTxt(m);
@@ -78,8 +78,8 @@
               <div style="font-size:12px;line-height:1.4;color:var(--muted)">Sprawdź liczby i popraw je, jeśli odczyt jest błędny. Pominięto dane osobowe z wydruku (typ ciała, płeć, wiek, wzrost). Zdjęcie nie jest zapisywane w aplikacji.</div></div></div>
             ${r.warn ? '<div class="bwarn" role="note">Część odczytanych wartości nie zgadza się ze sobą (np. masa tłuszczowa z wagą i % tłuszczu) – porównaj je z wydrukiem.</div>' : ''}`
             : '<div style="font-size:13px;line-height:1.45;color:var(--muted)">Wpisz wartości z wydruku lub z wagi. Puste pola zostaną pominięte (wystarczy jedna wartość).</div>'}
-          <div class="dcard" style="gap:6px"><div class="bfrow"><label for="bf-date" style="flex:1;min-width:0;font-size:14px">Data pomiaru</label>
-            <input id="bf-date" class="bfdate" type="date" min="2020-01-01" max="${today()}" value="${esc(r.date)}" data-in="body-date" aria-label="Data pomiaru"></div>
+          <div class="dcard" style="gap:6px"><div class="bfrow"><div style="flex:1;min-width:0;font-size:14px">Data pomiaru</div>
+            ${A.dateBtn(r.date, 'bddate', '', 'Data pomiaru')}</div>
             ${!st.dateOk || st.clash ? `<div class="bfnote miss">${!st.dateOk ? 'Podaj poprawną datę (nie późniejszą niż dziś).' : 'Pomiar z tego dnia już istnieje – zapis go zastąpi.'}</div>` : ''}
             ${photo && r.printDate && r.printDate !== r.date ? `<div class="bfnote">Data z wydruku: ${esc(dl(r.printDate))}.</div>` : ''}</div>
           <div class="dcard bfields">${fields}</div>
@@ -226,6 +226,7 @@
 
   // ---------- Akcje ----------
   const actions = {
+    bddate: () => { if (B.rev) A.datePick({ value: B.rev.date, min: '2020-01-01', max: today(), onPick: (k) => { B.rev.date = k; } }); },
     bdphoto: () => { B.msg = ''; B.undo = null; pickPhoto(); },
     bdagain: () => { B.rev = null; R(); pickPhoto(); },
     bdcancel: () => { B.job++; B.busy = ''; R(); },

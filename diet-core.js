@@ -34,8 +34,8 @@
     return String(Math.round(n * 10) / 10).replace('.', ',');
   };
   const DOWS = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
-  const dayShort = (k, year) => { const d = C.parse(k); return DOWS[d.getDay()] + ' ' + d.getDate() + ' ' + C.MONTH_SHORT[d.getMonth()] + (year ? ' ' + d.getFullYear() : ''); };
-  const dateLong = (k) => { const d = C.parse(k); return d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()] + ' ' + d.getFullYear(); };
+  const dayShort = (k) => { const d = C.parse(k); return DOWS[d.getDay()] + ' ' + C.dmy(k); };
+  const dateLong = (k) => C.dmy(k);
   const dateDots = (k) => { const d = C.parse(k); return C.pad(d.getDate()) + '.' + C.pad(d.getMonth() + 1) + '.' + d.getFullYear(); };
   function slotShort(name) {
     return name.replace(/śniadanie/i, 'śn.').replace(/podwieczorek/i, 'podw.').replace(/przekąska/i, 'przek.');

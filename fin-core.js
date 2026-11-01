@@ -71,8 +71,8 @@
   const signed = (n) => (n > 0 ? '+' : '') + money(n);
   const parseAmt = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v > 0 ? r2(v) : 0; };
   const DOWS = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
-  const dlabel = (k) => { const d = C.parse(k); return DOWS[d.getDay()] + ' ' + d.getDate() + ' ' + C.MONTH_SHORT[d.getMonth()]; };
-  const dlabelY = (k) => dlabel(k) + ' ' + C.parse(k).getFullYear();
+  const dlabel = (k) => { const d = C.parse(k); return DOWS[d.getDay()] + ' ' + C.dmy(k); };
+  const dlabelY = (k) => dlabel(k);   // v22: data zawsze z rokiem (DD.MM.RRRR)
   const sum = (arr) => r2(arr.reduce((t, e) => t + e.amt, 0));
 
   // ---------- Kategorie wydatków ----------
@@ -141,6 +141,20 @@
     db.cush.items = db.cush.items.filter((k) => k.aid !== wid);   // usunięte aktywo znika też z poduszki
     pushHist('Usunięto pozycję: ' + it.name, hx('del', it, it.val, 0));
     save();
+  }
+  // v21: zobowiązanie z modułu Rozliczenia – jedna pozycja na osobę (id `dbt_…`), kwota = suma zobowiązań wobec tej osoby.
+  // Brak pozycji → „Dodano zobowiązanie: Imię”; zmiana kwoty → „Aktualizacja: …”; suma 0 → usunięcie pozycji (jak w makiecie).
+  function liabSync(iid, who, total) {
+    const name = ('Zobowiązanie: ' + String(who).trim()).slice(0, 40), it = db.worth.items.find((i) => i.id === iid);
+    total = r2(total);
+    if (total > 0 && !it) {
+      const n = { id: iid, type: 'l', name, val: total };
+      db.worth.items.push(n);
+      pushHist('Dodano zobowiązanie: ' + String(who).trim(), hx('add', n, 0, total)); save();
+    } else if (total > 0) {
+      it.name = name;
+      if (it.val !== total) updateItem(iid, total); else save();
+    } else if (it) removeItem(iid);
   }
   // Wykres: jeden punkt na dzień (ostatnia wartość dnia).
   function histDays() {
@@ -278,7 +292,7 @@
     catMode, customCats, activeCats, catOf, icatOf, setCatMode, addCustomCat, removeCustomCat,
     expenses, addExpenses, removeExpense, restoreExpense, expIn,
     incomes, addIncome, removeIncome, restoreIncome, incIn, result,
-    items, hist, histDays, itemHist, net, netOf, sumType, addItem, updateItem, removeItem,
+    items, hist, histDays, liabSync, itemHist, net, netOf, sumType, addItem, updateItem, removeItem,
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
     goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,

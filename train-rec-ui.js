@@ -52,7 +52,7 @@
     const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a))}</span></div></div>
       <button class="iconbtn tcpen" data-a="tcedit" data-id="${a.id}" aria-label="Edytuj aktywność ${esc(a.name)}">${K.pencil}</button></div>`).join('');
     return `<button class="tprimary" data-a="tcnew">${K.plus}<span>Dodaj aktywność</span></button>
-      <div class="eyebrow" style="margin-top:4px">Na dziś · ${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + d.getDate() + ' ' + C.MONTH_GEN[d.getMonth()])}</div>
+      <div class="eyebrow" style="margin-top:4px">Na dziś · ${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</div>
       ${rows || '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak aktywności zaplanowanych na dziś.</div></div>'}
       <div class="eyebrow" style="margin-top:8px">Wszystkie aktywności</div>
       ${acts || '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak aktywności. Dodaj pierwszą, np. Spacer, i ustaw powtarzanie. Pojawi się w planerze dnia.</div></div>'}`;
@@ -99,7 +99,7 @@
         <div class="eyebrow">Koniec</div>
         <div role="radiogroup" aria-label="Koniec">${[['never', 'Nigdy'], ['date', 'Do dnia'], ['count', 'Po ilości powtórzeń']].map(([id, l]) => `<div class="radio-row tv">
           <button class="radio" role="radio" aria-checked="${d.end === id}" data-a="tcend" data-v="${id}"><span class="dot"></span><span>${l}</span></button>
-          ${id === 'date' && d.end === 'date' ? `<input class="end-date" type="date" aria-label="Data zakończenia" value="${esc(d.until)}" min="${c.start}" data-in="train-cuntil">` : ''}
+          ${id === 'date' && d.end === 'date' ? A.dateBtn(d.until, 'tcuntil', '', 'Data zakończenia') : ''}
           ${id === 'count' ? `<input class="num-in" style="width:68px;height:44px;border-radius:12px" type="text" inputmode="numeric" maxlength="3" aria-label="Liczba powtórzeń" value="${esc(d.count)}" data-in="train-ccount">` : ''}</div>`).join('')}</div>
       </div>` : ''}
       <div data-tchint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana wraca na kolejny dzień jako zaległe podzadanie z datą.' : c.err)}</div>
@@ -133,6 +133,7 @@
     tcn: (el) => { U.dlg.n = Math.max(1, Math.min(99, U.dlg.n + +el.dataset.d)); R(); },
     tcunit: (el) => { U.dlg.unit = el.dataset.v; R(); },
     tcwd: (el) => { const v = +el.dataset.v, D = U.dlg; D.days = D.days.includes(v) ? D.days.filter((x) => x !== v) : D.days.concat([v]); R(); },
+    tcuntil: () => { const d = U.dlg, ex = d.id ? RC.get(d.id) : null, st = ex ? ex.start : C.todayKey(); A.datePick({ value: d.until || st, min: st, onPick: (k) => { d.until = k; } }); },
     tcend: (el) => { U.dlg.end = el.dataset.v; R(); },
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;

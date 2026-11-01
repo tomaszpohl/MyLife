@@ -28,7 +28,7 @@
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
   const DS = ['ndz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
-  const dl = (iso) => { const a = iso.split('-').map(Number); return DS[C.parse(iso).getDay()] + ', ' + a[2] + ' ' + MS[a[1] - 1] + ' ' + a[0]; };
+  const dl = (iso) => DS[C.parse(iso).getDay()] + ', ' + C.dmy(iso);
   const fmt = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
   const num = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) ? v : null; };
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
@@ -249,8 +249,8 @@
     return `<main class="screen">${topbar(D.id ? 'Edytuj trening' : 'Nowy trening')}
       <datalist id="trnames">${names.map((n) => `<option value="${esc(n)}"></option>`).join('')}</datalist>
       <div class="dscroll" data-scroll="train-edit">
-        <div class="dcard" style="gap:10px"><div class="bfrow"><label for="t-date" style="flex:1;min-width:0;font-size:14px">Data treningu</label>
-            <input id="t-date" class="bfdate${bad(!ck.dateOk)}" type="date" min="2020-01-01" max="${C.todayKey()}" value="${esc(D.d)}" data-in="train-date" aria-label="Data treningu"></div>
+        <div class="dcard" style="gap:10px"><div class="bfrow"><div style="flex:1;min-width:0;font-size:14px">Data treningu</div>
+            ${A.dateBtn(D.d, 'trdate', '', 'Data treningu')}</div>
           ${err(T.tried && !ck.dateOk, 'Podaj poprawną datę (nie późniejszą niż dziś).', 'date')}
           <div style="display:flex;flex-direction:column;gap:4px"><label for="t-name" style="font-size:14px">Nazwa treningu <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label>
             <input id="t-name" class="tin txt" type="text" maxlength="40" value="${esc(D.name)}" placeholder="np. Trening A – klatka" data-in="train-wname"></div></div>
@@ -332,6 +332,7 @@
     trdd: () => { T.dd = !T.dd; R(); },
     trpick: (el) => { T.sel = el.dataset.k; T.dd = false; T.day = null; R(); },
     trday: (el) => { T.day = +el.dataset.id; R(); },
+    trdate: () => { const D = T.draft; if (D) A.datePick({ value: D.d, min: '2020-01-01', max: C.todayKey(), onPick: (k) => { D.d = k; } }); },
     trtab: () => { T.tabOpen = !T.tabOpen; R(); }
   };
 
