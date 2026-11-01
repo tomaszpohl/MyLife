@@ -59,17 +59,28 @@
     if (!g || !n || g.people.some((x) => key(x) === key(n))) return false;
     g.people.push(n); save(); return true;
   }
-  const personUsed = (g, p) => g.pays.some((x) => key(x.who) === key(p));
+  const personUsed = (g, p) => g.pays.some((x) => key(x.who) === key(p) || (x.for || []).some((k) => key(k) === key(p)));   // v23: także osoby, na które dzielono wydatek
   function removePerson(id, p) { const g = group(id); if (!g || personUsed(g, p) || g.people.length <= 2) return; g.people = g.people.filter((x) => x !== p); save(); }
-  function addPay(id, who, amt, what, d) { const g = group(id); if (!g) return; g.pays.push({ id: g.pnext++, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d }); save(); }
+  function addPay(id, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays.push({ id: g.pnext++, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] }); save(); }
+  // v23: edycja płatności – podmiana wpisu o tym samym id (kolejność id bez zmian).
+  function updatePay(id, pid, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays = g.pays.map((x) => (x.id === +pid ? { id: x.id, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] } : x)); save(); }
   function removePay(id, pid) { const g = group(id); if (!g) return; g.pays = g.pays.filter((p) => p.id !== +pid); save(); }
-  // Podział po równo (w groszach; reszta po 1 gr dla pierwszych uczestników) i minimalna lista przelewów (zachłannie: największy dłużnik → największy wierzyciel).
+  // v23: podział każdej płatności po równo na zaznaczone osoby (`for`; puste = wszyscy uczestnicy), reszta groszy po 1 gr;
+  // przelewy zachłannie (największy dłużnik → największy wierzyciel), jak w makiecie.
+  const forOf = (g, x) => { const fl = (x.for && x.for.length ? x.for : g.people).filter((k) => g.people.some((p) => key(p) === key(k))); return fl.length ? fl : g.people.slice(); };
   function calc(g) {
-    const n = g.people.length;
-    const paid = g.people.map((p) => Math.round(g.pays.filter((x) => key(x.who) === key(p)).reduce((a, x) => a + x.amt, 0) * 100));
+    const idx = {};
+    g.people.forEach((p, i) => { idx[key(p)] = i; });
+    const paid = g.people.map(() => 0), owe = g.people.map(() => 0);
+    g.pays.forEach((x) => {
+      const c = Math.round(x.amt * 100), pi = idx[key(x.who)];
+      if (pi !== undefined) paid[pi] += c;
+      const fl = forOf(g, x).map((k) => idx[key(k)]);
+      const base = Math.floor(c / fl.length), rem = c % fl.length;
+      fl.forEach((k, jj) => { owe[k] += base + (jj < rem ? 1 : 0); });
+    });
     const totalC = paid.reduce((a, b) => a + b, 0);
-    const base = n ? Math.floor(totalC / n) : 0, rem = n ? totalC % n : 0;
-    const rows = g.people.map((p, i) => { const share = base + (i < rem ? 1 : 0); return { name: p, paid: paid[i], share, bal: paid[i] - share }; });
+    const rows = g.people.map((p, i) => ({ name: p, paid: paid[i], share: owe[i], bal: paid[i] - owe[i] }));
     const cr = rows.filter((r) => r.bal > 0).map((r) => ({ name: r.name, v: r.bal })).sort((a, b) => b.v - a.v);
     const dbt = rows.filter((r) => r.bal < 0).map((r) => ({ name: r.name, v: -r.bal })).sort((a, b) => b.v - a.v);
     const tr = [];
@@ -97,5 +108,5 @@
   const summary = () => db.debts.list.length + ' ' + C.plural(db.debts.list.length, 'wpis', 'wpisy', 'wpisów') + ' należności i zobowiązań, ' +
     db.groups.list.length + ' ' + C.plural(db.groups.list.length, 'rozliczenie grupowe', 'rozliczenia grupowe', 'rozliczeń grupowych');
 
-  window.Settle = { load, key, debts, sum, addDebt, settleDebts, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, removePay, calc, exportData, importData, summary };
+  window.Settle = { load, key, debts, sum, addDebt, settleDebts, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, calc, forOf, exportData, importData, summary };
 })();

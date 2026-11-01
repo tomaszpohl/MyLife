@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v22 · 01.11.2026';
+  const APP_VERSION = 'v23 · 01.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -1116,7 +1116,8 @@
     if (s.menu) {
       const id = s.wrap.dataset.id, blocked = s.wrap.classList.contains('blocked');
       // v21: lista rozliczeń grupowych – wiersz wraca, a przeciągnięcie ≥100 px otwiera okno potwierdzenia.
-      if (s.row.dataset.mswipe === 'settle') { s.row.style.transform = 'translateX(0)'; setTimeout(() => { s.wrap.classList.remove('swiping'); if (!cancelled && s.dx >= 100) window.SettleUI.swipeDelete(id); }, 200); return; }
+      const kind = s.row.dataset.mswipe || '';
+      if (kind.indexOf('settle') === 0) { s.row.style.transform = 'translateX(0)'; setTimeout(() => { s.wrap.classList.remove('swiping'); if (!cancelled && s.dx >= 100) window.SettleUI.swipeDelete(id, kind); }, 200); return; }
       if (!cancelled && s.dx >= 100 && !blocked) { s.row.style.transform = 'translateX(110%)'; setTimeout(() => window.DietUI.swipeDelete(id), 180); }
       else {
         s.row.style.transform = 'translateX(0)';

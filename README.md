@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 22
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 23
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -105,8 +105,8 @@ Kafel „Rozliczenia” na ekranie głównym (zieleń). Moduł startuje pusty. D
 | **Rozliczenia** | Kafle **Należności** i **Zobowiązania** z sumami (dotknięcie otwiera właściwą zakładkę), funkcje: Należności i zobowiązania, Rozliczenia grupowe. |
 | **Należności i zobowiązania** | Zakładki Należności (zielone) / Zobowiązania (czerwone), karta „Razem należy mi się” / „Razem jestem winien”, wpisy pogrupowane wg osoby (suma, liczba, od najnowszego). „Dodaj należność / zobowiązanie”: kto / komu (podpowiedzi z wcześniejszych osób; ta sama osoba bez rozróżniania wielkości liter), kwota, za co, data powstania (do dziś). Wpisów się nie edytuje. ✓ przy wpisie – „Należność oddana? / Zobowiązanie uregulowane?” – usuwa wpis; przy kilku wpisach osoby „Wszystko oddane przez … / Uregulowano wszystko dla …”. **Zobowiązania trafiają do Finanse · Majątek** jako jedna pozycja na osobę („Zobowiązanie: Imię”, kwoty się sumują); uregulowanie zmniejsza kwotę, ostatnie usuwa pozycję – z wpisami w historii Majątku. Należności są tylko tutaj. |
 | **Rozliczenia grupowe** | Lista rozliczeń (nazwa, liczba osób i płatności, uczestnicy, suma). „Nowe rozliczenie”: nazwa i co najmniej dwóch uczestników (pole + plus albo Enter, bez powtórzeń). **Przeciągnięcie wiersza w prawo** (≥ 100 px) pyta o usunięcie rozliczenia z płatnościami; krótkie przeciągnięcie nic nie robi. |
-| **Rozliczenie grupowe** | Razem i na osobę, „Pokaż wyliczenie”, uczestnicy (dodawanie; usuwanie tylko bez płatności i przy więcej niż dwóch osobach), płatności: kto płacił, ile, za co, kiedy – usuwanie z potwierdzeniem; „Usuń całe rozliczenie”. Koszty dzielone po równo. |
-| **Wyliczenie** | „Kto komu ile zalega” – minimalna lista przelewów (inicjały, strzałka, kwota) albo „Wszyscy są rozliczeni”; bilans uczestników – słupki w lewo (do dopłaty) i w prawo (do odebrania), „Zapłacił … · powinien …”. |
+| **Rozliczenie grupowe** | Razem i liczba płatności, „Pokaż wyliczenie”, uczestnicy (dodawanie; usuwanie tylko, gdy osoba nie płaciła i nie dzieli żadnego wydatku, przy więcej niż dwóch osobach). „Dodaj płatność”: kto płacił, ile, za co, **na kogo dzielony jest wydatek** (chipy uczestników, domyślnie wszyscy, „Zaznacz / Odznacz wszystkich”, podpowiedź „Po X na N osób”; co najmniej jedna osoba), kiedy. Przy płatności „Dzielone na: A, B (po X)” albo „Dzielone na wszystkich (po X)”. **Ołówek** otwiera „Edytuj płatność” (zapis podmienia płatność). **Przeciągnięcie płatności w prawo** (≥ 100 px) pyta „Usunąć płatność?”. „Usuń całe rozliczenie”. Każda płatność dzielona po równo między zaznaczone osoby (reszta groszy po 1 gr). |
+| **Wyliczenie** | „Kto komu ile zalega” – minimalna lista przelewów (inicjały, strzałka, kwota) albo „Wszyscy są rozliczeni”; bilans uczestników – słupki w lewo (do dopłaty) i w prawo (do odebrania), paski „zapłacił” i „udział”, „Zapłacił … · jego udział …”; salda i przelewy liczone z udziałów w poszczególnych płatnościach. |
 
 Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening, Rozliczenia). Wczytanie kopii Rozliczeń uzgadnia też pozycje zobowiązań w Majątku.
 
@@ -115,7 +115,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v22.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v23.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -136,7 +136,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v22 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v23 · 01.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -177,6 +177,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v23 (01.11.2026)**: Rozliczenia grupowe – podział płatności na wybrane osoby, edycja płatności (ołówek), usuwanie płatności przeciągnięciem w prawo, w wyliczeniu paski „zapłacił” i „udział”.
 - **v22 (01.11.2026)**: daty w formacie DD.MM.RRRR w całej aplikacji; wybór daty w oknie z kalendarzem (przycisk z datą) zamiast pól daty – Nowe zadanie („Zmień dzień”), Własne powtarzanie, Skład ciała, Trening, Aktywności cykliczne, Inwestycje, Rozliczenia.
 - **v21 (01.11.2026)**: nowy moduł Rozliczenia – należności i zobowiązania (zobowiązania jako pozycje w Majątku), rozliczenia grupowe z płatnościami, wyliczeniem przelewów i bilansem, usuwanie rozliczenia przeciągnięciem; kopia danych z piątym modułem.
 - **v20 (01.11.2026)**: Trening – nowy ekran „Aktywności cykliczne” (powtarzanie, odhaczanie, zaległe podzadania z datą, statystyki) i pozycja „Aktywności” w pasku; aktywności w Planerze dnia (Dzień, Tydzień, Miesiąc). Inwestycje bez trybu „Miesiąc” – statystyki „Rok” (domyślnie) i „Od daty” ustawiają się na najnowszym wpisie. Wykresy Majątku i Wagi mają domyślnie zaznaczony ostatni punkt, Postępy – ćwiczenie z najnowszego treningu.

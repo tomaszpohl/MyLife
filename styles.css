@@ -928,3 +928,15 @@ a.dcard { color: var(--text); }
 .radio-row .dpbtn { flex: none; min-height: 44px; font-size: 14px; }
 .datecard.dcbtn { flex-direction: row; align-items: center; gap: 10px; width: 100%; color: var(--text); text-align: left; font-family: inherit; }
 .dcchg { flex: none; display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--accent); font-weight: 500; }
+
+/* v23: Rozliczenia grupowe – podział płatności, edycja, usuwanie przeciągnięciem, paski zapłacił/udział */
+.mcard.spay { padding: 10px 8px 10px 14px; gap: 0; }
+.slink { flex: none; min-height: 36px; padding: 0 4px; background: none; border: none; color: var(--ok); font-size: 13px; font-weight: 600; }
+.schip.sfor { gap: 6px; }
+.schip.sfor .mk { width: 14px; display: inline-flex; justify-content: center; }
+.schip.sfor.on { background: var(--green-bg); border-color: var(--ok); color: var(--ok); }
+.spbars { display: flex; flex-direction: column; gap: 3px; }
+.spbars > div { display: flex; align-items: center; gap: 6px; }
+.spbars span { width: 54px; font-size: 10px; color: var(--muted); }
+.spbars i { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; display: block; }
+.spbars b { display: block; height: 100%; border-radius: 3px; }
