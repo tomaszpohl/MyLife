@@ -21,6 +21,7 @@
     search: ic(16, 2, '<circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path>'),
     cal: ic(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>'),
     target: ic(22, 1.8, '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="0.8"></circle>'),
+    plan: ic(22, 1.8, '<rect x="4" y="3.5" width="16" height="17" rx="3"></rect><path d="M8 8h8M8 12h3M8 16h3"></path><path d="m13.5 14.5 1.5 1.5 3-3.5"></path>'),
     invest: ic(22, 1.8, '<path d="M3.5 20h17"></path><path d="M6 20v-6M12 20V8M18 20v-9"></path><path d="m5 9 5-4 4 2 5-4"></path>'),
     pen: ic(18, 2, '<path d="M4 20h4L19 9l-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path>'),
     trash: ic(18, 2, '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path>')
@@ -35,7 +36,8 @@
     res: { period: 'month', mk: null, yr: null, from: null, to: null, incOpen: true, msg: '', undo: null, add: null },
     worth: { open: { a: false, l: false, h: false }, sel: null, edit: null, add: null, hf: 'all' },
     cush: { dlg: null },
-    goals: { dlg: null },   // v19: okno celu { id, name, target, saved, confirm }
+    goals: { dlg: null },
+    plan: { scope: 'month', ym: null, y: null, msg: '', err: false },   // v27: planer wydatków   // v19: okno celu { id, name, target, saved, confirm }
     inv: { mode: 'y', yr: null, from: null, dlg: null },   // v20: bez trybu „Miesiąc”; rok i data początkowa z najnowszego wpisu   // v19: okno wpisu { id, amt, goal, d, confirm, dd, custom }   // okna Poduszki: { t: 'goal'|'new'|'link'|'edit', … }
     add: null,      // okno „Nowe wydatki”: { draft: { date, desc, amt, cat }, drafts: [], err, from: 'home'|'exp' }
     cats: null,     // okno „Kategorie wydatków”: { name, err }
@@ -126,6 +128,7 @@
         ${fn('#/fin/worth', J.trend, 'Majątek', 'Aktywa, zobowiązania i historia zmian')}
         ${fn('#/fin/exp', J.cart, 'Wydatki', 'Lista dni, dodawanie i usuwanie')}
         ${fn('#/fin/exp/cat', J.pie, 'Wydatki wg kategorii', 'Dzień, tydzień, miesiąc lub własny okres')}
+        ${fn('#/fin/plan', J.plan, 'Planer wydatków', esc(planDesc()))}
         ${fn('#/fin/cush', J.shield, 'Poduszka bezpieczeństwa', esc(cushDesc()))}
         ${fn('#/fin/goals', J.target, 'Cele', esc(goalsDesc()))}
         ${fn('#/fin/inv', J.invest, 'Inwestycje', esc(invDesc()))}
@@ -136,6 +139,58 @@
 
   const pf = (x) => String(Math.round(x * 10) / 10).replace('.', ',') + '%';
   function cushDesc() { const tg = F.cushTarget(), sm = F.cushSum(); return tg > 0 ? 'Realizacja ' + pf(sm / tg * 100) + ' · ' + F.money(sm) + ' z ' + F.money(tg) : 'Ustaw cel poduszki'; }
+
+  // ---------- Planer wydatków (v27, makieta FinPlan 03.11.2026) ----------
+  // Plan miesięczny wpisywany dla każdej aktywnej kategorii wydatków; plan roku = suma planów miesięcy (decyzja właściciela).
+  // Okresy: wstecz bez limitu, do grudnia przyszłego roku (decyzja właściciela).
+  function planDesc() {
+    const T = today(), v = F.planView(ym(T));
+    if (!v.plan) return 'Plan roczny i miesięczny wg kategorii';
+    const mn = C.MONTH_NOM[+T.slice(5, 7) - 1];
+    return v.spent > v.plan ? mn + ': ponad plan o ' + F.money(F.r2(v.spent - v.plan)) : mn + ': zostało ' + F.money(v.left);
+  }
+  const planMax = () => (+today().slice(0, 4) + 1);
+  function planInit() { const T = today(); U.plan.ym = ym(T); U.plan.y = +T.slice(0, 4); U.plan.msg = ''; U.plan.err = false; }
+  function viewPlan() {
+    const P = U.plan; if (!P.ym) planInit();
+    const isY = P.scope === 'year', key = isY ? String(P.y) : P.ym, v = F.planView(key);
+    const over = v.spent > v.plan, col = over ? 'var(--danger)' : okC;
+    const tp = v.plan > 0 ? v.spent / v.plan * 100 : (v.spent > 0 ? 100 : 0);
+    const title = isY ? String(P.y) : monthTitle(P.ym + '-01');
+    const nextOff = isY ? P.y >= planMax() : P.ym >= planMax() + '-12';
+    const pm = +P.ym.slice(5, 7), prevKey = pm === 1 ? (+P.ym.slice(0, 4) - 1) + '-12' : P.ym.slice(0, 4) + '-' + String(pm - 1).padStart(2, '0');
+    const canCopy = !isY && v.empty && Object.keys(F.planMonth(prevKey)).length > 0;
+    const fmtP = (n) => (n > 0 ? n.toFixed(2).replace('.', ',') : '');
+    const rows = v.rows.map((r) => {
+      const ov = r.spent > r.plan, c = ov ? 'var(--danger)' : okC, pc = r.plan > 0 ? r.spent / r.plan * 100 : (r.spent > 0 ? 100 : 0);
+      const field = isY || r.locked
+        ? `<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN${isY && !r.locked ? ' ROKU' : ''}</span><div class="fpval">${r.plan > 0 ? F.money(r.plan) : '—'}</div></div>`
+        : `<label style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN (ZŁ)</span><input class="finput amt fpin" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${fmtP(r.plan)}" data-in="fin-plan" data-cat="${esc(r.id)}" aria-label="${esc('Plan: ' + r.name)}" autocomplete="off"></label>`;
+      return `<div class="dcard fprow" style="gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">${dot(r.color)}<div style="flex:1;min-width:0;font-family:var(--display);font-size:16px;font-weight:600;word-break:break-word">${esc(r.name)}</div>
+          <div style="flex:none;text-align:right;font-size:13px;font-weight:600;color:${c}">${ov ? 'Ponad plan ' + F.money(F.r2(r.spent - r.plan)) : 'Zostało ' + F.money(F.r2(r.plan - r.spent))}</div></div>
+        <div class="fprog small" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, pc))}" aria-label="${esc('Wykorzystanie planu: ' + r.name)}"><span style="width:${Math.min(100, Math.round(pc * 10) / 10)}%;background:${c}"></span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span class="fplab">WYDANO</span><div class="fpval">${F.money(r.spent)}</div></div>${field}</div></div>`;
+    }).join('');
+    return `<main class="screen" style="position:relative">${topbar('Planer wydatków')}
+      <div class="dscroll" data-scroll="fin-plan">
+        ${seg([['month', 'Miesiąc'], ['year', 'Rok']], P.scope, 'fpscope')}
+        <div class="navrow"><button class="iconbtn soft" data-a="fpprev" aria-label="Poprzedni okres">${I.prev}</button>
+          <div class="big">${esc(title)}</div>
+          <button class="iconbtn soft" data-a="fpnext" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
+        <div class="dcard" style="gap:8px;border-color:${over ? '#6A2F36' : '#2B5A3C'}">
+          <div class="eyebrow">${esc(isY ? 'Rok ' + P.y : title)}</div>
+          <div style="font-family:var(--display);font-size:28px;font-weight:700;color:${col}">${over ? 'Ponad plan o ' + F.money(F.r2(v.spent - v.plan)) : 'Zostało ' + F.money(v.left)}</div>
+          <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, tp))}" aria-label="Wykorzystanie planu"><span style="width:${Math.min(100, Math.round(tp * 10) / 10)}%;background:${col}"></span></div>
+          <div style="font-size:13px;color:var(--muted)">Wydano ${F.money(v.spent)} z ${F.money(v.plan)}${v.plan > 0 ? ' · ' + pf(tp) : ' · brak planu'}</div>
+          ${isY ? '<div style="font-size:12px;line-height:1.4;color:var(--dim)">Plan roku to suma planów miesięcznych – zmieniasz go w widoku Miesiąc.</div>' : ''}</div>
+        ${canCopy ? '<button class="btn2" style="min-height:44px" data-a="fpcopy">Skopiuj plan z poprzedniego miesiąca</button>' : ''}
+        ${P.msg ? `<div role="status" style="font-size:13px;color:${P.err ? '#F2D9A0' : okC}">${esc(P.msg)}</div>` : ''}
+        <div class="eyebrow" style="padding:4px 2px 0">Kategorie wydatków</div>
+        ${rows}
+      </div></main>`;
+  }
 
   function goalsDesc() { const g = F.goals(); return g.length ? g.length + ' ' + C.plural(g.length, 'cel', 'cele', 'celów') + ' · osiągnięte: ' + F.goalsTotal().done : 'Kwoty docelowe i postęp realizacji'; }
   function invDesc() { const [a, b] = monthRange(ym(today())); return F.invs().length ? 'W tym miesiącu: ' + F.money(F.sum(F.invIn(a, b).map((e) => ({ amt: e.amt })))) : 'Kwoty, cele i wykres kołowy'; }
@@ -672,6 +727,15 @@
   const R_ = () => A.render();
   const newDraft = (date) => ({ date: date || today(), desc: '', amt: '', cat: null });
   const actions = {
+    fpscope: (el) => { const P = U.plan; P.scope = el.dataset.v === 'year' ? 'year' : 'month'; if (P.scope === 'year') P.y = Math.min(+P.ym.slice(0, 4), planMax()); P.msg = ''; R_(); },   // Rok – rok oglądanego miesiąca
+    fpprev: () => { const P = U.plan; P.msg = ''; if (P.scope === 'year') P.y--; else { const y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7); P.ym = m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); } R_(); },
+    fpnext: () => {
+      const P = U.plan; P.msg = '';
+      if (P.scope === 'year') { if (P.y < planMax()) P.y++; }
+      else { const y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7), n = m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0'); if (n <= planMax() + '-12') P.ym = n; }
+      R_();
+    },
+    fpcopy: () => { const P = U.plan, y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7); F.planCopy(m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'), P.ym); P.msg = 'Skopiowano plan z poprzedniego miesiąca.'; P.err = false; R_(); },
     fcal: (el) => { const f = calPick[el.dataset.c]; if (f) f(el.dataset.k); U.cal = null; R_(); },
     fcalnav: (el) => { U.cal.vm = (function (vm, d) { return addMonths(vm, d); })(U.cal.vm, +el.dataset.d); R_(); },
     fcalopen: (el) => { toggleCal(el.dataset.c, el.dataset.k); R_(); },
@@ -870,6 +934,7 @@
     else if (k === 'fin-gsaved') { el.value = amtClean(v, 12); U.goals.dlg.saved = el.value; }
     else if (k === 'fin-vamt') { el.value = amtClean(v, 12); U.inv.dlg.amt = el.value; }
     else if (k === 'fin-vcustom') { U.inv.dlg.custom = v.slice(0, 30); const b = document.querySelector('[data-a=fvgadd]'); if (b) b.classList.toggle('off', !v.trim()); return; }
+    else if (k === 'fin-plan') { el.value = v.replace(/[^\d,.\s]/g, '').slice(0, 12); return; }
     else if (k === 'fin-idesc') U.res.add.desc = v;
     else if (k === 'fin-iamt') { el.value = amtClean(v, 10); U.res.add.amt = el.value; }
     live();
@@ -909,6 +974,11 @@
     }
   }
   function onChange(el, k) {
+    if (k === 'fin-plan') {   // zapis planu po zatwierdzeniu pola (jak w makiecie)
+      const t = String(el.value).trim(), v = t === '' ? 0 : cnum(t), P = U.plan;
+      if (v === null) { P.msg = 'Podaj poprawną kwotę planu.'; P.err = true; A.render(); return; }
+      F.planSet(P.ym, el.dataset.cat, v); P.msg = ''; P.err = false; A.render(); return;
+    }
     if (k !== 'fin-xlsx') return;
     const f = el.files && el.files[0]; el.value = '';
     if (!f) return;
@@ -939,6 +1009,7 @@
     U.exp.msg = ''; U.exp.undo = null; U.res.msg = ''; U.res.undo = null; U.res.add = null;
     U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null; U.goals.dlg = null; U.inv.dlg = null;
     if (r.name === 'fin' && r.arg === 'inv') invInit();
+    if (r.name === 'fin' && r.arg === 'plan') { U.plan.scope = 'month'; planInit(); }
     if (r.name === 'fin' && r.arg === 'exp') U.exp.tab = r.arg2 === 'cat' ? 'cat' : 'list';
   }
 
@@ -950,10 +1021,11 @@
       case 'cush': return viewCushion();
       case 'goals': return viewGoals();
       case 'inv': return viewInvest();
+      case 'plan': return viewPlan();
       default: return viewHome();
     }
   }
-  const navKey = (r) => (['worth', 'exp', 'result', 'cush', 'goals', 'inv'].indexOf(r.arg) >= 0 ? r.arg : 'home');
+  const navKey = (r) => (['worth', 'exp', 'plan', 'result', 'cush', 'goals', 'inv'].indexOf(r.arg) >= 0 ? r.arg : 'home');
 
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },

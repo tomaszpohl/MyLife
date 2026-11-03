@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 26
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 27
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -53,7 +53,7 @@ Jadłospisy pochodzą z plików PDF od dietetyka (układ „Indywidualny plan ż
 
 ## Moduł Finanse (od v8)
 
-Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Poduszka · Cele · Inwestycje · Wynik; Trening: Trening · Historia · Postępy · Aktywności; Rozliczenia: Rozliczenia · Długi · Grupy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
+Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji** (Dieta: Dieta · Jadłospis · Plan · Zakupy · Dziennik · Waga · Skład; Finanse: Finanse · Majątek · Wydatki · Plan · Poduszka · Cele · Inwestycje · Wynik; Trening: Trening · Historia · Postępy · Aktywności; Rozliczenia: Rozliczenia · Długi · Grupy). Od v17 pasek przewija się w poziomie (pozycje min. 60 px), a aktywna pozycja jest wyśrodkowana. Kwoty są zawsze pokazywane z groszami (np. 100,00 zł). Okna pełnoekranowe zasłaniają pasek.
 
 | Ekran | Funkcje |
 |---|---|
@@ -61,6 +61,7 @@ Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji*
 | **Majątek** | Majątek netto, aktywa i zobowiązania, przewijany wykres historii – **jeden punkt na dzień** (ostatnia wartość dnia; dotknięcie punktu = data i kwota; od v20 domyślnie zaznaczony ostatni punkt), „Dodaj aktywo lub zobowiązanie”, rozwijane sekcje Aktywa, Zobowiązania, Historia zmian. Dotknięcie pozycji: aktualizacja wartości (z podglądem majątku po zmianie) albo usunięcie. Historia zmian ma **filtr** (Wszystkie albo jedna pozycja: wartość przed → po i różnica; dla zobowiązań spadek jest zielony). Aktywa z poduszki mają plakietkę „Poduszka”. |
 | **Wydatki** | Lista: miesiące, suma i liczba wydatków, dni rozwijane do szczegółów (opis, kategoria, kwota), usuwanie z „Cofnij”. Kategorie: okres Dzień / Tydzień / Miesiąc / Zakres (od–do), suma, średnia dzienna, pasek podziału i kategorie z udziałem % (dotknięcie pokazuje składniki). „Dodaj wydatki”: data, opis, kwota, kategoria (zwijana lista z wyszukiwarką – bez znaczenia wielkość liter i polskie znaki); „Dodaj wydatek” zapisuje jeden od razu (okno zostaje otwarte, gdy na liście są pozycje do zapisania), „Dodaj do listy” zbiera kilka pozycji, „Zapisz wszystkie” zapisuje je razem. |
 | **Kategorie wydatków** | Domyślne (Jedzenie, Dom i rachunki, Transport, Zdrowie, Rozrywka, Ubrania, Inne) albo własne (dodawanie z wyborem koloru z palety 32 – pokazywane tylko kolory jeszcze nieużyte, usuwanie, nazwa do 24 znaków, bez powtórzeń). Wydatki z usuniętej kategorii trafiają do „Bez kategorii”. |
+| **Planer wydatków** (od v27) | Kafelek na ekranie Finanse (po „Wydatki wg kategorii”; „Listopad: zostało X” / „…ponad plan o X”) i pozycja „Plan” paska. Przełącznik **Miesiąc / Rok** i strzałki okresu: wstecz bez limitu, do grudnia przyszłego roku. Wiersze = aktywne kategorie wydatków (domyślne albo własne) + „Pozostałe (bez kategorii z listy)” bez planu. W widoku Miesiąc pole „PLAN (ZŁ)” w każdej kategorii (zapis po zatwierdzeniu pola; 0 lub puste = brak planu; zła kwota – „Podaj poprawną kwotę planu.”); w pustym miesiącu „Skopiuj plan z poprzedniego miesiąca”. **Plan roku = suma planów miesięcznych** (w widoku Rok tylko podgląd). „Wydano” z wprowadzonych wydatków; „Zostało X” na zielono albo „Ponad plan o X” na czerwono, paski wykorzystania; karta podliczenia na górze („Wydano X z Y · n%”). Plan jest w kopii modułu Finanse i nie zmienia wydatków, wyniku ani majątku. |
 | **Poduszka bezpieczeństwa** | Cel = kwota miesięczna × liczba miesięcy (1–120). Realizacja w % z paskiem, „Brakuje …” / „Cel osiągnięty”, na ile miesięcy wystarczy. Składniki to aktywa z Majątku (kwota zmienia się w obu miejscach) z udziałem w %: „Dodaj składnik” (tworzy aktywo), „Dodaj składnik z Aktywów”, edycja kwoty i udziału, „Usuń z poduszki” (aktywo zostaje). Przy składniku: realizacja jego części celu i udział w całej poduszce. |
 | **Cele** (od v19) | „Dodaj cel”: nazwa (wymagana, do 40 znaków), kwota docelowa (> 0), odłożono dotychczas (opcjonalnie, domyślnie 0) – z podglądem realizacji w oknie. Karta „Wszystkie cele”: łączny % (nadwyżki ponad cel nie zawyżają sumy), kwota i liczba celów. Każdy cel: odłożono z kwoty docelowej, %, pasek (bursztynowy, zielony po osiągnięciu), „Brakuje …” / „Cel osiągnięty – nadwyżka …”. Ołówek = edycja; „Usuń cel” z potwierdzeniem w oknie. Kwota „odłożono” jest wpisywana ręcznie – cele nie są powiązane z Majątkiem. |
 | **Inwestycje** (od v19) | „Dodaj inwestycję”: kwota (> 0), cel inwestycji z listy rozwijanej (domyślne: ETF, Obligacje, Akcje, Złoto, Kryptowaluty, Nieruchomości, Lokata, Fundusze inwestycyjne; własne – pole „Własny cel” + Dodaj, usuwanie krzyżykiem; cele z wcześniejszych wpisów), data z kalendarza (do dziś). Statystyki: Rok (strzałki, bez przyszłości) / Od daty – od v20 bez trybu „Miesiąc”; po wejściu rok najnowszego wpisu i „Od daty” = 1. dzień jego miesiąca; suma, liczba wpisów i celów, wykres kołowy wg celu z legendą (kwota i % z 1 miejscem po przecinku; stałe kolory celów), lista wpisów w okresie (dotknięcie = edycja, usuwanie z potwierdzeniem). Cele łączone bez rozróżniania wielkości liter. Osobny rejestr – nie zmienia wydatków, wyniku ani majątku. Kafelek na ekranie Finanse pokazuje kwotę z bieżącego miesiąca. |
@@ -117,7 +118,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v26.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v27.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -138,7 +139,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v26 · 03.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v27 · 03.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -179,6 +180,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v27 (03.11.2026)**: Finanse · Planer wydatków – plan miesięczny wg kategorii wydatków, rok jako suma miesięcy (decyzja właściciela), „Zostało” / „Ponad plan”, kopiowanie planu z poprzedniego miesiąca, kafelek na ekranie Finanse i pozycja „Plan” w pasku (8 pozycji).
 - **v26 (03.11.2026)**: Skład ciała – odczyt zdjęć wydruku silnikiem PaddleOCR PP-OCRv4 zamiast Tesseract (decyzja właściciela po porównaniu): 177 ze 180 pól na 20 zdjęciach (v25: 171), jedna błędna wartość, oznaczona „niepewny”; silnik ok. 27 MB pobierany raz, odczyt wolniejszy niż w v25.
 - **v25 (03.11.2026)**: Aktywności cykliczne – niewykonane terminy trafiają tylko do następnego terminu aktywności (w dni bez terminu aktywności nie ma w planerze); Dziennik diety – statystyki domyślnie od najstarszego wpisu; wykresy (Majątek, Waga, Skład ciała, Postępy) po wejściu na ekran zawsze od najnowszego punktu; Postępy – ćwiczenia kondycyjne ze średnią mocą („· moc”, wykres i tabela w W); Skład ciała – nowy odczyt zdjęć (kadr po barwie papieru, trzy przebiegi, wzorce cyfr, naprawa i wyliczanie wartości, pomijanie analizy segmentowej) – 171 ze 180 pól na 20 zdjęciach (było 111).
 - **v24.1 (01.11.2026)**: poprawka – przesunięcie paska dni palcem na telefonie zmienia tydzień (wcześniej przeglądarka przejmowała gest i nic się nie działo); pasek przesuwa się za palcem.

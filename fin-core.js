@@ -28,7 +28,7 @@
   const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
   const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [] });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {} } });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -45,6 +45,7 @@
     d.cats = Object.assign({ mode: 'default', custom: [] }, d.cats || {});
     d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
     ['goals', 'inv', 'invGoals'].forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });   // v19: cele i inwestycje
+    d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {} };   // v27: planer wydatków (plany miesięczne)
     // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
     if (!d.cats.recolored) {
       const seen = [];
@@ -285,7 +286,37 @@
     db.inc.length + ' ' + C.plural(db.inc.length, 'przychód', 'przychody', 'przychodów') + ', ' +
     db.worth.items.length + ' ' + C.plural(db.worth.items.length, 'pozycja', 'pozycje', 'pozycji') + ' majątku' +
     (db.goals.length ? ', ' + db.goals.length + ' ' + C.plural(db.goals.length, 'cel', 'cele', 'celów') : '') +
-    (db.inv.length ? ', ' + db.inv.length + ' ' + C.plural(db.inv.length, 'inwestycja', 'inwestycje', 'inwestycji') : '');
+    (db.inv.length ? ', ' + db.inv.length + ' ' + C.plural(db.inv.length, 'inwestycja', 'inwestycje', 'inwestycji') : '') +
+    (Object.keys(db.plan.m).length ? ', plan wydatków: ' + Object.keys(db.plan.m).length + ' ' + C.plural(Object.keys(db.plan.m).length, 'miesiąc', 'miesiące', 'miesięcy') : '');
+
+  // ---------- Planer wydatków (v27, makieta FinPlan 03.11.2026) ----------
+  // db.plan.m = { 'RRRR-MM': { <id kategorii>: kwota } }. Plan roku = suma planów miesięcy (decyzja właściciela) – nie jest zapisywany.
+  const planMonth = (ym) => db.plan.m[ym] || {};
+  function planYear(y) {
+    const o = {};
+    for (let m = 1; m <= 12; m++) { const b = db.plan.m[y + '-' + String(m).padStart(2, '0')] || {}; Object.keys(b).forEach((c) => { o[c] = r2((o[c] || 0) + b[c]); }); }
+    return o;
+  }
+  function planSet(ym, cid, v) {
+    const b = Object.assign({}, db.plan.m[ym] || {});
+    if (v > 0) b[cid] = r2(v); else delete b[cid];
+    if (Object.keys(b).length) db.plan.m[ym] = b; else delete db.plan.m[ym];
+    save();
+  }
+  function planCopy(from, to) { if (db.plan.m[from]) { db.plan.m[to] = Object.assign({}, db.plan.m[from]); save(); } }
+  // Wiersze planera dla okresu: key = 'RRRR-MM' albo 'RRRR'. Aktywne kategorie + „Pozostałe (bez kategorii z listy)”.
+  function planView(key) {
+    const yr = key.length === 4, bucket = yr ? planYear(key) : planMonth(key);
+    const spentBy = {};
+    db.exp.forEach((e) => { if (e.date.slice(0, key.length) === key) spentBy[e.cat] = r2((spentBy[e.cat] || 0) + e.amt); });
+    const cats = activeCats(), ids = cats.map((c) => c.id);
+    const rows = cats.map((c) => ({ id: c.id, name: c.name, color: c.color, plan: bucket[c.id] || 0, spent: spentBy[c.id] || 0, locked: false }));
+    let other = 0;
+    Object.keys(spentBy).forEach((cid) => { if (ids.indexOf(cid) < 0) other = r2(other + spentBy[cid]); });
+    if (other > 0) rows.push({ id: '_other', name: 'Pozostałe (bez kategorii z listy)', color: '#6F7E90', plan: 0, spent: other, locked: true });
+    const plan = r2(rows.reduce((t, r) => t + r.plan, 0)), spent = r2(rows.reduce((t, r) => t + r.spent, 0));
+    return { rows, plan, spent, left: r2(plan - spent), empty: !Object.keys(bucket).length };
+  }
 
   window.Fin = {
     load, CATS, ICATS, NONE, money, signed, parseAmt, dlabel, dlabelY, sum, r2,
@@ -296,6 +327,7 @@
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
     goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
+    planMonth, planYear, planSet, planCopy, planView,
     importParts, exportData, importData, summary
   };
 })();

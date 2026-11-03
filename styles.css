@@ -949,3 +949,8 @@ a.dcard { color: var(--text); }
 .smove.owe { border-color: #5A2A30; }
 .smvrow { display: flex; align-items: center; gap: 10px; font-size: 15px; min-height: 32px; }
 .smvd { font-size: 12px; color: var(--muted); }
+
+/* v27: Finanse · Planer wydatków */
+.fplab { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); }
+.fpval { font-family: var(--display); font-size: 16px; font-weight: 600; }
+.finput.fpin { width: 130px; height: 44px; text-align: right; font-family: var(--display); font-size: 16px; font-weight: 600; }
