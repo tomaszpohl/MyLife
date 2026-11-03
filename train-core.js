@@ -61,18 +61,30 @@
 
   // Postępy: ćwiczenia siłowe po nazwie (bez rozróżniania wielkości liter), dla każdego treningu największy ciężar z serii
   // (przy remisie więcej powtórzeń). Masa ciała (0 kg) liczy się jako 0.
+  // Postępy: ćwiczenia siłowe – największy ciężar w treningu; v25 (makieta 03.11.2026): ćwiczenia kondycyjne z podaną średnią
+  // mocą – najwyższa moc tego ćwiczenia w treningu (kg = moc w W, reps = czas w min); bez mocy nie trafiają na listę.
   function progress() {
     const map = {};
     db.list.forEach((w) => w.ex.forEach((x) => {
+      const nm = x.name.trim(), k0 = nm.toLocaleLowerCase('pl');
+      if (x.kind === 'car') {
+        if (!(x.watts > 0)) return;
+        const k = 'c|' + k0;
+        if (!map[k]) map[k] = { key: k, name: nm, card: true, rows: {} };
+        const min = x.iv && x.ivs && x.ivs.length ? ivMinutes(x.ivs) : (x.min || 0);
+        const cur = map[k].rows[w.id];
+        if (!cur || x.watts > cur.kg) map[k].rows[w.id] = { id: w.id, d: w.d, kg: x.watts, reps: min };
+        return;
+      }
       if (x.kind !== 'str' || !x.sets.length) return;
-      const k = x.name.trim().toLocaleLowerCase('pl');
-      if (!map[k]) map[k] = { key: k, name: x.name.trim(), rows: {} };
+      const k = k0;
+      if (!map[k]) map[k] = { key: k, name: nm, rows: {} };
       const top = x.sets.reduce((a, b) => (b.kg > a.kg || (b.kg === a.kg && b.reps > a.reps) ? b : a), x.sets[0]);
       const cur = map[k].rows[w.id];
       if (!cur || top.kg > cur.kg || (top.kg === cur.kg && top.reps > cur.reps)) map[k].rows[w.id] = { id: w.id, d: w.d, kg: top.kg, reps: top.reps };
     }));
-    return Object.values(map).map((m) => ({ key: m.key, name: m.name, rows: Object.values(m.rows).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.id - b.id)) }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' }));
+    return Object.values(map).map((m) => ({ key: m.key, name: m.name, card: !!m.card, rows: Object.values(m.rows).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.id - b.id)) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' }) || (a.card ? 1 : 0) - (b.card ? 1 : 0));
   }
   // Nazwy ćwiczeń z wcześniejszych treningów (podpowiedzi w formularzu).
   function exNames() {

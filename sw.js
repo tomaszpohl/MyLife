@@ -1,8 +1,9 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v24-1';
-// v16: odczyt zdjęć (Tesseract, ok. 7 MB) w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji.
-const OCR_CACHE = 'mylife-ocr-1';
-const OCR_FILES = ['./lib/tesseract/tesseract-core-simd-lstm.js', './lib/tesseract/tesseract-core-simd-lstm.wasm', './lib/tesseract/eng.traineddata'];
+const VERSION = 'mylife-v26';
+// Odczyt zdjęć w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji (v16: Tesseract w „mylife-ocr-1”;
+// v26: PaddleOCR PP-OCRv4 + ONNX Runtime Web, ok. 27 MB, w „mylife-ocr-2” – stara pamięć jest usuwana przy aktywacji).
+const OCR_CACHE = 'mylife-ocr-2';
+const OCR_FILES = ['./lib/paddle/ort.wasm.min.js', './lib/paddle/ort-wasm-simd-threaded.mjs', './lib/paddle/ort-wasm-simd-threaded.wasm', './lib/paddle/det.onnx', './lib/paddle/rec.onnx', './lib/paddle/keys.txt'];
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './app.js', './manifest.webmanifest',
   './diet-pdf.js', './diet-core.js', './diet-ui.js', './body-ocr.js', './body-ui.js', './ocr-worker.js', './settle-core.js', './settle-ui.js', './train-core.js', './train-rec.js', './train-rec-ui.js', './train-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js',
@@ -44,7 +45,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
 
   // Silnik odczytu zdjęć: najpierw pamięć (pliki się nie zmieniają), inaczej sieć i zapis.
-  if (url.pathname.indexOf('/lib/tesseract/') >= 0) {
+  if (url.pathname.indexOf('/lib/paddle/') >= 0) {
     e.respondWith(caches.open(OCR_CACHE).then((c) => c.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => { if (res.ok) c.put(req, res.clone()); return res; }))));
     return;
   }

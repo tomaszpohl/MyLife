@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v24.1 · 01.11.2026';
+  const APP_VERSION = 'v26 · 03.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -252,10 +252,12 @@
 
   // ---------- Renderowanie ----------
   const scrollMem = {};
-  let renderedDay = null;
+  let renderedDay = null, renderedHash = null;
   function render() {
     renderedDay = C.todayKey();
-    app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; if (el.dataset.autoend) scrollMem[el.dataset.scroll + ':x'] = el.scrollLeft; });
+    app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; if (el.dataset.autoend) { scrollMem[el.dataset.scroll + ':x'] = el.scrollLeft; scrollMem[el.dataset.scroll + ':w'] = el.scrollWidth; } });
+    // v25: wykresy przewijane w poziomie – po wejściu na ekran zawsze od najnowszego końca (pozycja pamiętana tylko na tym samym ekranie)
+    if (location.hash !== renderedHash) { Object.keys(scrollMem).forEach((k) => { if (/:[xw]$/.test(k)) delete scrollMem[k]; }); renderedHash = location.hash; }
     const r = route();
     let html;
     if (r.name === 'plan') {
@@ -275,7 +277,8 @@
     app.innerHTML = html + (S.dp ? viewDatePicker() : '') + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
     app.querySelectorAll('[data-scroll]').forEach((el) => {
       if (scrollMem[el.dataset.scroll]) el.scrollTop = scrollMem[el.dataset.scroll];
-      if (el.dataset.autoend) el.scrollLeft = scrollMem[el.dataset.scroll + ':x'] != null ? scrollMem[el.dataset.scroll + ':x'] : el.scrollWidth;
+      // nowy punkt (inna szerokość wykresu) albo pierwsze wejście – najnowszy koniec; inaczej pozycja sprzed odświeżenia
+      if (el.dataset.autoend) el.scrollLeft = scrollMem[el.dataset.scroll + ':x'] != null && scrollMem[el.dataset.scroll + ':w'] === el.scrollWidth ? scrollMem[el.dataset.scroll + ':x'] : el.scrollWidth;
     });
     const nb = app.querySelector('.navbar'), on = nb && nb.querySelector('.nb.on');
     if (on && nb.scrollWidth > nb.clientWidth) nb.scrollLeft = on.offsetLeft - (nb.clientWidth - on.offsetWidth) / 2;

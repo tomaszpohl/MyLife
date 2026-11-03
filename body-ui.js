@@ -272,6 +272,6 @@
       if (B.dayDd) { B.dayDd = false; return true; }
       return false;
     },
-    onRoute() { B.msg = ''; B.undo = null; B.rev = null; B.dayDd = false; B.tip = false; if (B.busy) { B.job++; B.busy = ''; } }
+    onRoute() { B.msg = ''; B.undo = null; B.rev = null; B.dayDd = false; B.tip = false; B.day = null; if (B.busy) { B.job++; B.busy = ''; } }
   };
 })();

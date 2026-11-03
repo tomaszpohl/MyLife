@@ -110,47 +110,49 @@
   // ---------- Postępy ----------
   function viewProgress() {
     const all = TR.progress();
-    if (!all.length) return `<main class="screen">${topbar('Postępy')}<div class="dscroll"><div class="dcard tempty"><div class="para" style="text-align:center">Brak ćwiczeń siłowych. Dodaj trening z ćwiczeniem siłowym, aby śledzić postępy.</div></div></div></main>`;
-    // v20: domyślnie ćwiczenie siłowe z najnowszego treningu (makieta 01.11: wykresy na najnowszych danych).
-    const newest = () => { for (const w of TR.list()) { const x = w.ex.find((e) => e.kind === 'str' && e.sets.length); if (x) return x.name.trim().toLocaleLowerCase('pl'); } return null; };
+    if (!all.length) return `<main class="screen">${topbar('Postępy')}<div class="dscroll"><div class="dcard tempty"><div class="para" style="text-align:center">Brak ćwiczeń do śledzenia. Dodaj trening z ćwiczeniem siłowym albo kondycyjnym ze średnią mocą, aby śledzić postępy.</div></div></div></main>`;
+    // v20/v25: domyślnie ćwiczenie z najnowszym wynikiem (siłowe albo kondycyjne z mocą) – wykres na najnowszych danych.
+    const newest = () => { let b = null, bk = null; all.forEach((x) => x.rows.forEach((r) => { if (!b || r.d > b.d || (r.d === b.d && r.id > b.id)) { b = r; bk = x.key; } })); return bk; };
     const cur = all.find((x) => x.key === T.sel) || all.find((x) => x.key === newest()) || all[0];
     const rows = cur.rows, n = rows.length, kgs = rows.map((r) => r.kg), best = Math.max(...kgs);
+    const card = cur.card, unit = card ? 'W' : 'kg', step = card ? 10 : 2.5;
+    const vt = (v) => fmt(v) + ' ' + unit, rt = (r) => (card ? (r.reps ? fmt(r.reps) + ' min' : '—') : String(r.reps));
     const si = T.day != null && rows.some((r) => r.id === T.day) ? rows.findIndex((r) => r.id === T.day) : n - 1;
     const sel = rows[si];
-    const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v)) + ' kg';
+    const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v)) + ' ' + unit;
     const dc = (v) => (v > 0 ? 'g' : v < 0 ? 'b' : 'n');
     const gain = n > 1 ? Math.round((rows[n - 1].kg - rows[0].kg) * 100) / 100 : null;
     let chart = '<div class="para" style="padding:12px 0">Do wykresu potrzebne są co najmniej dwa treningi z tym ćwiczeniem.</div>';
     if (n >= 2) {
-      const lo = Math.floor((Math.min(...kgs) - 2.5) / 2.5) * 2.5, hi = Math.ceil((Math.max(...kgs) + 2.5) / 2.5) * 2.5;
+      const lo = Math.floor((Math.min(...kgs) - step) / step) * step, hi = Math.ceil((Math.max(...kgs) + step) / step) * step;
       const H = 176, W = Math.max(300, 56 + (n - 1) * 72), X0 = 28, X1 = W - 28, Y0 = 24, Y1 = 150;
       const px = (i) => X0 + (X1 - X0) * i / (n - 1), py = (v) => Y1 - (Y1 - Y0) * (v - lo) / ((hi - lo) || 1);
       const grid = [hi, (hi + lo) / 2, lo];
       chart = `<div class="wchart tchart">
           <div class="wy" aria-hidden="true">${grid.map((g) => `<div style="top:${py(g) - 8}px">${fmt(g)}</div>`).join('')}</div>
-          <div class="wscroll" tabindex="0" aria-label="Wykres, przewijany w poziomie" data-scroll="train-chart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
+          <div class="wscroll" tabindex="0" aria-label="${card ? 'Wykres średniej mocy' : 'Wykres największego ciężaru'}, przewijany w poziomie" data-scroll="train-chart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${py(g)}px"></div>`).join('')}
             <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${rows.map((r, i) => px(i).toFixed(1) + ',' + py(r.kg).toFixed(1)).join(' ')}" fill="none" stroke="var(--violet)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
-            ${rows.map((r, i) => `<button class="wdot${i === si ? ' on' : ''}${r.kg === best ? ' best' : ''}" style="left:${(px(i) - 14).toFixed(1)}px;top:${(py(r.kg) - 14).toFixed(1)}px" data-a="trday" data-id="${r.id}" aria-label="${esc(dl(r.d) + ': ' + fmt(r.kg) + ' kg')}"><span></span></button>`).join('')}
+            ${rows.map((r, i) => `<button class="wdot${i === si ? ' on' : ''}${r.kg === best ? ' best' : ''}" style="left:${(px(i) - 14).toFixed(1)}px;top:${(py(r.kg) - 14).toFixed(1)}px" data-a="trday" data-id="${r.id}" aria-label="${esc(dl(r.d) + ': ' + vt(r.kg))}"><span></span></button>`).join('')}
           </div></div>
-          <div class="wtip" role="status"><div>${esc(dl(sel.d))}</div><div style="font-family:var(--display);font-weight:600;color:var(--violet)">${esc(fmt(sel.kg) + ' kg × ' + sel.reps)}</div></div>
+          <div class="wtip" role="status"><div>${esc(dl(sel.d))}</div><div style="font-family:var(--display);font-weight:600;color:var(--violet)">${esc(vt(sel.kg) + (card ? ' · ' : ' × ') + rt(sel))}</div></div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(dl(rows[0].d).replace(/^[^,]+, /, ''))}</span><span>${esc(dl(rows[n - 1].d).replace(/^[^,]+, /, ''))}</span></div></div>`;
     }
     const tab = rows.map((r, i) => {
       const d = i === 0 ? null : Math.round((r.kg - rows[i - 1].kg) * 100) / 100;
-      return `<button class="bhrow trow${i === si ? ' on' : ''}" data-a="trday" data-id="${r.id}" aria-label="Pokaż wynik z dnia ${esc(dl(r.d))}"><span class="dt">${esc(dl(r.d))}</span><span class="v">${fmt(r.kg)}</span><span class="r">${r.reps}</span><span class="d ${d == null ? '' : dc(d)}">${d == null ? 'pierwszy' : d === 0 ? '0' : sg(d)}</span></button>`;
+      return `<button class="bhrow trow${i === si ? ' on' : ''}" data-a="trday" data-id="${r.id}" aria-label="Pokaż wynik z dnia ${esc(dl(r.d))}"><span class="dt">${esc(dl(r.d))}</span><span class="v">${fmt(r.kg)}</span><span class="r">${esc(rt(r))}</span><span class="d ${d == null ? '' : dc(d)}">${d == null ? 'pierwszy' : d === 0 ? '0' : sg(d)}</span></button>`;
     }).reverse().join('');
     return `<main class="screen">${topbar('Postępy')}
       <div class="dscroll" data-scroll="train-prog">
         <div class="dcard" style="gap:8px"><div class="eyebrow">Ćwiczenie</div>
-          <div class="ddrop"><button class="select${T.dd ? ' open tv' : ''}" data-a="trdd" aria-haspopup="listbox" aria-expanded="${T.dd}" aria-label="Ćwiczenie: ${esc(cur.name)}"><span style="min-width:0">${esc(cur.name)}</span><span class="frot${T.dd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
-            ${T.dd ? `<div class="bdlist" role="listbox" aria-label="Ćwiczenia siłowe">${all.map((x) => `<button role="option" class="bdopt tv${x.key === cur.key ? ' on' : ''}" aria-selected="${x.key === cur.key}" data-a="trpick" data-k="${esc(x.key)}"><span>${esc(x.name)}</span><span class="sub">${pl(x.rows.length, 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
-          <div class="tstats in"><div><div class="l">REKORD</div><div class="v" style="color:var(--violet)">${fmt(best)} kg</div></div>
+          <div class="ddrop"><button class="select${T.dd ? ' open tv' : ''}" data-a="trdd" aria-haspopup="listbox" aria-expanded="${T.dd}" aria-label="Ćwiczenie: ${esc(cur.name + (card ? ' · moc' : ''))}"><span style="min-width:0">${esc(cur.name + (card ? ' · moc' : ''))}</span><span class="frot${T.dd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
+            ${T.dd ? `<div class="bdlist" role="listbox" aria-label="Ćwiczenia">${all.map((x) => `<button role="option" class="bdopt tv${x.key === cur.key ? ' on' : ''}" aria-selected="${x.key === cur.key}" data-a="trpick" data-k="${esc(x.key)}"><span>${esc(x.name + (x.card ? ' · moc' : ''))}</span><span class="sub">${pl(x.rows.length, 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
+          <div class="tstats in"><div><div class="l">REKORD</div><div class="v" style="color:var(--violet)">${esc(vt(best))}</div></div>
             <div><div class="l">OD PIERWSZEGO</div><div class="v ${gain == null ? '' : dc(gain)}">${gain == null ? '—' : sg(gain)}</div></div></div></div>
-        <div class="dcard" style="gap:4px"><div class="dhead"><div class="eyebrow">Największy ciężar</div><div style="font-size:12px;color:var(--muted)">kg</div></div>${chart}</div>
+        <div class="dcard" style="gap:4px"><div class="dhead"><div class="eyebrow">${card ? 'Średnia moc' : 'Największy ciężar'}</div><div style="font-size:12px;color:var(--muted)">${unit}</div></div>${chart}</div>
         <div class="dcard tight"><button class="bhhead" data-a="trtab" aria-expanded="${T.tabOpen}"><span class="eyebrow" style="text-align:left">Tabela wyników</span><span class="cnt">${pl(n, 'trening', 'treningi', 'treningów')}<span class="frot${T.tabOpen ? ' up' : ''}" style="display:flex">${K.down}</span></span></button>
-          ${T.tabOpen ? `<div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">MAX CIĘŻAR</span><span style="width:54px;text-align:right">POWT.</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
-            <div style="font-size:12px;line-height:1.4;color:var(--dim);padding:8px 0 4px;border-top:1px solid var(--line)">Dla każdego treningu bierzemy największy ciężar z serii tego ćwiczenia; „Powt.” to powtórzenia w tej serii. Masa ciała (0 kg) liczy się jako 0.</div>` : ''}</div>
+          ${T.tabOpen ? `<div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">${card ? 'ŚR. MOC' : 'MAX CIĘŻAR'}</span><span style="width:54px;text-align:right">${card ? 'CZAS' : 'POWT.'}</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
+            <div style="font-size:12px;line-height:1.4;color:var(--dim);padding:8px 0 4px;border-top:1px solid var(--line)">${card ? 'Dla każdego treningu bierzemy średnią moc podaną przy tym ćwiczeniu kondycyjnym. Ćwiczenia bez podanej mocy nie pojawiają się na liście.' : 'Dla każdego treningu bierzemy największy ciężar z serii tego ćwiczenia; „Powt.” to powtórzenia w tej serii. Masa ciała (0 kg) liczy się jako 0.'}</div>` : ''}</div>
       </div></main>`;
   }
 
@@ -377,6 +379,7 @@
     onRoute(r) {
       if (T.flash && T.flash.fresh) T.flash.fresh = false; else T.flash = null;
       T.dd = false; T.confirm = false;
+      if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
     }

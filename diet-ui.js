@@ -101,7 +101,7 @@
   }
   const calPick = {
     act: (k) => { U.list.sel = k; },
-    jfrom: (k) => { U.journal.from = k; U.journal.fromOpen = false; },
+    jfrom: (k) => { U.journal.from = k; U.journal.fromUser = true; U.journal.fromOpen = false; },
     exp: (k) => { U.settings.expFrom = k; U.settings.calOpen = false; U.settings.expMsg = ''; }
   };
 
@@ -380,7 +380,8 @@
   function viewJournal() {
     const Jn = U.journal, T = today();
     if (!Jn.k) Jn.k = T;
-    if (!Jn.from) Jn.from = C.addDays(T, -6);
+    // v25 (makieta 03.11.2026): domyślnie od najstarszego wpisu w dzienniku (oznaczenia, odstępstwa, aktywność), dopóki nie wybierzesz dnia.
+    if (!Jn.fromUser) { const f0 = D.firstJournalDay(); Jn.from = f0 && f0 <= T ? f0 : T; }
     const tabs = [['day', 'Dzień'], ['stats', 'Statystyki']];
     let body;
     if (Jn.tab === 'day') {

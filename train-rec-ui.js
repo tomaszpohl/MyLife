@@ -102,7 +102,7 @@
           ${id === 'date' && d.end === 'date' ? A.dateBtn(d.until, 'tcuntil', '', 'Data zakończenia') : ''}
           ${id === 'count' ? `<input class="num-in" style="width:68px;height:44px;border-radius:12px" type="text" inputmode="numeric" maxlength="3" aria-label="Liczba powtórzeń" value="${esc(d.count)}" data-in="train-ccount">` : ''}</div>`).join('')}</div>
       </div>` : ''}
-      <div data-tchint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana wraca na kolejny dzień jako zaległe podzadanie z datą.' : c.err)}</div>
+      <div data-tchint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą.' : c.err)}</div>
       ${d.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć aktywność wraz z historią wykonania? Zniknie też z planera dnia.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="tcdelno">Anuluj</button><button class="btn-del" style="height:48px;font-size:15px" data-a="tcdelyes">Usuń</button></div></div>`
         : `<div style="display:flex;gap:10px">${d.id ? `<button class="tcdelbtn" data-a="tcdelask" aria-label="Usuń aktywność">${K.trash}</button>` : ''}<button class="btn-cancel small" data-a="tcclose">Anuluj</button><button class="tprimary${c.ok ? '' : ' off'}" style="flex:1;height:48px" data-a="tcsave">Zapisz</button></div>`}
     </div></div>`;
@@ -118,7 +118,7 @@
     const d = U.dlg; if (!d) return;
     const c = check(d), b = document.querySelector('[data-a=tcsave]'), h = document.querySelector('[data-tchint]'), pv = document.querySelector('[data-tcpv] span');
     if (b) b.classList.toggle('off', !c.ok);
-    if (h) { h.textContent = c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana wraca na kolejny dzień jako zaległe podzadanie z datą.' : c.err; h.style.color = c.ok ? 'var(--muted)' : '#F2D9A0'; }
+    if (h) { h.textContent = c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą.' : c.err; h.style.color = c.ok ? 'var(--muted)' : '#F2D9A0'; }
     if (pv) pv.textContent = c.preview;
   }
 

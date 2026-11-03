@@ -2,7 +2,8 @@
    Dane w bazie Treningu (mylife.train.v1 → rec = { next, list }), więc są w kopii modułu Trening.
    Aktywność: { id, name, start: 'RRRR-MM-DD', rep: { type: 'daily'|'weekly'|'monthly'|'custom', n, unit: 'day'|'week'|'month', days: [0–6], end: 'never'|'date'|'count', until, count },
                 done: { 'termin': 'data wykonania' } }.
-   Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają na dziś jako zaległe podzadania z datą
+   Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają (od v25) do najbliższego terminu
+   aktywności (dziś, jeśli dziś jest terminem, inaczej następny termin) jako zaległe podzadania z datą
    (decyzja właściciela: 60 dni jak w makiecie; Tydzień i Miesiąc też pokazują aktywności). Bez godzin i przypomnień. */
 (function () {
   'use strict';
@@ -49,17 +50,26 @@
     if (a.rep.end === 'count') { const l = lastOcc(a); return !!l && k <= l; }
     return true;
   }
-  // Terminy do pokazania w dniu D: dla dziś – zaległe z ostatnich 60 dni (niewykonane albo wykonane dziś) + dzisiejszy;
-  // dla innych dni – tylko termin tego dnia.
-  function dates(a, D) {
-    const T = C.todayKey(), out = [];
-    if (D === T) {
-      const lo = C.addDays(D, -LOOK);
-      for (let x = lo > a.start ? lo : a.start; x < D; x = C.addDays(x, 1)) if (occ(a, x)) { const v = a.done[x]; if (!v || v === D) out.push(x); }
-    }
-    if (occ(a, D)) out.push(D);
+  // v25 (makieta 03.11.2026): zaległe terminy – niewykonane terminy z ostatnich 60 dni przed dziś (oraz wykonane dziś albo w dniu D,
+  // żeby po odhaczeniu zostały widoczne do końca dnia).
+  function pend(a, D) {
+    const T = C.todayKey(), lo = C.addDays(T, -LOOK), out = [];
+    for (let x = lo > a.start ? lo : a.start; x < T; x = C.addDays(x, 1)) if (occ(a, x)) { const v = a.done[x]; if (!v || v === D || v === T) out.push(x); }
     return out;
   }
+  // Terminy do pokazania w dniu D – tylko gdy D jest terminem aktywności (w inne dni aktywności w planerze nie ma).
+  // Zaległe terminy trafiają wyłącznie do najbliższego terminu od dziś (dziś albo następny termin); dni przeszłe i dalsze
+  // terminy pokazują tylko swój termin.
+  function dates(a, D) {
+    if (!occ(a, D)) return [];
+    const T = C.todayKey();
+    if (D < T) return [D];
+    let first = T;
+    for (let i = 0; i < 4000 && first < D && !occ(a, first); i++) first = C.addDays(first, 1);
+    return first === D ? pend(a, D).concat([D]) : [D];
+  }
+  // Liczba zaległych (niewykonanych) terminów – niezależnie od dnia.
+  const overdue = (a) => pend(a, null).filter((x) => !a.done[x]).length;
   // Wiersze planera dla dnia k: { a, ds, done (wszystkie terminy), over (zaległe) }.
   function forDay(k) {
     return list().map((a) => ({ a, ds: dates(a, k) })).filter((x) => x.ds.length).map((x) => ({
@@ -115,7 +125,7 @@
       const x = all[i];
       if (a.done[x]) { streak++; started = true; } else if (x === T && !started) continue; else break;
     }
-    const over = dates(a, T).filter((x) => x < T && !a.done[x]).length;
+    const over = overdue(a);
     const dots = all.slice(-14).map((x) => {
       const v = a.done[x];
       if (v) return { c: v > x ? 'late' : 'ok', tip: dm(x) + ': ' + (v > x ? 'wykonana z opóźnieniem' : 'wykonana w terminie') };
@@ -125,5 +135,5 @@
     return { planned, done, late, missed, streak, best, over, dots };
   }
 
-  window.TrainRec = { list, get, base, occ, dates, forDay, setDone, repText, upsert, remove, stat, dm };
+  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm };
 })();
