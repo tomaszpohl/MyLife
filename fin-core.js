@@ -28,7 +28,7 @@
   const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
   const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {} } });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {}, order: [] } });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -45,7 +45,7 @@
     d.cats = Object.assign({ mode: 'default', custom: [] }, d.cats || {});
     d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
     ['goals', 'inv', 'invGoals'].forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });   // v19: cele i inwestycje
-    d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {} };   // v27: planer wydatków (plany miesięczne)
+    d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {}, order: (d.plan && Array.isArray(d.plan.order)) ? d.plan.order : [] };   // v27: planer wydatków (plany miesięczne); v28: kolejność kategorii
     // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
     if (!d.cats.recolored) {
       const seen = [];
@@ -100,6 +100,8 @@
     const add = list.map((e) => ({ id: id('e'), date: e.date, desc: String(e.desc || '').trim(), amt: r2(e.amt), cat: e.cat }));
     db.exp = db.exp.concat(add); save(); return add;
   }
+  // v28: edycja wydatku (data, opis, kwota, kategoria) – ten sam id
+  function updateExpense(eid, e) { let out = null; db.exp = db.exp.map((x) => (x.id === eid ? (out = { id: x.id, date: e.date, desc: String(e.desc || '').trim(), amt: r2(e.amt), cat: e.cat }) : x)); save(); return out; }
   function removeExpense(eid) { const e = db.exp.find((x) => x.id === eid); db.exp = db.exp.filter((x) => x.id !== eid); save(); return e || null; }
   function restoreExpense(e) { if (e && !db.exp.some((x) => x.id === e.id)) { db.exp.push(e); save(); } }
   const expIn = (a, b) => db.exp.filter((e) => e.date >= a && e.date <= b);
@@ -107,6 +109,8 @@
   // ---------- Przychody ----------
   const incomes = () => db.inc;
   function addIncome(e) { const x = { id: id('i'), date: e.date, cat: e.cat, desc: String(e.desc || '').trim(), amt: r2(e.amt) }; db.inc.push(x); save(); return x; }
+  // v28: edycja przychodu (data, kategoria, opis, kwota)
+  function updateIncome(iid, e) { let out = null; db.inc = db.inc.map((x) => (x.id === iid ? (out = { id: x.id, date: e.date, cat: e.cat, desc: String(e.desc || '').trim(), amt: r2(e.amt) }) : x)); save(); return out; }
   function removeIncome(iid) { const e = db.inc.find((x) => x.id === iid); db.inc = db.inc.filter((x) => x.id !== iid); save(); return e || null; }
   function restoreIncome(e) { if (e && !db.inc.some((x) => x.id === e.id)) { db.inc.push(e); save(); } }
   const incIn = (a, b) => db.inc.filter((e) => e.date >= a && e.date <= b);
@@ -303,14 +307,17 @@
     if (Object.keys(b).length) db.plan.m[ym] = b; else delete db.plan.m[ym];
     save();
   }
+  // v28: jedna kolejność kategorii dla wszystkich miesięcy i roku; nowe kategorie na końcu
+  function planOrder() { const ids = activeCats().map((c) => c.id), o = db.plan.order.filter((x) => ids.indexOf(x) >= 0); return o.concat(ids.filter((x) => o.indexOf(x) < 0)); }
+  function planSetOrder(list) { const keep = db.plan.order.filter((x) => list.indexOf(x) < 0); db.plan.order = list.concat(keep); save(); }
   function planCopy(from, to) { if (db.plan.m[from]) { db.plan.m[to] = Object.assign({}, db.plan.m[from]); save(); } }
   // Wiersze planera dla okresu: key = 'RRRR-MM' albo 'RRRR'. Aktywne kategorie + „Pozostałe (bez kategorii z listy)”.
   function planView(key) {
     const yr = key.length === 4, bucket = yr ? planYear(key) : planMonth(key);
     const spentBy = {};
     db.exp.forEach((e) => { if (e.date.slice(0, key.length) === key) spentBy[e.cat] = r2((spentBy[e.cat] || 0) + e.amt); });
-    const cats = activeCats(), ids = cats.map((c) => c.id);
-    const rows = cats.map((c) => ({ id: c.id, name: c.name, color: c.color, plan: bucket[c.id] || 0, spent: spentBy[c.id] || 0, locked: false }));
+    const cats = activeCats(), ids = cats.map((c) => c.id), ord = planOrder();
+    const rows = ord.map((cid) => cats.find((c) => c.id === cid)).map((c) => ({ id: c.id, name: c.name, color: c.color, plan: bucket[c.id] || 0, spent: spentBy[c.id] || 0, locked: false }));
     let other = 0;
     Object.keys(spentBy).forEach((cid) => { if (ids.indexOf(cid) < 0) other = r2(other + spentBy[cid]); });
     if (other > 0) rows.push({ id: '_other', name: 'Pozostałe (bez kategorii z listy)', color: '#6F7E90', plan: 0, spent: other, locked: true });
@@ -327,7 +334,7 @@
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
     goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
-    planMonth, planYear, planSet, planCopy, planView,
+    planMonth, planYear, planSet, planCopy, planView, planOrder, planSetOrder, updateExpense, updateIncome,
     importParts, exportData, importData, summary
   };
 })();

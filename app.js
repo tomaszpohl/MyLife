@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v27 · 03.11.2026';
+  const APP_VERSION = 'v28 · 04.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -998,6 +998,55 @@
       e.target.value = '';
       render();
       const q = document.getElementById('quick'); if (q) q.focus();
+    }
+  });
+
+  // ---------- v28: Planer wydatków – kolejność kategorii za uchwyt (wspólna dla miesięcy i roku) ----------
+  let pd = null;
+  const pRows = () => [...app.querySelectorAll('.fplist .fprow:not([data-locked])')];
+  app.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest('[data-pgrip]');
+    if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault(); e.stopPropagation();
+    const row = g.closest('.fprow'), rows = pRows(), from = rows.indexOf(row);
+    if (from < 0) return;
+    const pitch = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight + 12;
+    pd = { row, rows, from, to: from, y0: e.clientY, pitch };
+    try { g.setPointerCapture(e.pointerId); } catch (err) {}
+    row.classList.add('lifting');
+    rows.forEach((r) => { if (r !== row) r.style.transition = 'transform .15s ease'; });
+  }, true);
+  app.addEventListener('pointermove', (e) => {
+    if (!pd) return;
+    e.preventDefault();
+    const n = pd.rows.length, cdy = Math.max(-pd.from * pd.pitch, Math.min((n - 1 - pd.from) * pd.pitch, e.clientY - pd.y0));
+    pd.row.style.transform = 'translateY(' + cdy + 'px)';
+    pd.to = Math.max(0, Math.min(n - 1, Math.round(pd.from + cdy / pd.pitch)));
+    pd.rows.forEach((r, i) => {
+      if (r === pd.row) return;
+      let ty = 0;
+      if (pd.from < pd.to && i > pd.from && i <= pd.to) ty = -pd.pitch;
+      else if (pd.from > pd.to && i >= pd.to && i < pd.from) ty = pd.pitch;
+      r.style.transform = ty ? 'translateY(' + ty + 'px)' : '';
+    });
+  }, true);
+  function endPlanDrag(cancel) {
+    if (!pd) return;
+    const r = pd; pd = null;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
+    if (!cancel && r.to !== r.from && window.FinUI) window.FinUI.planMove(r.row.dataset.pid, r.to);
+    render();
+  }
+  app.addEventListener('pointerup', (e) => { if (pd) { e.stopPropagation(); endPlanDrag(false); } }, true);
+  app.addEventListener('pointercancel', (e) => { if (pd) { e.stopPropagation(); endPlanDrag(true); } }, true);
+  app.addEventListener('keydown', (e) => {
+    const g = e.target.closest && e.target.closest('[data-pgrip]');
+    if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const row = g.closest('.fprow'), from = pRows().indexOf(row), id = row.dataset.pid;
+    if (window.FinUI && window.FinUI.planMove(id, from + (e.key === 'ArrowUp' ? -1 : 1))) {
+      render();
+      const ng = app.querySelector('[data-pgrip="' + id + '"]'); if (ng) ng.focus();
     }
   });
 

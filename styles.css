@@ -954,3 +954,20 @@ a.dcard { color: var(--text); }
 .fplab { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); }
 .fpval { font-family: var(--display); font-size: 16px; font-weight: 600; }
 .finput.fpin { width: 130px; height: 44px; text-align: right; font-family: var(--display); font-size: 16px; font-weight: 600; }
+/* v28: edycja wydatku / przychodu – wiersz jako przycisk; karta „Dziś” jako przycisk */
+.frow > .fedit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 52px; background: none; border: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.frow > .fedit > b { flex: none; font-size: 14px; font-weight: 600; }
+.ftoday { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 0; color: var(--text); font: inherit; cursor: pointer; }
+/* v28: Planer – uchwyt kolejności, wyszukiwarka, potwierdzenie zastąpienia planu */
+.fpgrip { width: 28px; height: 44px; margin: -8px 0 -8px -6px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; color: var(--dim); cursor: grab; touch-action: none; border-radius: 8px; }
+.fpgrip.ph { visibility: hidden; }
+.fpgrip[hidden] { display: none; }
+.fpgrip:focus-visible { outline: 2px solid var(--accent); }
+.fprow.lifting { position: relative; z-index: 5; border-color: #2A6F80; box-shadow: 0 8px 24px rgba(0,0,0,0.55); }
+.fprow[hidden], .fpnone[hidden] { display: none; }
+.fpsearch { position: relative; }
+.fpclear { flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--dim); cursor: pointer; }
+.fpclear[hidden] { display: none; }
+.fpconfirm { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid #5A4A1F; background: #2A2415; color: var(--text); }
+.fpreplace { flex: 1; min-height: 44px; border: none; border-radius: 12px; background: #F2B94B; color: #1B1608; font: inherit; font-weight: 700; cursor: pointer; }
+.fplist { display: flex; flex-direction: column; gap: 12px; }

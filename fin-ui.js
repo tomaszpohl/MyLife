@@ -117,10 +117,11 @@
           </div>
         </a>
         <div class="dcard" style="flex-direction:row;align-items:center;gap:12px">
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
-            <div class="eyebrow">Dziś · ${esc(F.dlabel(T))}</div>
-            <div style="font-size:15px">Wydatki: <b style="font-family:var(--display)">${F.money(todaySum)}</b></div>
-          </div>
+          <button class="ftoday" data-a="fhometoday" aria-label="${esc('Dzisiejsze wydatki: ' + F.money(todaySum) + '. Otwórz listę wydatków')}">
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left">
+            <span class="eyebrow">Dziś · ${esc(F.dlabel(T))}</span>
+            <span style="font-size:15px">Wydatki: <b style="font-family:var(--display)">${F.money(todaySum)}</b></span></span>
+            <span style="color:var(--dim);display:flex">${J.chev}</span></button>
           <button class="fadd" data-a="faddopen" data-from="home">${J.plus}Dodaj wydatek</button>
         </div>
         ${okbox(U.home.msg)}
@@ -150,7 +151,26 @@
     return v.spent > v.plan ? mn + ': ponad plan o ' + F.money(F.r2(v.spent - v.plan)) : mn + ': zostało ' + F.money(v.left);
   }
   const planMax = () => (+today().slice(0, 4) + 1);
-  function planInit() { const T = today(); U.plan.ym = ym(T); U.plan.y = +T.slice(0, 4); U.plan.msg = ''; U.plan.err = false; }
+  const prevYm = (k) => { const y = +k.slice(0, 4), m = +k.slice(5, 7); return m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); };
+  function planDoCopy() { const P = U.plan, pk = prevYm(P.ym); F.planCopy(pk, P.ym); P.confirm = false; P.err = false; P.msg = 'Skopiowano plan z miesiąca: ' + monthTitle(pk + '-01') + '.'; R_(); }
+  // v28: filtr na żywo – bez przerysowania, pole zachowuje fokus
+  function planFilter() {
+    const q = window.FinImport.norm(U.plan.q || ''); let n = 0, m = 0;
+    document.querySelectorAll('.fprow').forEach((r) => {
+      const lk = r.dataset.locked === '1', ok = !q || r.dataset.pn.indexOf(q) >= 0;
+      r.hidden = !ok; if (!lk) { m++; if (ok) n++; }
+      const g = r.querySelector('button.fpgrip'); if (g) g.hidden = !!q;
+    });
+    const h = document.getElementById('fp-help'); if (h) h.textContent = q ? 'Pokazano ' + n + ' z ' + m + ' kategorii. Podsumowanie dotyczy wszystkich kategorii.' : 'Przeciągnij uchwyt, aby zmienić kolejność – dotyczy wszystkich miesięcy i roku.';
+    const e = document.querySelector('.fpnone'); if (e) e.hidden = !(q && !n);
+    const c = document.querySelector('[data-a=fpqclear]'); if (c) c.hidden = !U.plan.q;
+  }
+  // v28: kolejność kategorii planera (wspólna dla miesięcy i roku); „Pozostałe” zawsze na końcu
+  function planMove(id, to) {
+    const ids = F.planOrder(), from = ids.indexOf(id); if (from < 0 || to < 0 || to >= ids.length || to === from) return false;
+    ids.splice(from, 1); ids.splice(to, 0, id); F.planSetOrder(ids); return true;
+  }
+  function planInit() { const T = today(); U.plan.ym = ym(T); U.plan.y = +T.slice(0, 4); U.plan.msg = ''; U.plan.err = false; U.plan.confirm = false; U.plan.q = ''; }
   function viewPlan() {
     const P = U.plan; if (!P.ym) planInit();
     const isY = P.scope === 'year', key = isY ? String(P.y) : P.ym, v = F.planView(key);
@@ -159,15 +179,21 @@
     const title = isY ? String(P.y) : monthTitle(P.ym + '-01');
     const nextOff = isY ? P.y >= planMax() : P.ym >= planMax() + '-12';
     const pm = +P.ym.slice(5, 7), prevKey = pm === 1 ? (+P.ym.slice(0, 4) - 1) + '-12' : P.ym.slice(0, 4) + '-' + String(pm - 1).padStart(2, '0');
-    const canCopy = !isY && v.empty && Object.keys(F.planMonth(prevKey)).length > 0;
+    const prevPlan = F.planMonth(prevKey), prevHas = Object.keys(prevPlan).length > 0;
+    const prevLbl = monthTitle(prevKey + '-01'), curLbl = monthTitle(P.ym + '-01');
+    // v28: filtr kategorii (bez wielkości liter i polskich znaków); przeciąganie wyłączone podczas filtrowania
+    const nq = window.FinImport.norm(P.q || ''), cnt = v.rows.filter((r) => !r.locked).length;
+    const vis = (r) => !nq || window.FinImport.norm(r.name).indexOf(nq) >= 0;
+    const nVis = v.rows.filter((r) => !r.locked && vis(r)).length;
     const fmtP = (n) => (n > 0 ? n.toFixed(2).replace('.', ',') : '');
     const rows = v.rows.map((r) => {
       const ov = r.spent > r.plan, c = ov ? 'var(--danger)' : okC, pc = r.plan > 0 ? r.spent / r.plan * 100 : (r.spent > 0 ? 100 : 0);
       const field = isY || r.locked
         ? `<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN${isY && !r.locked ? ' ROKU' : ''}</span><div class="fpval">${r.plan > 0 ? F.money(r.plan) : '—'}</div></div>`
         : `<label style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN (ZŁ)</span><input class="finput amt fpin" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${fmtP(r.plan)}" data-in="fin-plan" data-cat="${esc(r.id)}" aria-label="${esc('Plan: ' + r.name)}" autocomplete="off"></label>`;
-      return `<div class="dcard fprow" style="gap:10px">
-        <div style="display:flex;align-items:center;gap:10px">${dot(r.color)}<div style="flex:1;min-width:0;font-family:var(--display);font-size:16px;font-weight:600;word-break:break-word">${esc(r.name)}</div>
+      const grip = r.locked ? '<span class="fpgrip ph" aria-hidden="true"></span>' : `<button class="fpgrip" data-pgrip="${esc(r.id)}" aria-label="${esc('Zmień kolejność: ' + r.name)}" aria-describedby="fp-help"${nq ? ' hidden' : ''}>${I.grip}</button>`;
+      return `<div class="dcard fprow" style="gap:10px" data-pid="${esc(r.id)}"${r.locked ? ' data-locked="1"' : ''} data-pn="${esc(window.FinImport.norm(r.name))}"${vis(r) ? '' : ' hidden'}>
+        <div style="display:flex;align-items:center;gap:10px">${grip}${dot(r.color)}<div style="flex:1;min-width:0;font-family:var(--display);font-size:16px;font-weight:600;word-break:break-word">${esc(r.name)}</div>
           <div style="flex:none;text-align:right;font-size:13px;font-weight:600;color:${c}">${ov ? 'Ponad plan ' + F.money(F.r2(r.spent - r.plan)) : 'Zostało ' + F.money(F.r2(r.plan - r.spent))}</div></div>
         <div class="fprog small" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, pc))}" aria-label="${esc('Wykorzystanie planu: ' + r.name)}"><span style="width:${Math.min(100, Math.round(pc * 10) / 10)}%;background:${c}"></span></div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -185,10 +211,17 @@
           <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, tp))}" aria-label="Wykorzystanie planu"><span style="width:${Math.min(100, Math.round(tp * 10) / 10)}%;background:${col}"></span></div>
           <div style="font-size:13px;color:var(--muted)">Wydano ${F.money(v.spent)} z ${F.money(v.plan)}${v.plan > 0 ? ' · ' + pf(tp) : ' · brak planu'}</div>
           ${isY ? '<div style="font-size:12px;line-height:1.4;color:var(--dim)">Plan roku to suma planów miesięcznych – zmieniasz go w widoku Miesiąc.</div>' : ''}</div>
-        ${canCopy ? '<button class="btn2" style="min-height:44px" data-a="fpcopy">Skopiuj plan z poprzedniego miesiąca</button>' : ''}
+        ${isY ? '' : P.confirm ? `<div class="fpconfirm" role="alertdialog" aria-label="Zastąpienie planu">
+            <div style="font-size:14px;line-height:1.45">Plan miesiąca ${esc(curLbl)} zostanie zastąpiony planem z miesiąca: ${esc(prevLbl)}. Zastąpić?</div>
+            <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fpcopyno">Anuluj</button><button class="fpreplace" data-a="fpcopyok">Zastąp plan</button></div></div>`
+          : prevHas ? `<button class="btn2" style="min-height:44px" data-a="fpcopy">${esc('Skopiuj z poprzedniego miesiąca (' + prevLbl + ')')}</button>`
+          : `<button class="btn2 off" style="min-height:44px" disabled>${esc('Brak planu w poprzednim miesiącu (' + prevLbl + ')')}</button>`}
         ${P.msg ? `<div role="status" style="font-size:13px;color:${P.err ? '#F2D9A0' : okC}">${esc(P.msg)}</div>` : ''}
         <div class="eyebrow" style="padding:4px 2px 0">Kategorie wydatków</div>
-        ${rows}
+        <div class="fsearch fpsearch">${J.search}<input type="text" maxlength="24" aria-label="Szukaj kategorii" placeholder="Szukaj kategorii…" value="${esc(P.q || '')}" data-in="fin-planq" autocomplete="off"><button class="fpclear" data-a="fpqclear" aria-label="Wyczyść wyszukiwanie"${P.q ? '' : ' hidden'}>${I.close}</button></div>
+        <div id="fp-help" class="fphint" style="font-size:12px;line-height:1.4;color:var(--dim)">${nq ? esc('Pokazano ' + nVis + ' z ' + cnt + ' kategorii. Podsumowanie dotyczy wszystkich kategorii.') : 'Przeciągnij uchwyt, aby zmienić kolejność – dotyczy wszystkich miesięcy i roku.'}</div>
+        <div class="para fpnone"${nq && !nVis ? '' : ' hidden'} style="padding:6px 2px">Brak pasujących kategorii.</div>
+        <div class="fplist">${rows}</div>
       </div></main>`;
   }
 
@@ -317,8 +350,9 @@
     const Ad = U.add, d = Ad.draft, cats = F.activeCats();
     const canAdd = F.parseAmt(d.amt) > 0 && !!d.cat;
     const tot = F.sum(Ad.drafts), n = Ad.drafts.length;
-    return `<div class="overlay" style="z-index:20" role="dialog" aria-modal="true" aria-label="Nowe wydatki">
-      <div class="topbar"><button class="iconbtn" data-a="faddclose" aria-label="Zamknij bez zapisywania">${I.close}</button><h1>Nowe wydatki</h1></div>
+    const ed = !!Ad.edit, ttl = ed ? 'Edytuj wydatek' : 'Nowe wydatki';   // v28: ten sam formularz do edycji jednego wydatku
+    return `<div class="overlay" style="z-index:20" role="dialog" aria-modal="true" aria-label="${ttl}">
+      <div class="topbar"><button class="iconbtn" data-a="faddclose" aria-label="Zamknij bez zapisywania">${I.close}</button><h1>${ttl}</h1></div>
       <div class="dscroll" data-scroll="fin-add">
         <div class="dcard" style="gap:12px">
           <div class="ffield"><div class="eyebrow">Data</div>
@@ -333,14 +367,15 @@
             ${!cats.length ? '<div style="font-size:13px;color:#F2D9A0;line-height:1.4">Nie masz jeszcze własnych kategorii. Dotknij „zmień” i dodaj pierwszą.</div>' : ''}
             ${catDropdown(cats, d.cat)}
           </div>
-          <div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>
-          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
+          ${ed ? '' : `<div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>`}
+          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : ed ? 'Wymagane są kwota i kategoria. Zmiana daty przeniesie wydatek do innego dnia.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
           ${Ad.msg ? okbox(Ad.msg) : ''}
         </div>
-        ${n ? `<div class="dcard tight"><div class="dhead"><div class="eyebrow">Do zapisania</div><div style="font-size:13px;font-weight:600">Razem: ${F.money(tot)}</div></div>
+        ${n && !ed ? `<div class="dcard tight"><div class="dhead"><div class="eyebrow">Do zapisania</div><div style="font-size:13px;font-weight:600">Razem: ${F.money(tot)}</div></div>
           ${Ad.drafts.map((e, i) => { const c = F.catOf(e.cat); return `<div class="frow">${dot(c.color)}<span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(F.dlabel(e.date) + ' · ' + c.name)}</span></span><b>${F.money(e.amt)}</b><button class="iconbtn soft" data-a="fdraftdel" data-i="${i}" aria-label="Usuń z listy: ${esc(e.desc || c.name)}">${J.x}</button></div>`; }).join('')}</div>` : ''}
       </div>
-      <div class="footbar"><button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button></div>
+      <div class="footbar">${ed ? `<button class="primary${canAdd ? '' : ' dim'}" data-a="feditsave">Zapisz zmiany</button>`
+        : `<button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button>`}</div>
     </div>`;
   }
 
@@ -405,7 +440,7 @@
             <button class="fdayhead" data-a="feday" data-k="${k}" aria-expanded="${open}" aria-label="${esc(F.dlabel(k) + ': ' + F.money(s) + ', ' + wd(es.length) + (open ? '. Zwiń szczegóły' : '. Pokaż szczegóły'))}">
               <span class="ft"><span style="font-size:15px;font-weight:500">${esc(F.dlabel(k))}${k === T ? ' · dziś' : ''}</span><span>${wd(es.length)}</span></span>
               <b class="fsum">${F.money(s)}</b><span class="frot${open ? ' up' : ''}">${J.down}</span></button>
-            ${open ? es.slice().reverse().map((e) => { const c = F.catOf(e.cat); return `<div class="frow">${dot(c.color)}<span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(c.name)}</span></span><b>${F.money(e.amt)}</b><button class="iconbtn soft" data-a="fedel" data-id="${e.id}" aria-label="${esc('Usuń wydatek: ' + (e.desc || c.name) + ', ' + F.money(e.amt))}">${J.x}</button></div>`; }).join('') : ''}
+            ${open ? es.slice().reverse().map((e) => { const c = F.catOf(e.cat); return `<div class="frow"><button class="fedit" data-a="fexedit" data-id="${e.id}" aria-label="${esc('Edytuj wydatek: ' + (e.desc || c.name) + ', ' + F.money(e.amt))}">${dot(c.color)}<span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(c.name)}</span></span><b>${F.money(e.amt)}</b></button><button class="iconbtn soft" data-a="fedel" data-id="${e.id}" aria-label="${esc('Usuń wydatek: ' + (e.desc || c.name) + ', ' + F.money(e.amt))}">${J.x}</button></div>`; }).join('') : ''}
           </div>`;
         }).join('')}`;
     } else {
@@ -421,6 +456,7 @@
       const rows = Object.values(grp).map((g) => Object.assign(g, { s: F.sum(g.es) })).filter((g) => g.s > 0).sort((p, q) => q.s - p.s);
       const end = b > T ? T : b, nDays = Math.max(1, C.diffDays(a, end) + 1);
       body = `${seg([['day', 'Dzień'], ['week', 'Tydzień'], ['month', 'Miesiąc'], ['range', 'Zakres']], E.period, 'feperiod')}
+        ${okbox(E.msg)}
         <button class="fcatbtn" data-a="fcatsopen" aria-haspopup="dialog"><span>Kategorie: <b>${F.catMode() === 'custom' ? 'Własne' : 'Domyślne'}</b></span><span style="color:var(--accent);font-weight:600">zmień</span></button>
         ${E.period !== 'range' ? `<div class="dcard" style="padding:4px 6px"><div class="navrow">
             <button class="iconbtn soft" data-a="fenav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
@@ -437,7 +473,7 @@
                 <span class="l1">${dot(r.c.color)}<span style="flex:1;min-width:0;font-size:15px">${esc(r.c.name)}</span><span style="font-size:12px;color:var(--muted)">${Math.round(100 * r.s / total)}%</span><b>${F.money(r.s)}</b><span class="frot${open ? ' up' : ''}">${J.down}</span></span>
                 <span class="fbar"><span style="width:${(100 * r.s / rows[0].s).toFixed(1)}%;background:${r.c.color}"></span></span>
                 <span style="font-size:12px;color:var(--dim)">${wd(r.es.length)}</span></button>
-              ${open ? `<div style="padding:0 0 6px 20px">${r.es.slice().sort((p, q) => (q.date > p.date ? 1 : q.date < p.date ? -1 : 0)).map((e) => `<div class="frow"><span class="ft"><span>${esc(e.desc || r.c.name)}</span><span>${esc(F.dlabelY(e.date))}</span></span><b>${F.money(e.amt)}</b></div>`).join('')}</div>` : ''}</div>`;
+              ${open ? `<div style="padding:0 0 6px 20px">${r.es.slice().sort((p, q) => (q.date > p.date ? 1 : q.date < p.date ? -1 : 0)).map((e) => `<div class="frow"><button class="fedit" data-a="fexedit" data-id="${e.id}" aria-label="${esc('Edytuj wydatek: ' + (e.desc || r.c.name) + ', ' + F.money(e.amt))}"><span class="ft"><span>${esc(e.desc || r.c.name)}</span><span>${esc(F.dlabelY(e.date))}</span></span><b>${F.money(e.amt)}</b></button></div>`).join('')}</div>` : ''}</div>`;
           }).join('')}</div>`}`;
     }
     return `<main class="screen" style="position:relative">${topbar('Wydatki')}
@@ -634,15 +670,16 @@
     const addDate = b < T ? b : T;
     let modal = '';
     if (R.add) {
-      const ad = R.add, can = F.parseAmt(ad.amt) > 0 && !!ad.cat;
-      modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="Nowy przychód">
-        <div style="font-family:var(--display);font-size:18px;font-weight:600">Nowy przychód</div>
-        <div style="font-size:13px;color:var(--muted)">Data: ${esc(F.dlabelY(addDate))}</div>
+      const ad = R.add, can = F.parseAmt(ad.amt) > 0 && !!ad.cat, ed = !!ad.id;
+      if (!ad.date) ad.date = addDate;   // v28: data z kalendarza (domyślnie dziś / ostatni dzień oglądanego okresu)
+      modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="${ed ? 'Edytuj przychód' : 'Nowy przychód'}">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">${ed ? 'Edytuj przychód' : 'Nowy przychód'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:13px;color:var(--muted)">Data</span>${A.dateBtn(ad.date, 'frdate', '', 'Data przychodu')}</div>
         <div class="fchips" role="radiogroup" aria-label="Kategoria przychodu">${F.ICATS.map((c) => `<button role="radio" class="fchip${ad.cat === c.id ? ' on' : ''}" aria-checked="${ad.cat === c.id}" data-a="fraddcat" data-v="${c.id}">${dot(c.color)}${esc(c.name)}</button>`).join('')}</div>
         <input class="finput" type="text" maxlength="60" aria-label="Opis przychodu" placeholder="Opis (opcjonalnie)" value="${esc(ad.desc)}" data-in="fin-idesc" autocomplete="off">
         <div style="display:flex;align-items:center;gap:8px"><input class="finput amt" type="text" inputmode="decimal" maxlength="10" aria-label="Kwota przychodu" placeholder="Kwota" value="${esc(ad.amt)}" data-in="fin-iamt" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
-        <div style="font-size:12px;line-height:1.4;color:${ad.err ? 'var(--danger)' : 'var(--muted)'}">${ad.err ? 'Wybierz kategorię i wpisz kwotę.' : 'Wynik za wybrany okres przeliczy się od razu.'}</div>
-        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fraddclose">Anuluj</button><button class="primary${can ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fraddsave" data-k="${addDate}">Dodaj przychód</button></div></div></div>`;
+        <div style="font-size:12px;line-height:1.4;color:${ad.err ? 'var(--danger)' : 'var(--muted)'}">${ad.err ? 'Wybierz kategorię i wpisz kwotę.' : ed ? 'Zmiana daty może przenieść przychód do innego okresu.' : 'Wynik za wybrany okres przeliczy się od razu.'}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fraddclose">Anuluj</button><button class="primary${can ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fraddsave">${ed ? 'Zapisz zmiany' : 'Dodaj przychód'}</button></div></div></div>`;
     }
     return `<main class="screen" style="position:relative">${topbar('Wynik finansowy')}
       <div class="dscroll" data-scroll="fin-result">
@@ -665,7 +702,7 @@
           <button class="fsec" data-a="frinc" aria-expanded="${R.incOpen}"><span class="eyebrow" style="flex:1">Przychody</span><b style="font-size:13px;color:var(--ok)">${F.money(r.inc)}</b><span class="frot${R.incOpen ? ' up' : ''}">${J.down}</span></button>
           ${R.incOpen ? (groups.length ? groups.map((g) => `<div class="fgroup">
               <div class="fghead">${dot(g.c.color)}<span style="flex:1;min-width:0">${esc(g.c.name)}</span><b>${F.money(F.sum(g.es))}</b></div>
-              ${g.es.map((e) => `<div class="frow" style="border-top:none;padding-left:20px"><span class="ft"><span>${esc(e.desc || g.c.name)}</span><span>${esc(dl(e.date))}</span></span><span style="font-size:14px">${F.money(e.amt)}</span><button class="iconbtn soft" data-a="frdel" data-id="${e.id}" aria-label="${esc('Usuń przychód: ' + (e.desc || g.c.name) + ', ' + F.money(e.amt))}">${J.x}</button></div>`).join('')}</div>`).join('')
+              ${g.es.map((e) => `<div class="frow" style="border-top:none;padding-left:20px"><button class="fedit" data-a="fredit" data-id="${e.id}" aria-label="${esc('Edytuj przychód: ' + (e.desc || g.c.name) + ', ' + F.money(e.amt))}"><span class="ft"><span>${esc(e.desc || g.c.name)}</span><span>${esc(dl(e.date))}</span></span><span style="font-size:14px">${F.money(e.amt)}</span></button><button class="iconbtn soft" data-a="frdel" data-id="${e.id}" aria-label="${esc('Usuń przychód: ' + (e.desc || g.c.name) + ', ' + F.money(e.amt))}">${J.x}</button></div>`).join('')}</div>`).join('')
             : '<div class="para" style="padding:8px 0">Brak przychodów w tym okresie.</div>') : ''}
           <button class="primary" style="flex:none;height:48px;font-size:15px;margin-top:6px" data-a="fraddopen">${J.plus}<span>Dodaj przychód</span></button>
         </div>
@@ -727,15 +764,25 @@
   const R_ = () => A.render();
   const newDraft = (date) => ({ date: date || today(), desc: '', amt: '', cat: null });
   const actions = {
-    fpscope: (el) => { const P = U.plan; P.scope = el.dataset.v === 'year' ? 'year' : 'month'; if (P.scope === 'year') P.y = Math.min(+P.ym.slice(0, 4), planMax()); P.msg = ''; R_(); },   // Rok – rok oglądanego miesiąca
-    fpprev: () => { const P = U.plan; P.msg = ''; if (P.scope === 'year') P.y--; else { const y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7); P.ym = m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); } R_(); },
+    fpscope: (el) => { const P = U.plan; P.confirm = false; P.scope = el.dataset.v === 'year' ? 'year' : 'month'; if (P.scope === 'year') P.y = Math.min(+P.ym.slice(0, 4), planMax()); P.msg = ''; R_(); },   // Rok – rok oglądanego miesiąca
+    fpprev: () => { const P = U.plan; P.msg = ''; P.confirm = false; if (P.scope === 'year') P.y--; else { const y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7); P.ym = m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); } R_(); },
     fpnext: () => {
-      const P = U.plan; P.msg = '';
+      const P = U.plan; P.msg = ''; P.confirm = false;
       if (P.scope === 'year') { if (P.y < planMax()) P.y++; }
       else { const y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7), n = m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0'); if (n <= planMax() + '-12') P.ym = n; }
       R_();
     },
-    fpcopy: () => { const P = U.plan, y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7); F.planCopy(m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'), P.ym); P.msg = 'Skopiowano plan z poprzedniego miesiąca.'; P.err = false; R_(); },
+    // v28: kopiowanie zawsze dostępne; inny niepusty plan bieżącego miesiąca wymaga potwierdzenia
+    fpcopy: () => {
+      const P = U.plan, pk = prevYm(P.ym), from = F.planMonth(pk), cur = F.planMonth(P.ym);
+      if (!Object.keys(from).length) return;
+      const same = (a, b) => { const ka = Object.keys(a), kb = Object.keys(b); return ka.length === kb.length && ka.every((k) => a[k] === b[k]); };
+      if (Object.keys(cur).length && !same(cur, from)) { P.confirm = true; P.msg = ''; R_(); return; }
+      planDoCopy();
+    },
+    fpcopyok: () => planDoCopy(),
+    fpcopyno: () => { U.plan.confirm = false; R_(); },
+    fpqclear: () => { U.plan.q = ''; R_(); const f = document.querySelector('[data-in="fin-planq"]'); if (f) f.focus(); },
     fcal: (el) => { const f = calPick[el.dataset.c]; if (f) f(el.dataset.k); U.cal = null; R_(); },
     fcalnav: (el) => { U.cal.vm = (function (vm, d) { return addMonths(vm, d); })(U.cal.vm, +el.dataset.d); R_(); },
     fcalopen: (el) => { toggleCal(el.dataset.c, el.dataset.k); R_(); },
@@ -750,6 +797,21 @@
       Ad.draft = Object.assign({}, d, { desc: '', amt: '' }); Ad.err = false; R_();
       const f = document.getElementById('fdesc'); if (f) f.focus();
     },
+    // v28: edycja wydatku (lista i zakładka Kategorie)
+    fexedit: (el) => {
+      const e = F.expenses().find((x) => x.id === el.dataset.id); if (!e) return;
+      U.add = { draft: { date: e.date, desc: e.desc || '', amt: e.amt.toFixed(2).replace('.', ','), cat: e.cat }, drafts: [], err: false, from: 'exp', edit: e.id }; U.cal = null; R_();
+    },
+    feditsave: () => {
+      const Ad = U.add, d = Ad.draft, amt = F.parseAmt(d.amt);
+      if (!(amt > 0) || !d.cat) { Ad.err = true; R_(); return; }
+      const e = F.updateExpense(Ad.edit, { date: d.date, desc: d.desc, amt, cat: d.cat }); if (!e) { U.add = null; R_(); return; }
+      const E = U.exp; E.lm = ym(e.date); E.open[e.date] = true; E.undo = null;
+      E.msg = 'Zapisano zmiany wydatku: ' + (e.desc || F.catOf(e.cat).name) + ' (' + F.money(e.amt) + ').';
+      U.add = null; U.cal = null; R_();
+    },
+    // v28: karta „Dziś” na ekranie Finanse -> lista wydatków bieżącego miesiąca z rozwiniętym dniem dzisiejszym
+    fhometoday: () => { const T = today(), E = U.exp; E.tab = 'list'; E.lm = ym(T); E.open[T] = true; E.msg = ''; E.undo = null; location.hash = '#/fin/exp'; },
     fdraftdel: (el) => { U.add.drafts.splice(+el.dataset.i, 1); R_(); },
     faddsave: () => {
       const Ad = U.add; if (!Ad || !Ad.drafts.length) return;
@@ -845,13 +907,15 @@
     frinc: () => { U.res.incOpen = !U.res.incOpen; R_(); },
     fraddopen: () => { U.res.add = { cat: null, desc: '', amt: '', err: false }; U.res.msg = ''; R_(); },
     fraddclose: () => { U.res.add = null; R_(); },
+    fredit: (el) => { const e = F.incomes().find((x) => x.id === el.dataset.id); if (!e) return; U.res.add = { id: e.id, cat: e.cat, desc: e.desc || '', amt: e.amt.toFixed(2).replace('.', ','), date: e.date, err: false }; U.res.msg = ''; R_(); },
+    frdate: () => { const ad = U.res.add; A.datePick({ value: ad.date, min: '2000-01-01', max: today(), onPick: (k) => { ad.date = k; } }); },
     fraddcat: (el) => { U.res.add.cat = el.dataset.v; U.res.add.err = false; R_(); },
     fraddsave: (el) => {
       const ad = U.res.add, amt = F.parseAmt(ad.amt);
       if (!(amt > 0) || !ad.cat) { ad.err = true; R_(); return; }
-      const x = F.addIncome({ date: el.dataset.k, cat: ad.cat, desc: ad.desc, amt });
+      const x = ad.id ? F.updateIncome(ad.id, { date: ad.date, cat: ad.cat, desc: ad.desc, amt }) : F.addIncome({ date: ad.date || today(), cat: ad.cat, desc: ad.desc, amt });
       U.res.add = null; U.res.undo = null; U.res.incOpen = true;
-      U.res.msg = 'Dodano przychód: ' + (x.desc || F.icatOf(x.cat).name) + ' (' + F.money(x.amt) + ').'; R_();
+      if (x) U.res.msg = (ad.id ? 'Zapisano zmiany przychodu: ' : 'Dodano przychód: ') + (x.desc || F.icatOf(x.cat).name) + ' (' + F.money(x.amt) + ').'; R_();
     },
     // Usunięcie przychodu z „Cofnij” (decyzja właściciela – jak przy wydatkach).
     frdel: (el) => { const e = F.removeIncome(el.dataset.id); if (e) { U.res.undo = e; U.res.msg = 'Usunięto: ' + (e.desc || F.icatOf(e.cat).name) + ' (' + F.money(e.amt) + ').'; } R_(); },
@@ -934,6 +998,7 @@
     else if (k === 'fin-gsaved') { el.value = amtClean(v, 12); U.goals.dlg.saved = el.value; }
     else if (k === 'fin-vamt') { el.value = amtClean(v, 12); U.inv.dlg.amt = el.value; }
     else if (k === 'fin-vcustom') { U.inv.dlg.custom = v.slice(0, 30); const b = document.querySelector('[data-a=fvgadd]'); if (b) b.classList.toggle('off', !v.trim()); return; }
+    else if (k === 'fin-planq') { U.plan.q = v.slice(0, 24); planFilter(); return; }
     else if (k === 'fin-plan') { el.value = v.replace(/[^\d,.\s]/g, '').slice(0, 12); return; }
     else if (k === 'fin-idesc') U.res.add.desc = v;
     else if (k === 'fin-iamt') { el.value = amtClean(v, 10); U.res.add.amt = el.value; }
@@ -959,7 +1024,7 @@
     }
     if (U.goals.dlg) { const c = goalCheck(U.goals.dlg), b = q('[data-a=fgsave]'), pv = q('[data-gpv]'); if (b) b.classList.toggle('dim', !c.ok); if (pv) { pv.textContent = c.msg; pv.style.color = c.ok ? 'var(--text-2)' : '#F2D9A0'; } }
     if (U.inv.dlg) { const c = invCheck(U.inv.dlg), b = q('[data-a=fvsave]'), pv = q('[data-vpv]'); if (b) b.classList.toggle('dim', !c.ok); if (pv) pv.textContent = c.msg; }
-    if (U.add) { const b = q('[data-a=fadddraft]'), b2 = q('[data-a=faddnow]'), ok = F.parseAmt(U.add.draft.amt) > 0 && !!U.add.draft.cat; if (b) { b.classList.toggle('accent', ok); b.classList.toggle('off', !ok); } if (b2) b2.classList.toggle('off', !ok); }
+    if (U.add) { const b = q('[data-a=fadddraft]'), b2 = q('[data-a=faddnow]'), b3 = q('[data-a=feditsave]'), ok = F.parseAmt(U.add.draft.amt) > 0 && !!U.add.draft.cat; if (b) { b.classList.toggle('accent', ok); b.classList.toggle('off', !ok); } if (b2) b2.classList.toggle('off', !ok); if (b3) b3.classList.toggle('dim', !ok); }
     if (U.res.add) { const b = q('[data-a=fraddsave]'); if (b) b.classList.toggle('dim', !(F.parseAmt(U.res.add.amt) > 0 && !!U.res.add.cat)); }
     const W = U.worth;
     if (W.add) { const b = q('[data-a=fwaddsave]'); if (b) b.disabled = !(String(W.add.name).trim() && parseVal(W.add.val) !== null); }
@@ -1029,7 +1094,7 @@
 
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
-    view, navKey, onInput, onChange, onKey, onEscape, onRoute, settingsSection,
+    view, navKey, onInput, onChange, onKey, onEscape, onRoute, settingsSection, planMove,
     resetSettings() { Object.assign(U.imp, { msg: '', done: null, parts: null }); }
   };
 })();
