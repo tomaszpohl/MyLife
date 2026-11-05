@@ -971,17 +971,14 @@ a.dcard { color: var(--text); }
 .fpconfirm { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid #5A4A1F; background: #2A2415; color: var(--text); }
 .fpreplace { flex: 1; min-height: 44px; border: none; border-radius: 12px; background: #F2B94B; color: #1B1608; font: inherit; font-weight: 700; cursor: pointer; }
 .fplist { display: flex; flex-direction: column; gap: 12px; }
-/* v29: Trening – okno „Dodaj ćwiczenie”, „Ciężar własny” */
-.tpk { display: flex; flex-direction: column; background: var(--bg); }
-.tsearch { height: 48px; border-radius: 14px; background: var(--surface); }
-.tpklist { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
-.tpick { flex: none; min-height: 56px; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; color: var(--text); font: inherit; cursor: pointer; }
-.tpick[hidden], .tpknone[hidden] { display: none; }
-.tpick .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.tpick .n { font-size: 15px; font-weight: 500; }
-.tpick .s { font-size: 12px; color: var(--muted); }
-.tpick.own { background: var(--surface-2, #171F2A); border: 1px dashed #4A3F7A; color: var(--violet); font-size: 15px; font-weight: 600; }
+/* v29–v30: Trening – „Ciężar własny”, podpowiedzi nazw ćwiczeń */
 .tbw { min-height: 44px; display: flex; align-items: center; gap: 10px; text-align: left; background: none; border: none; padding: 0; color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
 .tbw .bx { flex: none; width: 24px; height: 24px; box-sizing: border-box; border-radius: 7px; display: flex; align-items: center; justify-content: center; background: var(--bg); border: 1.5px solid #4A5A6E; color: #1A1230; }
 .tbw .bx.on { background: var(--violet); border-color: var(--violet); }
 .tin:disabled { opacity: 0.5; }
+.tsugg { display: flex; flex-direction: column; border-radius: 12px; border: 1px solid #4A3F7A; background: var(--surface-2); overflow: hidden; }
+.tsugg[hidden] { display: none; }
+.tsugg button { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 6px 12px; color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+.tsugg button:last-child { border-bottom: none; }
+.tsugg .n { min-width: 0; }
+.tsugg .s { flex: none; font-size: 11px; color: var(--muted); }

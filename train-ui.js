@@ -25,7 +25,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, pk: false, pq: '', plist: [] };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [] };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -207,7 +207,6 @@
     if (!D) return `<main class="screen">${topbar('Nie ma takiego treningu')}</main>`;
     const ck = check(D), bad = (b) => (T.tried && b ? ' bad' : '');
     const err = (show, text, key) => `<div class="terr" role="alert" data-err="${key}"${show ? '' : ' hidden'}>${text}</div>`;
-    const names = TR.exNames();
     const exs = D.ex.map((x, i) => {
       const r = ck.ex[i], isStr = x.kind === 'str';
       const sets = isStr ? x.sets.map((s, j) => {
@@ -223,7 +222,8 @@
       return `<div class="dcard tex">
           <div style="display:flex;align-items:flex-start;gap:6px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
               <label for="ex-${i}-name" style="font-size:12px;color:var(--muted)">Nazwa ćwiczenia *</label>
-              <input id="ex-${i}-name" class="tin txt${bad(!r.name)}" type="text" maxlength="50" autocomplete="off" list="trnames" value="${esc(x.name)}" placeholder="np. Przysiad ze sztangą" data-in="train-name" data-i="${i}">
+              <input id="ex-${i}-name" class="tin txt${bad(!r.name)}" type="text" maxlength="50" autocomplete="off" value="${esc(x.name)}" placeholder="np. Przysiad ze sztangą" data-in="train-name" data-i="${i}" aria-autocomplete="list" aria-controls="sugg-${i}">
+              <div class="tsugg" id="sugg-${i}" role="listbox" aria-label="Podpowiedzi ćwiczeń" data-sugg="${i}" hidden></div>
               ${err(T.tried && !r.name, 'Nazwa ćwiczenia jest wymagana.', 'n' + i)}</div>
             <button class="bdico del" style="margin-top:20px;flex:none" data-a="trexdel" data-i="${i}" aria-label="Usuń ćwiczenie ${esc(x.name || String(i + 1))}">${K.trash}</button></div>
           <div class="tkind" role="radiogroup" aria-label="Rodzaj ćwiczenia"><button role="radio" class="${isStr ? 'on' : ''}" aria-checked="${isStr}" data-a="trkind" data-i="${i}" data-v="str">Siłowe</button><button role="radio" class="${isStr ? '' : 'on'}" aria-checked="${!isStr}" data-a="trkind" data-i="${i}" data-v="car">Kondycyjne</button></div>
@@ -254,7 +254,6 @@
         </div>`;
     }).join('');
     return `<main class="screen">${topbar(D.id ? 'Edytuj trening' : 'Nowy trening')}
-      <datalist id="trnames">${names.map((n) => `<option value="${esc(n)}"></option>`).join('')}</datalist>
       <div class="dscroll" data-scroll="train-edit">
         <div class="dcard" style="gap:10px"><div class="bfrow"><div style="flex:1;min-width:0;font-size:14px">Data treningu</div>
             ${A.dateBtn(D.d, 'trdate', '', 'Data treningu')}</div>
@@ -272,40 +271,28 @@
       </div>
       <div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 18px" data-a="navback">Anuluj</button>
         <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>
-      ${T.pk ? pickOverlay() : ''}
     </main>`;
   }
-  // v29 (makieta 05.11.2026): pełnoekranowe okno „Dodaj ćwiczenie” – wyszukiwarka (bez wielkości liter i polskich znaków),
-  // ćwiczenia z treningów i podstawowy katalog, „Dodaj własne”. Filtr działa na żywo bez przerysowania (pole zachowuje fokus).
-  function pickOverlay() {
-    const all = T.plist = TR.pickList();
-    const rows = all.map((p, k) => `<button class="tpick" data-a="trpickex" data-k="${k}" data-pn="${esc(norm(p.name))}"><span class="t"><span class="n">${esc(p.name)}</span><span class="s">${esc((p.kind === 'car' ? 'Kondycyjne' : p.bw ? 'Siłowe · ciężar własny' : 'Siłowe') + (p.own ? ' · z Twoich treningów' : ''))}</span></span><span style="color:var(--violet);display:flex">${K.plus}</span></button>`).join('');
-    return `<div class="overlay tpk" tabindex="-1" style="z-index:20;outline:none" role="dialog" aria-modal="true" aria-label="Dodaj ćwiczenie">
-      <div class="topbar"><button class="iconbtn" data-a="trpkclose" aria-label="Zamknij wybór ćwiczenia">${I.close}</button><h1>Dodaj ćwiczenie</h1></div>
-      <div style="padding:12px 16px 0"><div class="fsearch tsearch">${K.search}<input type="text" maxlength="50" aria-label="Szukaj ćwiczenia" placeholder="Szukaj ćwiczenia…" value="${esc(T.pq)}" data-in="train-pq" autocomplete="off"><button class="fpclear" data-a="trpqclear" aria-label="Wyczyść wyszukiwanie"${T.pq ? '' : ' hidden'}>${K.x}</button></div>
-        <div id="tpk-hint" role="status" style="font-size:12px;color:var(--muted);margin-top:8px">Twoje ćwiczenia i podstawowy katalog (${all.length}).</div></div>
-      <div class="tpklist" data-scroll="train-pick">${rows}
-        <div class="para tpknone" role="status" hidden style="padding:8px 2px">Brak pasujących ćwiczeń. Możesz dodać własne.</div>
-        <button class="tpick own" data-a="trpickown"><span style="display:flex">${K.plus}</span><span class="t" id="tpk-own">Dodaj własne (puste) ćwiczenie</span></button></div>
-    </div>`;
+  // v30 (makieta 05.11.2026, v165): podpowiedzi nazwy ćwiczenia (do 5) z nazw z tego formularza i z zapisanych treningów;
+  // fragment nazwy bez wielkości liter i polskich znaków, najpierw dopasowania od początku; bez nazwy identycznej z wpisaną.
+  function suggFor(i) {
+    const D = T.draft; if (!D || !D.ex[i]) return [];
+    const qn = norm(D.ex[i].name.trim()); if (!qn) return [];
+    const seen = {}, all = [], add = (x) => { const k = norm(x.name.trim()); if (!k || seen[k]) return; seen[k] = 1; all.push({ name: x.name.trim(), kind: x.kind, bw: x.kind === 'str' && !!x.bw }); };
+    D.ex.forEach((x, j) => { if (j !== i) add(x); });
+    TR.known().forEach(add);
+    const c = all.filter((k) => norm(k.name) !== qn && norm(k.name).indexOf(qn) >= 0);
+    c.sort((a, b) => (norm(a.name).indexOf(qn) === 0 ? 0 : 1) - (norm(b.name).indexOf(qn) === 0 ? 0 : 1));
+    return c.slice(0, 5);
   }
-  function pickFilter() {
-    const q = norm(T.pq.trim()), all = T.plist.length; let n = 0;
-    document.querySelectorAll('.tpick[data-pn]').forEach((b) => { const ok = !q || b.dataset.pn.indexOf(q) >= 0; b.hidden = !ok; if (ok) n++; });
-    const h = document.getElementById('tpk-hint'); if (h) h.textContent = q ? 'Pokazano ' + n + ' z ' + all + ' ćwiczeń.' : 'Twoje ćwiczenia i podstawowy katalog (' + all + ').';
-    const e = document.querySelector('.tpknone'); if (e) e.hidden = n > 0;
-    const o = document.getElementById('tpk-own'); if (o) o.textContent = T.pq.trim() ? 'Dodaj własne: „' + T.pq.trim() + '”' : 'Dodaj własne (puste) ćwiczenie';
-    const c = document.querySelector('[data-a=trpqclear]'); if (c) c.hidden = !T.pq;
-  }
-  // Dodanie wybranego ćwiczenia; pusty, niewypełniony ostatni wiersz jest zastępowany (jak w makiecie).
-  function addPicked(p) {
-    const D = T.draft; if (!D) return;
-    const last = D.ex[D.ex.length - 1];
-    if (last && !last.name.trim() && last.kind === 'str' && last.sets.every((s) => !s.kg)) D.ex.pop();
-    const x = blankEx(); x.name = p.name.slice(0, 50); x.kind = p.kind; x.bw = p.kind === 'str' && !!p.bw;
-    D.ex.push(x);
-    T.pk = false; T.pq = ''; R();
-    const el = document.getElementById('ex-' + (D.ex.length - 1) + '-name'); if (el) el.closest('.tex').scrollIntoView({ block: 'center' });
+  // Lista podpowiedzi odświeżana bez przerysowania ekranu (pole zachowuje fokus i klawiaturę).
+  function showSugg(i) {
+    document.querySelectorAll('.tsugg').forEach((b) => { if (+b.dataset.sugg !== i) { b.hidden = true; b.innerHTML = ''; } });
+    const box = document.querySelector('.tsugg[data-sugg="' + i + '"]'); if (!box) return;
+    const list = T.sg === i ? suggFor(i) : [];
+    T.sugg = list;
+    box.innerHTML = list.map((k, n) => `<button role="option" data-a="trsugg" data-i="${i}" data-k="${n}"><span class="n">${esc(k.name)}</span><span class="s">${k.kind === 'car' ? 'Kondycyjne' : k.bw ? 'Siłowe · ciężar własny' : 'Siłowe'}</span></button>`).join('');
+    box.hidden = !list.length;
   }
 
   // Po wpisaniu: przycisk zapisu, obramowania i komunikaty bez przerysowania ekranu (kolejne dotknięcie nie przepada).
@@ -343,11 +330,14 @@
   const ed = (fn) => { fn(T.draft); R(); };
   const actions = {
     trnew: () => { T.draft = null; A.go('#/train/edit/new'); },
-    trexadd: () => { T.pk = true; T.pq = ''; R(); const d = document.querySelector('.tpk'); if (d) d.focus(); },
-    trpkclose: () => { T.pk = false; T.pq = ''; R(); },
-    trpqclear: () => { T.pq = ''; pickFilter(); const f = document.querySelector('[data-in="train-pq"]'); if (f) { f.value = ''; f.focus(); } },
-    trpickex: (el) => { const p = T.plist[+el.dataset.k]; if (p) addPicked(p); },
-    trpickown: () => addPicked({ name: T.pq.trim(), kind: 'str', bw: false }),
+    trexadd: () => ed((D) => { D.ex.push(blankEx()); }),
+    // v30: wybór podpowiedzi – nazwa, rodzaj i ciężar własny jak w znanym ćwiczeniu
+    trsugg: (el) => {
+      const k = T.sugg[+el.dataset.k], D = T.draft, x = D && D.ex[+el.dataset.i]; if (!k || !x) return;
+      x.name = k.name; x.kind = k.kind; x.bw = k.kind === 'str' && !!k.bw;
+      if (x.kind === 'str' && !x.sets.length) x.sets.push({ n: '3', kg: '', reps: '10' });
+      T.sg = null; T.sugg = []; R();
+    },
     trbw: (el) => ed((D) => { const x = D.ex[+el.dataset.i]; x.bw = !x.bw; }),
     trexdel: (el) => ed((D) => { D.ex.splice(+el.dataset.i, 1); }),
     trkind: (el) => ed((D) => { const x = D.ex[+el.dataset.i]; x.kind = el.dataset.v; if (x.kind === 'str' && !x.sets.length) x.sets.push({ n: '3', kg: '', reps: '10' }); }),
@@ -383,7 +373,11 @@
   };
 
   window.TrainUI = {
-    init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); if (window.TrainRecUI) window.TrainRecUI.init(app); },
+    init(app) {
+      A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions);
+      // v30: podpowiedzi przy fokusie pola nazwy; znikają po opuszczeniu pola (z opóźnieniem, żeby zdążył zadziałać wybór)
+      document.addEventListener('focusin', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name' && T.draft) { T.sg = +t.dataset.i; showSugg(T.sg); } });
+      document.addEventListener('focusout', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name') { const i = +t.dataset.i; setTimeout(() => { if (T.sg === i && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.in === 'train-name' && +document.activeElement.dataset.i === i)) { T.sg = null; showSugg(-1); } }, 200); } }); if (window.TrainRecUI) window.TrainRecUI.init(app); },
     view(r) {
       if (r.arg === 'recur' && window.TrainRecUI) return window.TrainRecUI.view();
       if (r.arg === 'history') return viewHistory();
@@ -399,11 +393,10 @@
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
       const D = T.draft; if (!D) return;
-      if (k === 'train-pq') { T.pq = el.value.slice(0, 50); pickFilter(); return; }
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
-      else if (k === 'train-name') x.name = el.value.slice(0, 50);
+      else if (k === 'train-name') { x.name = el.value.slice(0, 50); T.sg = i; showSugg(i); }
       else if (k === 'train-n') x.sets[j].n = clean(false, 2);
       else if (k === 'train-kg') x.sets[j].kg = clean(true, 6);
       else if (k === 'train-reps') x.sets[j].reps = clean(false, 3);
@@ -417,14 +410,14 @@
     onChange(el, k) { if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
     onEscape() {
       if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
-      if (T.pk) { T.pk = false; T.pq = ''; return true; }
+      if (T.sg != null) { T.sg = null; T.sugg = []; return true; }
       if (T.confirm) { T.confirm = false; return true; }
       if (T.dd) { T.dd = false; return true; }
       return false;
     },
     onRoute(r) {
       if (T.flash && T.flash.fresh) T.flash.fresh = false; else T.flash = null;
-      T.dd = false; T.confirm = false; T.pk = false; T.pq = '';
+      T.dd = false; T.confirm = false; T.sg = null; T.sugg = [];
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;

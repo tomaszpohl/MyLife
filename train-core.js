@@ -94,12 +94,10 @@
     return out;
   }
 
-  // v29 (makieta 05.11.2026): lista okna „Dodaj ćwiczenie” – ćwiczenia z treningów (najnowsze najpierw), potem podstawowy katalog.
-  const CATALOG = [['Przysiad ze sztangą', 'str'], ['Wyciskanie sztangi leżąc', 'str'], ['Wyciskanie hantli na skosie', 'str'], ['Wyciskanie nad głowę', 'str'], ['Martwy ciąg', 'str'], ['Wiosłowanie sztangą', 'str'], ['Uginanie ramion z hantlami', 'str'], ['Prostowanie ramion na wyciągu', 'str'], ['Podciąganie na drążku', 'str', 1], ['Pompki', 'str', 1], ['Dipy na poręczach', 'str', 1], ['Wykroki z hantlami', 'str'], ['Wznosy bokiem', 'str'], ['Plank', 'str', 1], ['Rower stacjonarny', 'car'], ['Bieg', 'car'], ['Bieg interwałowy', 'car'], ['Wioślarz', 'car'], ['Orbitrek', 'car'], ['Skakanka', 'car']];
-  function pickList() {
-    const seen = {}, out = [], key = (t) => String(t).trim().toLocaleLowerCase('pl');
-    list().forEach((w) => w.ex.forEach((x) => { const k = key(x.name); if (!k || seen[k]) return; seen[k] = 1; out.push({ name: x.name.trim(), kind: x.kind, bw: x.kind === 'str' && !!x.bw, own: true }); }));
-    CATALOG.forEach((c) => { const k = key(c[0]); if (seen[k]) return; seen[k] = 1; out.push({ name: c[0], kind: c[1], bw: !!c[2], own: false }); });
+  // v30 (makieta 05.11.2026, v165): znane ćwiczenia do podpowiedzi nazwy – z zapisanych treningów (od najnowszego), bez powtórzeń nazw.
+  function known() {
+    const seen = {}, out = [];
+    list().forEach((w) => w.ex.forEach((x) => { const k = x.name.trim().toLocaleLowerCase('pl'); if (!k || seen[k]) return; seen[k] = 1; out.push({ name: x.name.trim(), kind: x.kind, bw: x.kind === 'str' && !!x.bw }); }));
     return out;
   }
 
@@ -115,5 +113,5 @@
     (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '');
   const recDb = () => db.rec;
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, pickList, exportData, importData, summary, recDb };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb };
 })();
