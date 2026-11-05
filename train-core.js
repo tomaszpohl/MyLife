@@ -1,7 +1,7 @@
 /* MyLife – moduł Trening: dane (v17, makieta „Trening”: TrainHome, TrainHistory, TrainProgress, TrainEdit).
    localStorage „mylife.train.v1” = { version: 1, next, list: [trening] }.
    Trening: { id, d: 'RRRR-MM-DD', name, ex: [ćwiczenie] }.
-   Ćwiczenie siłowe:     { name, kind: 'str', sets: [{ n (serie), kg (0 = masa ciała), reps }] }.
+   Ćwiczenie siłowe:     { name, kind: 'str', bw (od v29: ciężar własny – kg = 0, poza Postępami), sets: [{ n (serie), kg, reps }] }.
    Ćwiczenie kondycyjne: { name, kind: 'car', min, iv, ivs: [{ work (s), rest (s), rounds }], watts (W, opcjonalnie) }.
    Od v18 (30.10): czas ALBO interwały (kilka wierszy; czas = suma rund × (praca + odpoczynek)), średnia moc.
    Moduł startuje pusty (decyzja właściciela). */
@@ -16,6 +16,7 @@
   function norm(d) {
     if (!d.rec || !Array.isArray(d.rec.list)) d.rec = { next: 1, list: [] };
     (d.list || []).forEach((w) => (w.ex || []).forEach((x) => {
+      if (x.kind === 'str') { x.bw = !!x.bw; return; }
       if (x.kind !== 'car') return;
       if (!Array.isArray(x.ivs)) {
         x.ivs = [];
@@ -55,7 +56,7 @@
     const mins = w.ex.filter((x) => x.kind === 'car').reduce((s, x) => s + (x.min || 0), 0);
     return { ex: w.ex.length, sets, mins, vol };
   }
-  const volOf = (x) => (x.kind === 'str' ? x.sets.reduce((t, r) => t + (r.n || 0) * (r.reps || 0) * (r.kg || 0), 0) : 0);
+  const volOf = (x) => (x.kind === 'str' && !x.bw ? x.sets.reduce((t, r) => t + (r.n || 0) * (r.reps || 0) * (r.kg || 0), 0) : 0);
   // Dni od ostatniego treningu (null = brak treningów).
   function daysSinceLast() { const l = list()[0]; return l ? C.diffDays(l.d, C.todayKey()) : null; }
 
@@ -76,7 +77,7 @@
         if (!cur || x.watts > cur.kg) map[k].rows[w.id] = { id: w.id, d: w.d, kg: x.watts, reps: min };
         return;
       }
-      if (x.kind !== 'str' || !x.sets.length) return;
+      if (x.kind !== 'str' || !x.sets.length || x.bw) return;   // v29: ćwiczenia z ciężarem własnym poza Postępami
       const k = k0;
       if (!map[k]) map[k] = { key: k, name: nm, rows: {} };
       const top = x.sets.reduce((a, b) => (b.kg > a.kg || (b.kg === a.kg && b.reps > a.reps) ? b : a), x.sets[0]);
@@ -93,6 +94,15 @@
     return out;
   }
 
+  // v29 (makieta 05.11.2026): lista okna „Dodaj ćwiczenie” – ćwiczenia z treningów (najnowsze najpierw), potem podstawowy katalog.
+  const CATALOG = [['Przysiad ze sztangą', 'str'], ['Wyciskanie sztangi leżąc', 'str'], ['Wyciskanie hantli na skosie', 'str'], ['Wyciskanie nad głowę', 'str'], ['Martwy ciąg', 'str'], ['Wiosłowanie sztangą', 'str'], ['Uginanie ramion z hantlami', 'str'], ['Prostowanie ramion na wyciągu', 'str'], ['Podciąganie na drążku', 'str', 1], ['Pompki', 'str', 1], ['Dipy na poręczach', 'str', 1], ['Wykroki z hantlami', 'str'], ['Wznosy bokiem', 'str'], ['Plank', 'str', 1], ['Rower stacjonarny', 'car'], ['Bieg', 'car'], ['Bieg interwałowy', 'car'], ['Wioślarz', 'car'], ['Orbitrek', 'car'], ['Skakanka', 'car']];
+  function pickList() {
+    const seen = {}, out = [], key = (t) => String(t).trim().toLocaleLowerCase('pl');
+    list().forEach((w) => w.ex.forEach((x) => { const k = key(x.name); if (!k || seen[k]) return; seen[k] = 1; out.push({ name: x.name.trim(), kind: x.kind, bw: x.kind === 'str' && !!x.bw, own: true }); }));
+    CATALOG.forEach((c) => { const k = key(c[0]); if (seen[k]) return; seen[k] = 1; out.push({ name: c[0], kind: c[1], bw: !!c[2], own: false }); });
+    return out;
+  }
+
   // ---------- Kopia ----------
   const exportData = () => JSON.parse(JSON.stringify(db));
   function importData(d) {
@@ -105,5 +115,5 @@
     (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '');
   const recDb = () => db.rec;
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, exportData, importData, summary, recDb };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, pickList, exportData, importData, summary, recDb };
 })();

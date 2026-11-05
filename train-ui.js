@@ -21,9 +21,11 @@
     pencil: ic(18, 1.8, '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"></path>'),
     trash: ic(18, 1.8, '<path d="M4 7h16"></path><path d="M10 11v6M14 11v6"></path><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path><path d="M9 7V4h6v3"></path>'),
     x: ic(18, 2, '<path d="M6 6l12 12M18 6 6 18"></path>'),
+    check: ic(16, 3, '<path d="m5 12 5 5L20 7"></path>'),
+    search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, pk: false, pq: '', plist: [] };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -32,11 +34,12 @@
   const fmt = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
   const num = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) ? v : null; };
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
-  const kgTxt = (kg) => (kg === 0 ? 'masa ciała' : fmt(kg) + ' kg');
+  const kgTxt = (kg, bw) => (bw || kg === 0 ? 'ciężar własny' : fmt(kg) + ' kg');   // v29: „ciężar własny” zamiast „masa ciała”
+  const norm = (t) => String(t).toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const grp = (n) => { const p = fmt(n).split(','); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (p[1] ? ',' + p[1] : ''); };
   const ivs = (x) => (x.iv && x.ivs ? x.ivs : []);
   function exDetail(x) {
-    if (x.kind === 'str') return x.sets.map((r) => r.n + '×' + r.reps + ' · ' + kgTxt(r.kg)).join('  +  ');
+    if (x.kind === 'str') return x.sets.map((r) => r.n + '×' + r.reps + ' · ' + kgTxt(r.kg, x.bw)).join('  +  ');
     return fmt(x.min) + ' min' + (ivs(x).length ? ' · interwał ' + ivs(x).map((v) => v.rounds + '×(' + v.work + ' s / ' + v.rest + ' s)').join(' + ') : '') + (x.watts ? ' · śr. ' + x.watts + ' W' : '');
   }
   const chipsOf = (s) => [pl(s.ex, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')].concat(s.sets ? [pl(s.sets, 'seria', 'serie', 'serii')] : []).concat(s.mins ? [fmt(s.mins) + ' min kondycji'] : []);
@@ -86,7 +89,7 @@
     const exs = w.ex.map((x) => {
       let rows, sum = '';
       if (x.kind === 'str') {
-        rows = x.sets.map((r) => [r.n + ' × ' + r.reps + ' powt.', kgTxt(r.kg)]);
+        rows = x.sets.map((r) => [r.n + ' × ' + r.reps + ' powt.', kgTxt(r.kg, x.bw)]);
         const n = x.sets.reduce((t, r) => t + r.n, 0), v = TR.volOf(x);
         sum = 'Razem: ' + pl(n, 'seria', 'serie', 'serii') + (v > 0 ? ' · suma ciężaru ' + grp(v) + ' kg' : '');
       } else {
@@ -152,17 +155,17 @@
         <div class="dcard" style="gap:4px"><div class="dhead"><div class="eyebrow">${card ? 'Średnia moc' : 'Największy ciężar'}</div><div style="font-size:12px;color:var(--muted)">${unit}</div></div>${chart}</div>
         <div class="dcard tight"><button class="bhhead" data-a="trtab" aria-expanded="${T.tabOpen}"><span class="eyebrow" style="text-align:left">Tabela wyników</span><span class="cnt">${pl(n, 'trening', 'treningi', 'treningów')}<span class="frot${T.tabOpen ? ' up' : ''}" style="display:flex">${K.down}</span></span></button>
           ${T.tabOpen ? `<div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">${card ? 'ŚR. MOC' : 'MAX CIĘŻAR'}</span><span style="width:54px;text-align:right">${card ? 'CZAS' : 'POWT.'}</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
-            <div style="font-size:12px;line-height:1.4;color:var(--dim);padding:8px 0 4px;border-top:1px solid var(--line)">${card ? 'Dla każdego treningu bierzemy średnią moc podaną przy tym ćwiczeniu kondycyjnym. Ćwiczenia bez podanej mocy nie pojawiają się na liście.' : 'Dla każdego treningu bierzemy największy ciężar z serii tego ćwiczenia; „Powt.” to powtórzenia w tej serii. Masa ciała (0 kg) liczy się jako 0.'}</div>` : ''}</div>
+            <div style="font-size:12px;line-height:1.4;color:var(--dim);padding:8px 0 4px;border-top:1px solid var(--line)">${card ? 'Dla każdego treningu bierzemy średnią moc podaną przy tym ćwiczeniu kondycyjnym. Ćwiczenia bez podanej mocy nie pojawiają się na liście.' : 'Dla każdego treningu bierzemy największy ciężar z serii tego ćwiczenia; „Powt.” to powtórzenia w tej serii. Ćwiczenia z zaznaczonym „Ciężarem własnym” nie pojawiają się na liście.'}</div>` : ''}</div>
       </div></main>`;
   }
 
   // ---------- Formularz treningu ----------
   const blankIv = () => ({ work: '', rest: '', rounds: '' });
-  const blankEx = () => ({ name: '', kind: 'str', sets: [{ n: '3', kg: '', reps: '10' }], min: '', iv: false, ivs: [blankIv()], watts: '' });
+  const blankEx = () => ({ name: '', kind: 'str', bw: false, sets: [{ n: '3', kg: '', reps: '10' }], min: '', iv: false, ivs: [blankIv()], watts: '' });
   function draftFor(arg) {
     if (arg && arg !== 'new') {
       const w = TR.get(arg); if (!w) return null;
-      return { id: w.id, d: w.d, name: w.name, ex: w.ex.map((x) => ({ name: x.name, kind: x.kind, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
+      return { id: w.id, d: w.d, name: w.name, ex: w.ex.map((x) => ({ name: x.name, kind: x.kind, bw: x.kind === 'str' && !!x.bw, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: x.bw ? '' : fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
         min: x.kind === 'car' && !x.iv ? fmt(x.min) : '', iv: !!x.iv, ivs: x.iv && x.ivs && x.ivs.length ? x.ivs.map((v) => ({ work: String(v.work), rest: String(v.rest), rounds: String(v.rounds) })) : [blankIv()], watts: x.watts ? String(x.watts) : '' })) };
     }
     return { id: null, d: C.todayKey(), name: '', ex: [blankEx()] };
@@ -173,7 +176,7 @@
     const ex = D.ex.map((x) => {
       const r = { name: x.name.trim() !== '' };
       if (x.kind === 'str') {
-        r.sets = x.sets.map((s) => ({ n: inRange(s.n, 1, 99, true), kg: inRange(s.kg, 0, 999, false), reps: inRange(s.reps, 1, 999, true) }));
+        r.sets = x.sets.map((s) => ({ n: inRange(s.n, 1, 99, true), kg: x.bw || inRange(s.kg, 0, 999, false), reps: inRange(s.reps, 1, 999, true) }));
         r.ok = r.name && r.sets.length > 0 && r.sets.every((s) => s.n && s.kg && s.reps);
       } else {
         // v18: czas ALBO interwały (praca 1–3600 s, odpoczynek 0–3600 s, rundy 1–999); moc 1–2000 W albo puste
@@ -194,8 +197,8 @@
     return m > 0 ? fmt(m) + ' min' : '';
   }
   function sumTxt(x) {
-    if (x.kind !== 'str' || !x.sets.length || !x.sets.every((s) => inRange(s.n, 1, 99, true) && inRange(s.kg, 0, 999) && inRange(s.reps, 1, 999, true))) return '';
-    const ns = x.sets.reduce((t, s) => t + num(s.n), 0), vol = x.sets.reduce((t, s) => t + num(s.n) * num(s.reps) * num(s.kg), 0);
+    if (x.kind !== 'str' || !x.sets.length || !x.sets.every((s) => inRange(s.n, 1, 99, true) && (x.bw || inRange(s.kg, 0, 999)) && inRange(s.reps, 1, 999, true))) return '';
+    const ns = x.sets.reduce((t, s) => t + num(s.n), 0), vol = x.bw ? 0 : x.sets.reduce((t, s) => t + num(s.n) * num(s.reps) * num(s.kg), 0);
     return 'Razem: ' + pl(ns, 'seria', 'serie', 'serii') + (vol > 0 ? ' · objętość ' + fmt(vol) + ' kg' : '');
   }
   function viewEdit(arg) {
@@ -211,10 +214,10 @@
         const q = r.sets[j];
         return `<div class="tsetwrap"><div class="tset">
             <input class="tin n${bad(!q.n)}" type="text" inputmode="numeric" maxlength="2" value="${esc(s.n)}" placeholder="0" data-in="train-n" data-i="${i}" data-j="${j}" aria-label="Liczba serii, rząd ${j + 1}">
-            <input class="tin kg${bad(!q.kg)}" type="text" inputmode="decimal" maxlength="6" value="${esc(s.kg)}" placeholder="0" data-in="train-kg" data-i="${i}" data-j="${j}" aria-label="Ciężar w kg, rząd ${j + 1}">
+            <input class="tin kg${bad(!q.kg)}" type="text" inputmode="decimal" maxlength="6" value="${x.bw ? '' : esc(s.kg)}" placeholder="${x.bw ? '—' : '0'}" data-in="train-kg" data-i="${i}" data-j="${j}" aria-label="Ciężar w kg, rząd ${j + 1}"${x.bw ? ' disabled' : ''}>
             <input class="tin r${bad(!q.reps)}" type="text" inputmode="numeric" maxlength="3" value="${esc(s.reps)}" placeholder="0" data-in="train-reps" data-i="${i}" data-j="${j}" aria-label="Powtórzenia w serii, rząd ${j + 1}">
             <button class="iconbtn soft" data-a="trsetdel" data-i="${i}" data-j="${j}" aria-label="Usuń rząd ${j + 1}">${K.x}</button></div>
-            ${err(T.tried && !(q.n && q.kg && q.reps), 'Serie 1–99, ciężar 0–999 kg (0 = masa ciała), powtórzenia 1–999.', 's' + i + '-' + j)}</div>`;
+            ${err(T.tried && !(q.n && q.kg && q.reps), (x.bw ? 'Serie 1–99, powtórzenia 1–999.' : 'Serie 1–99, ciężar 0–999 kg, powtórzenia 1–999.'), 's' + i + '-' + j)}</div>`;
       }).join('') : '';
       const sum = sumTxt(x);
       return `<div class="dcard tex">
@@ -225,6 +228,8 @@
             <button class="bdico del" style="margin-top:20px;flex:none" data-a="trexdel" data-i="${i}" aria-label="Usuń ćwiczenie ${esc(x.name || String(i + 1))}">${K.trash}</button></div>
           <div class="tkind" role="radiogroup" aria-label="Rodzaj ćwiczenia"><button role="radio" class="${isStr ? 'on' : ''}" aria-checked="${isStr}" data-a="trkind" data-i="${i}" data-v="str">Siłowe</button><button role="radio" class="${isStr ? '' : 'on'}" aria-checked="${!isStr}" data-a="trkind" data-i="${i}" data-v="car">Kondycyjne</button></div>
           ${isStr ? `<div style="display:flex;flex-direction:column;gap:6px">
+              <button class="tbw" role="checkbox" aria-checked="${!!x.bw}" data-a="trbw" data-i="${i}"><span class="bx${x.bw ? ' on' : ''}" aria-hidden="true">${x.bw ? K.check : ''}</span><span>Ciężar własny <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></span></button>
+              ${x.bw ? '<div style="font-size:12px;line-height:1.4;color:var(--muted);margin-top:-2px">Ćwiczenie z masą ciała – bez ciężaru, nie jest uwzględniane w postępie.</div>' : ''}
               <div class="tsethead" aria-hidden="true"><span style="width:58px">SERIE</span><span style="flex:1">CIĘŻAR (KG)</span><span style="width:76px">POWT.</span><span style="width:44px"></span></div>
               ${sets}
               <button class="taddset" data-a="trsetadd" data-i="${i}">${K.plus}<span>Dodaj serię</span></button>
@@ -267,8 +272,42 @@
       </div>
       <div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 18px" data-a="navback">Anuluj</button>
         <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>
+      ${T.pk ? pickOverlay() : ''}
     </main>`;
   }
+  // v29 (makieta 05.11.2026): pełnoekranowe okno „Dodaj ćwiczenie” – wyszukiwarka (bez wielkości liter i polskich znaków),
+  // ćwiczenia z treningów i podstawowy katalog, „Dodaj własne”. Filtr działa na żywo bez przerysowania (pole zachowuje fokus).
+  function pickOverlay() {
+    const all = T.plist = TR.pickList();
+    const rows = all.map((p, k) => `<button class="tpick" data-a="trpickex" data-k="${k}" data-pn="${esc(norm(p.name))}"><span class="t"><span class="n">${esc(p.name)}</span><span class="s">${esc((p.kind === 'car' ? 'Kondycyjne' : p.bw ? 'Siłowe · ciężar własny' : 'Siłowe') + (p.own ? ' · z Twoich treningów' : ''))}</span></span><span style="color:var(--violet);display:flex">${K.plus}</span></button>`).join('');
+    return `<div class="overlay tpk" tabindex="-1" style="z-index:20;outline:none" role="dialog" aria-modal="true" aria-label="Dodaj ćwiczenie">
+      <div class="topbar"><button class="iconbtn" data-a="trpkclose" aria-label="Zamknij wybór ćwiczenia">${I.close}</button><h1>Dodaj ćwiczenie</h1></div>
+      <div style="padding:12px 16px 0"><div class="fsearch tsearch">${K.search}<input type="text" maxlength="50" aria-label="Szukaj ćwiczenia" placeholder="Szukaj ćwiczenia…" value="${esc(T.pq)}" data-in="train-pq" autocomplete="off"><button class="fpclear" data-a="trpqclear" aria-label="Wyczyść wyszukiwanie"${T.pq ? '' : ' hidden'}>${K.x}</button></div>
+        <div id="tpk-hint" role="status" style="font-size:12px;color:var(--muted);margin-top:8px">Twoje ćwiczenia i podstawowy katalog (${all.length}).</div></div>
+      <div class="tpklist" data-scroll="train-pick">${rows}
+        <div class="para tpknone" role="status" hidden style="padding:8px 2px">Brak pasujących ćwiczeń. Możesz dodać własne.</div>
+        <button class="tpick own" data-a="trpickown"><span style="display:flex">${K.plus}</span><span class="t" id="tpk-own">Dodaj własne (puste) ćwiczenie</span></button></div>
+    </div>`;
+  }
+  function pickFilter() {
+    const q = norm(T.pq.trim()), all = T.plist.length; let n = 0;
+    document.querySelectorAll('.tpick[data-pn]').forEach((b) => { const ok = !q || b.dataset.pn.indexOf(q) >= 0; b.hidden = !ok; if (ok) n++; });
+    const h = document.getElementById('tpk-hint'); if (h) h.textContent = q ? 'Pokazano ' + n + ' z ' + all + ' ćwiczeń.' : 'Twoje ćwiczenia i podstawowy katalog (' + all + ').';
+    const e = document.querySelector('.tpknone'); if (e) e.hidden = n > 0;
+    const o = document.getElementById('tpk-own'); if (o) o.textContent = T.pq.trim() ? 'Dodaj własne: „' + T.pq.trim() + '”' : 'Dodaj własne (puste) ćwiczenie';
+    const c = document.querySelector('[data-a=trpqclear]'); if (c) c.hidden = !T.pq;
+  }
+  // Dodanie wybranego ćwiczenia; pusty, niewypełniony ostatni wiersz jest zastępowany (jak w makiecie).
+  function addPicked(p) {
+    const D = T.draft; if (!D) return;
+    const last = D.ex[D.ex.length - 1];
+    if (last && !last.name.trim() && last.kind === 'str' && last.sets.every((s) => !s.kg)) D.ex.pop();
+    const x = blankEx(); x.name = p.name.slice(0, 50); x.kind = p.kind; x.bw = p.kind === 'str' && !!p.bw;
+    D.ex.push(x);
+    T.pk = false; T.pq = ''; R();
+    const el = document.getElementById('ex-' + (D.ex.length - 1) + '-name'); if (el) el.closest('.tex').scrollIntoView({ block: 'center' });
+  }
+
   // Po wpisaniu: przycisk zapisu, obramowania i komunikaty bez przerysowania ekranu (kolejne dotknięcie nie przepada).
   function live() {
     const D = T.draft; if (!D) return;
@@ -304,7 +343,12 @@
   const ed = (fn) => { fn(T.draft); R(); };
   const actions = {
     trnew: () => { T.draft = null; A.go('#/train/edit/new'); },
-    trexadd: () => ed((D) => { D.ex.push(blankEx()); }),
+    trexadd: () => { T.pk = true; T.pq = ''; R(); const d = document.querySelector('.tpk'); if (d) d.focus(); },
+    trpkclose: () => { T.pk = false; T.pq = ''; R(); },
+    trpqclear: () => { T.pq = ''; pickFilter(); const f = document.querySelector('[data-in="train-pq"]'); if (f) { f.value = ''; f.focus(); } },
+    trpickex: (el) => { const p = T.plist[+el.dataset.k]; if (p) addPicked(p); },
+    trpickown: () => addPicked({ name: T.pq.trim(), kind: 'str', bw: false }),
+    trbw: (el) => ed((D) => { const x = D.ex[+el.dataset.i]; x.bw = !x.bw; }),
     trexdel: (el) => ed((D) => { D.ex.splice(+el.dataset.i, 1); }),
     trkind: (el) => ed((D) => { const x = D.ex[+el.dataset.i]; x.kind = el.dataset.v; if (x.kind === 'str' && !x.sets.length) x.sets.push({ n: '3', kg: '', reps: '10' }); }),
     trsetadd: (el) => ed((D) => { const x = D.ex[+el.dataset.i], l = x.sets[x.sets.length - 1]; x.sets.push({ n: '3', kg: l ? l.kg : '', reps: l ? l.reps : '10' }); }),
@@ -317,7 +361,7 @@
       const ck = check(D);
       if (!ck.ok) { T.tried = true; R(); const f = document.querySelector('.terr:not([hidden])'); if (f) f.scrollIntoView({ block: 'center' }); return; }
       TR.upsert({ id: D.id, d: D.d, name: D.name.trim(), ex: D.ex.map((x) => (x.kind === 'str'
-        ? { name: x.name.trim(), kind: 'str', sets: x.sets.map((s) => ({ n: num(s.n), kg: num(s.kg), reps: num(s.reps) })) }
+        ? { name: x.name.trim(), kind: 'str', bw: !!x.bw, sets: x.sets.map((s) => ({ n: num(s.n), kg: x.bw ? 0 : num(s.kg), reps: num(s.reps) })) }
         : (() => { const iv = !!x.iv, list = iv ? x.ivs.map((v) => ({ work: num(v.work), rest: num(v.rest), rounds: num(v.rounds) })) : [];
             return { name: x.name.trim(), kind: 'car', min: iv ? TR.ivMinutes(list) : num(x.min), iv, ivs: list, watts: String(x.watts || '') !== '' ? num(x.watts) : null }; })())) });
       T.flash = { text: (D.id ? 'Zapisano zmiany treningu z ' : 'Zapisano trening z ') + dl(D.d) + '.', fresh: true };
@@ -355,6 +399,7 @@
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
       const D = T.draft; if (!D) return;
+      if (k === 'train-pq') { T.pq = el.value.slice(0, 50); pickFilter(); return; }
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
@@ -372,13 +417,14 @@
     onChange(el, k) { if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
     onEscape() {
       if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
+      if (T.pk) { T.pk = false; T.pq = ''; return true; }
       if (T.confirm) { T.confirm = false; return true; }
       if (T.dd) { T.dd = false; return true; }
       return false;
     },
     onRoute(r) {
       if (T.flash && T.flash.fresh) T.flash.fresh = false; else T.flash = null;
-      T.dd = false; T.confirm = false;
+      T.dd = false; T.confirm = false; T.pk = false; T.pq = '';
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
