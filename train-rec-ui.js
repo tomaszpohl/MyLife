@@ -132,7 +132,7 @@
     tcper: (el) => { U.per = el.dataset.v; R(); },
     tcnew: () => { openDlg(null); R(); },
     tcedit: (el) => { openDlg(RC.get(el.dataset.id)); R(); },
-    tcclose: () => { U.dlg = null; R(); },
+    tcclose: () => { U.dlg = null; if (!retDay()) R(); },
     tcrep: () => { U.dlg.rep = !U.dlg.rep; R(); },
     tctype: (el) => { Object.assign(U.dlg, { type: el.dataset.v, rep: false }); R(); },
     tcn: (el) => { U.dlg.n = Math.max(1, Math.min(99, U.dlg.n + +el.dataset.d)); R(); },
@@ -143,15 +143,19 @@
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;
       RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep });
-      U.dlg = null; R();
+      U.dlg = null; if (!retDay()) R();
     },
     tcdelask: () => { U.dlg.confirm = true; R(); },
     tcdelno: () => { U.dlg.confirm = false; R(); },
-    tcdelyes: () => { RC.remove(U.dlg.id); U.dlg = null; R(); },
+    tcdelyes: () => { RC.remove(U.dlg.id); U.dlg = null; if (!retDay()) R(); },
     // Odhaczanie na ekranie aktywności (wspólne z planerem): kafelek – wszystkie terminy, podzadanie – jeden termin.
     tcdone: (el) => { const T = C.todayKey(), x = RC.forDay(T).find((y) => y.a.id === +el.dataset.id); if (x) RC.setDone(x.a.id, x.ds, !x.done); R(); },
     tcsub: (el) => { const a = RC.get(el.dataset.id); if (a) RC.setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); R(); }
   };
+
+  // v32 (makieta v171): okno otwarte z planu dnia (#/train/recur/<id>) po zamknięciu, zapisie i usunięciu wraca do planu dnia
+  // (krok wstecz w historii); „Wróć” z ekranu aktywności też prowadzi do planu dnia (stos nawigacji).
+  function retDay() { if (!U.fromDay) return false; U.fromDay = false; A.actions.navback(); return true; }
 
   window.TrainRecUI = {
     init(app) { A = app; esc = app.esc; Object.assign(app.actions, actions); },
@@ -165,10 +169,10 @@
       else return false;
       live(); return true;
     },
-    onEscape() { if (U.dlg) { if (U.dlg.rep) U.dlg.rep = false; else if (U.dlg.confirm) U.dlg.confirm = false; else U.dlg = null; return true; } return false; },
+    onEscape() { if (U.dlg) { if (U.dlg.rep) U.dlg.rep = false; else if (U.dlg.confirm) U.dlg.confirm = false; else { U.dlg = null; retDay(); } return true; } return false; },
     onRoute(r) {
-      U.dlg = null;
-      if (r.name === 'train' && r.arg === 'recur' && r.arg2) { const a = RC.get(r.arg2); if (a) { U.tab = 'list'; openDlg(a); } }
+      U.dlg = null; U.fromDay = false;
+      if (r.name === 'train' && r.arg === 'recur' && r.arg2) { const a = RC.get(r.arg2); if (a) { U.tab = 'list'; openDlg(a); U.fromDay = true; } }
     },
     // Kafelek huba Treningu.
     desc() { const n = RC.list().length, t = RC.forDay(C.todayKey()); return n ? pl(n, 'aktywność', 'aktywności', 'aktywności') + ' · na dziś: ' + t.filter((x) => !x.done).length + ' do zrobienia' : 'Np. spacer, planer dnia i statystyki'; },

@@ -301,7 +301,7 @@
   }
   function moveSub(id, sid, dir) {
     const t = get(id); if (!t || !t.subs) return false;
-    const i = t.subs.findIndex((x) => x.id === sid), j = i + dir;
+    const i = t.subs.findIndex((x) => x.id === sid), j = i + dir;   // dir: przesunięcie o dowolną liczbę miejsc (−/+)
     if (i < 0 || j < 0 || j >= t.subs.length) return false;
     const a = t.subs.slice(); const [m] = a.splice(i, 1); a.splice(j, 0, m); t.subs = a; save(); return true;
   }

@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v32 · 09.11.2026';
+  const APP_VERSION = 'v33 · 09.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -194,13 +194,12 @@
         <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
           <button class="btn-cancel small" data-a="subedno">Anuluj</button><button class="subedok${off ? ' off' : ''}" data-a="subedok" aria-disabled="${off}">Zapisz</button></div></div>`;
       }
-      return `<div class="subrow${u.done ? ' done' : ''}">
+      return `<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
+        <button class="subgrip" data-sgrip="${u.id}" data-id="${t.id}" aria-label="Zmień kolejność: ${esc(u.title)} (${i + 1} z ${n})" aria-describedby="subgrip-hint">${I.grip}</button>
         <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
         <div class="st">${esc(u.title)}</div>
-        <button class="submv" data-a="submv" data-id="${t.id}" data-sid="${u.id}" data-d="-1" aria-label="Przesuń w górę: ${esc(u.title)}" aria-disabled="${i === 0}">${I.up}</button>
-        <button class="submv" data-a="submv" data-id="${t.id}" data-sid="${u.id}" data-d="1" aria-label="Przesuń w dół: ${esc(u.title)}" aria-disabled="${i === n - 1}">${I.down}</button>
         <button class="subdel" data-a="subed" data-id="${t.id}" data-sid="${u.id}" aria-label="Edytuj podzadanie: ${esc(u.title)}">${I.pen}</button></div>`;
-    }).join('')}</div>`;
+    }).join('')}<span id="subgrip-hint" hidden>Przeciągnij albo użyj strzałek w górę i w dół, aby zmienić kolejność podzadań.</span></div>`;
   }
   // Termin, którego dotyczy odhaczanie w Edytuj zadanie: dzień, z którego otwarto edycję, albo najbliższy termin od dziś.
   function occKey(t) {
@@ -786,7 +785,6 @@
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
     subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); S.subEdit = null; setUndo(snap, 'sub', ''); render(); },
     // v32: kolejność i edycja podzadania w widoku Dzień
-    submv: (el) => { if (el.getAttribute('aria-disabled') === 'true') return; const sid = el.dataset.sid, d = el.dataset.d; if (C.moveSub(el.dataset.id, sid, +d)) { render(); const b = app.querySelector('[data-a=submv][data-sid="' + sid + '"][data-d="' + d + '"]'); if (b && b.getAttribute('aria-disabled') !== 'true') b.focus(); } },
     subed: (el) => { const t = C.get(el.dataset.id), s = t && (t.subs || []).find((x) => x.id === el.dataset.sid); if (!s) return; S.subEdit = { id: t.id, sid: s.id, text: s.title }; render(); const f = document.getElementById('subedit'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } },
     subedno: () => { S.subEdit = null; render(); },
     subedok: () => { const E = S.subEdit; if (!E || !E.text.trim()) return; C.renameSub(E.id, E.sid, E.text); S.subEdit = null; render(); },
@@ -1147,10 +1145,56 @@
     const ng = app.querySelector('[data-grip="' + id + '"]'); if (ng) ng.focus();
   });
 
+  // ---------- v32 (makieta v171): kolejność podzadań za uchwyt – przeciąganie (skok 44 px) i strzałki ↑/↓ na uchwycie ----------
+  let sd = null;
+  app.addEventListener('pointerdown', (e) => {
+    let g = e.target.closest('[data-sgrip]');
+    if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault(); e.stopPropagation();
+    const sid = g.dataset.sgrip;
+    if (S.subEdit) { S.subEdit = null; render(); g = app.querySelector('[data-sgrip="' + sid + '"]'); if (!g) return; }   // rozpoczęcie przeciągania zamyka edycję
+    const panel = g.closest('.subpanel'), rows = [...panel.querySelectorAll('.subrow[data-sid]')], row = g.closest('.subrow'), from = rows.indexOf(row);
+    const pitch = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight;
+    sd = { id: g.dataset.id, sid, row, rows, from, to: from, y0: e.clientY, pitch };
+    try { g.setPointerCapture(e.pointerId); } catch (err) {}
+    row.classList.add('lifting');
+    rows.forEach((r) => { if (r !== row) r.style.transition = 'transform .15s ease'; });
+  }, true);
+  app.addEventListener('pointermove', (e) => {
+    if (!sd) return;
+    e.preventDefault();
+    const n = sd.rows.length, dy = Math.max(-sd.from * sd.pitch, Math.min((n - 1 - sd.from) * sd.pitch, e.clientY - sd.y0));
+    sd.row.style.transform = 'translateY(' + dy + 'px)';
+    sd.to = Math.max(0, Math.min(n - 1, Math.round(sd.from + dy / sd.pitch)));
+    sd.rows.forEach((r, i) => {
+      if (r === sd.row) return;
+      let ty = 0;
+      if (sd.from < sd.to && i > sd.from && i <= sd.to) ty = -sd.pitch;
+      else if (sd.from > sd.to && i >= sd.to && i < sd.from) ty = sd.pitch;
+      r.style.transform = ty ? 'translateY(' + ty + 'px)' : '';
+    });
+  }, true);
+  function endSubDrag(cancel) {
+    if (!sd) return;
+    const r = sd; sd = null;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
+    if (!cancel && r.to !== r.from) C.moveSub(r.id, r.sid, r.to - r.from);
+    render();
+  }
+  app.addEventListener('pointerup', (e) => { if (sd) { e.stopPropagation(); endSubDrag(false); } }, true);
+  app.addEventListener('pointercancel', (e) => { if (sd) { e.stopPropagation(); endSubDrag(true); } }, true);
+  app.addEventListener('keydown', (e) => {
+    const g = e.target.closest && e.target.closest('[data-sgrip]');
+    if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const sid = g.dataset.sgrip;
+    if (C.moveSub(g.dataset.id, sid, e.key === 'ArrowUp' ? -1 : 1)) { S.subEdit = null; render(); const ng = app.querySelector('[data-sgrip="' + sid + '"]'); if (ng) ng.focus(); }
+  });
+
   // ---------- Przesunięcie: w prawo = usuń, w lewo = przełóż (jak w makiecie) ----------
   let sw = null;
   app.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('[data-grip]')) return;
+    if (e.target.closest('[data-grip], [data-sgrip]')) return;
     const strip = e.target.closest('[data-strip]');
     if (strip) { sw = { strip: true, el: strip, x0: e.clientX, y0: e.clientY, dx: 0 }; return; }
     const row = e.target.closest('.row[data-swipe], .mcard[data-mswipe]');

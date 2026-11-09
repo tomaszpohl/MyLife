@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 32
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 33
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -9,7 +9,7 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 | Ekran | Funkcje |
 |---|---|
 | **Ekran główny** | Nazwa MyLife, data, zębatka Ustawień (od v17), moduły: Plan dnia, Finanse, Dieta i Trening. |
-| **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień; pod nim zakres dat tygodnia i – w innym tygodniu – „Wróć do bieżącego tygodnia”), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. **Podzadania (v13):** przy zadaniu licznik „wykonane/wszystkie” i strzałka; po rozwinięciu odhaczanie i usuwanie podzadań (z „Cofnij”). Rozpoczęcie zmiany kolejności zwija rozwinięte podzadania. **Od v32** w rozwiniętym zadaniu przy podzadaniu strzałki ↑/↓ (kolejność zapisuje się od razu; stan „wykonane” zostaje) i ołówek – karta edycji z nazwą (Enter zapisuje, Escape anuluje), „Anuluj”, „Zapisz” oraz koszem „Usuń podzadanie” (z „Cofnij”). Zaległe terminy aktywności cyklicznych bez tych przycisków. |
+| **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień; pod nim zakres dat tygodnia i – w innym tygodniu – „Wróć do bieżącego tygodnia”), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. **Podzadania (v13):** przy zadaniu licznik „wykonane/wszystkie” i strzałka; po rozwinięciu odhaczanie i usuwanie podzadań (z „Cofnij”). Rozpoczęcie zmiany kolejności zwija rozwinięte podzadania. **Od v32** w rozwiniętym zadaniu przy podzadaniu uchwyt (od v33; przeciągnięcie w górę/dół albo strzałki ↑/↓ na uchwycie – kolejność zapisuje się od razu, stan „wykonane” zostaje; w v32 były przyciski ↑/↓) i ołówek – karta edycji z nazwą (Enter zapisuje, Escape anuluje), „Anuluj”, „Zapisz” oraz koszem „Usuń podzadanie” (z „Cofnij”). Zaległe terminy aktywności cyklicznych bez tych przycisków. **Od v33** dotknięcie aktywności w planie dnia otwiera od razu okno „Edytuj aktywność”; zamknięcie, zapis i usunięcie wracają do planu dnia. |
 | **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. Zadania z podzadaniami mają licznik i strzałkę – po rozwinięciu podgląd podzadań z odhaczonymi wykonanymi. |
 | **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”; podgląd podzadań jak w Tygodniu. |
 | **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), **podzadania** (lista z numerami, pole „Dodaj podzadanie” + plus albo Enter, licznik), notatka. |
@@ -118,7 +118,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v32.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v33.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -139,7 +139,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v32 · 09.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v33 · 09.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -180,6 +180,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v33 (09.11.2026)**: Planer dnia – kolejność podzadań uchwytem (przeciąganie za palcem albo strzałki ↑/↓ na uchwycie) zamiast przycisków ↑/↓ z v32; dotknięcie aktywności w planie dnia otwiera okno „Edytuj aktywność”, a „Anuluj”, ✕, „Zapisz”, „Usuń” i „wstecz” wracają do planu dnia.
 - **v32 (09.11.2026)**: Dziennik diety – edycja odstępstw i wpisów aktywności (ołówek wczytuje wpis do formularza, „Anuluj edycję”, ptaszek zapisuje w tym samym miejscu); Planer dnia – kolejność podzadań strzałkami ↑/↓ i edycja nazwy podzadania w karcie (Enter / Escape), usuwanie podzadania w karcie edycji.
 - **v31 (08.11.2026)**: Trening – czas trwania aktywności cyklicznej (opcjonalnie, 1–600 min) na liście aktywności i w planie dnia; wykonane aktywności cykliczne dopisują się same do Dziennika diety (jeden wpis na dzień odhaczenia, bez usuwania); eksport diety od pierwszego wpisu (domyślnie) albo od wybranego dnia, arkusz „Dziennik” z kolumnami zjedzone 1/0/puste i nazwa posiłku, aktywności rozdzielone średnikiem, „Skład ciała” domyślnie ze wszystkimi wynikami.
 - **v30 (05.11.2026)**: Trening – zamiast okna „Dodaj ćwiczenie” z katalogiem (v29, odrzucone przez właściciela) podpowiedzi pod polem nazwy ćwiczenia: do 5 nazw z zapisanych treningów i z tego formularza, z rodzajem i ciężarem własnym; „Dodaj ćwiczenie” znowu dodaje pusty wiersz. „Ciężar własny” bez zmian.
