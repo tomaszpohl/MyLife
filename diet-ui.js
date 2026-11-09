@@ -21,6 +21,7 @@
     rep: ic(12, 2, '<path d="M17 2l3 3-3 3"></path><path d="M4 11V9a4 4 0 0 1 4-4h12"></path><path d="M7 22l-3-3 3-3"></path><path d="M20 13v2a4 4 0 0 1-4 4H4"></path>'),
     x: ic(18, 2.4, '<path d="M6 6l12 12M18 6 6 18"></path>'),
     plus: ic(20, 2.4, '<path d="M12 5v14M5 12h14"></path>'),
+    pen: ic(18, 1.8, '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"></path>'),
     trash: ic(18, 2, '<path d="M4 7h16"></path><path d="M10 11v6M14 11v6"></path><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path><path d="M9 7V4h6v3"></path>'),
     file: ic(22, 1.8, '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"></path><path d="M14 3v5h5"></path><path d="M12 12v6M9 15l3 3 3-3"></path>'),
     sheet: ic(22, 1.8, '<rect x="4" y="4" width="16" height="16" rx="2.5"></rect><path d="M4 10h16M10 4v16"></path>'),
@@ -34,7 +35,7 @@
     plan: { view: 'day', k: null, month: null, sheet: null, rec: null },
     menu: { detail: null, open: {} },   // v24: rozwinięte dni jadłospisu (klucz: id|n), domyślnie zwinięte
     list: { filter: 'all', fOpen: false, open: null, sel: null, msg: '', edit: null, draft: '', err: false, undo: null },
-    journal: { tab: 'day', k: null, rec: null, dev: '', actName: '', actMin: '', actKm: '', actErr: false, from: null, fromOpen: false, sort: 'eaten-desc', sortOpen: false },
+    journal: { tab: 'day', k: null, rec: null, devEdit: null, actEdit: null, dev: '', actName: '', actMin: '', actKm: '', actErr: false, from: null, fromOpen: false, sort: 'eaten-desc', sortOpen: false },
     weight: { kg: '', saved: false, tip: null },
     shop: { exp: {} },
     settings: { pending: null, busy: false, impMsg: '', impErr: false, impMenu: null, expFrom: null, calOpen: false, expMsg: '', expErr: false },
@@ -403,14 +404,16 @@
             <button class="jbtn skip${st === 'skipped' ? ' on' : ''}" data-a="djmark" data-slot="${esc(x.slot)}" data-v="skipped" aria-pressed="${st === 'skipped'}" aria-label="${esc(x.slot)}: pominięte">${J.x}</button></div>`; }).join('')
           : '<div class="para" style="padding:8px 0">Brak jadłospisu na ten dzień.</div>'}</div>
         <div class="dcard"><div class="eyebrow">Odstępstwa od diety</div>
-          ${j.devs.length ? j.devs.map((e) => `<div class="jentry"><div style="flex:1">${esc(e.text)}</div><button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : '<div class="para">Brak odstępstw tego dnia.</div>'}
-          <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="Dodaj odstępstwo">${J.plus}</button></div></div>
+          ${j.devs.length ? j.devs.map((e) => `<div class="jentry${Jn.devEdit === e.id ? ' editing' : ''}"><div style="flex:1">${esc(e.text)}</div>${penBtn('djdeved', e.id, e.text, Jn.devEdit === e.id)}<button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : '<div class="para">Brak odstępstw tego dnia.</div>'}
+          ${Jn.devEdit ? `<div class="jedbar"><span>Edytujesz odstępstwo</span><button data-a="djdevedno">Anuluj edycję</button></div>` : ''}
+          <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="${Jn.devEdit ? 'Zapisz zmiany odstępstwa' : 'Dodaj odstępstwo'}">${Jn.devEdit ? J.check : J.plus}</button></div></div>
         <div class="dcard"><div class="dhead"><div class="eyebrow">Aktywność fizyczna</div>${actTotal ? `<div style="font-size:12px;color:var(--muted)">${actTotal}</div>` : ''}</div>
-          ${allActs.length ? allActs.map((e) => { const t = D.actText(e, ' · '); if (e.auto) return `<div class="jentry"><div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 0"><div>${esc(t)}</div><div class="jauto">${J.rep}<span>Z aktywności cyklicznych (zmienisz w Treningu lub w planie dnia)</span></div></div></div>`; return `<div class="jentry"><div style="flex:1">${esc(t)}</div><button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
+          ${allActs.length ? allActs.map((e) => { const t = D.actText(e, ' · '); if (e.auto) return `<div class="jentry"><div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 0"><div>${esc(t)}</div><div class="jauto">${J.rep}<span>Z aktywności cyklicznych (zmienisz w Treningu lub w planie dnia)</span></div></div></div>`; return `<div class="jentry${Jn.actEdit === e.id ? ' editing' : ''}"><div style="flex:1">${esc(t)}</div>${penBtn('djacted', e.id, t, Jn.actEdit === e.id)}<button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
+          ${Jn.actEdit ? `<div class="jedbar"><span>Edytujesz aktywność</span><button data-a="djactedno">Anuluj edycję</button></div>` : ''}
           <input class="quick" style="flex:none" type="text" aria-label="Rodzaj aktywności (wymagane)" placeholder="Rodzaj, np. spacer" value="${esc(Jn.actName)}" data-in="diet-actname">
           <div class="jadd"><input class="quick" type="text" inputmode="numeric" maxlength="3" aria-label="Czas w minutach (opcjonalnie)" placeholder="Czas (min)" value="${esc(Jn.actMin)}" data-in="diet-actmin">
             <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (opcjonalnie)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
-            <button class="plus" data-a="djactadd" aria-label="Dodaj aktywność">${J.plus}</button></div>
+            <button class="plus" data-a="djactadd" aria-label="${Jn.actEdit ? 'Zapisz zmiany aktywności' : 'Dodaj aktywność'}">${Jn.actEdit ? J.check : J.plus}</button></div>
           <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne. Wykonane aktywności cykliczne dopisują się same jako jeden wpis sumaryczny.'}</div></div>`;
     } else {
       const s = D.stats(Jn.from, T);
@@ -501,6 +504,8 @@
       </div></main>`;
   }
 
+  // v32: ołówek wpisu Dziennika (edytowany wpis – w kolorze akcentu)
+  const penBtn = (a, id, t, on) => `<button class="iconbtn soft jpen${on ? ' on' : ''}" data-a="${a}" data-id="${id}" aria-label="${esc('Edytuj wpis: ' + t)}"${on ? ' aria-pressed="true"' : ''}>${J.pen}</button>`;
   // ---------- Ustawienia: eksport i import diety ----------
   // v31: zakres dziennika – od pierwszego wpisu (domyślnie; bez wpisów – dziś) albo od wybranego dnia.
   function expRange() { const St = U.settings, T = today(); if (St.expMode === 'day') return { from: St.expFrom, first: false }; const f = D.firstJournalDay(); return { from: f && f <= T ? f : T, first: !!(f && f <= T) }; }
@@ -678,17 +683,24 @@
     djtab: (el) => { U.journal.tab = el.dataset.v; U.journal.rec = null; R(); },
     djrec: (el) => { U.journal.rec = el.dataset.slot; R(); },
     djrecclose: () => { U.journal.rec = null; R(); },
-    djnav: (el) => { U.journal.rec = null; const n = C.addDays(U.journal.k, +el.dataset.d); if (n <= today()) U.journal.k = n; U.journal.actErr = false; R(); },
+    djnav: (el) => { const Jn = U.journal; Jn.rec = null; const n = C.addDays(Jn.k, +el.dataset.d); if (n <= today()) Jn.k = n; Jn.actErr = false;
+      Jn.devEdit = Jn.actEdit = null; Jn.dev = Jn.actName = Jn.actMin = Jn.actKm = ''; R(); },   // v32: zmiana dnia kończy edycję i czyści formularze
     djmark: (el) => { D.markMeal(U.journal.k, el.dataset.slot, el.dataset.v); R(); },
-    djdevadd: () => { const t = U.journal.dev.trim(); if (!t) return; D.addDev(U.journal.k, t); U.journal.dev = ''; R(); },
-    djdevdel: (el) => { D.removeDev(U.journal.k, el.dataset.id); R(); },
+    djdevadd: () => { const Jn = U.journal, t = Jn.dev.trim(); if (!t) return; if (Jn.devEdit) D.updateDev(Jn.k, Jn.devEdit, t); else D.addDev(Jn.k, t); Jn.dev = ''; Jn.devEdit = null; R(); },
+    djdevdel: (el) => { const Jn = U.journal; D.removeDev(Jn.k, el.dataset.id); if (Jn.devEdit === el.dataset.id) { Jn.devEdit = null; Jn.dev = ''; } R(); },
+    // v32 (makieta 09.11.2026): edycja odstępstwa i aktywności – wpis wczytany do formularza pod listą
+    djdeved: (el) => { const Jn = U.journal, e = D.jday(Jn.k).devs.find((x) => x.id === el.dataset.id); if (!e) return; Jn.devEdit = e.id; Jn.dev = e.text; R(); const f = document.querySelector('[data-in="diet-dev"]'); if (f) f.focus(); },
+    djdevedno: () => { const Jn = U.journal; Jn.devEdit = null; Jn.dev = ''; R(); },
+    djacted: (el) => { const Jn = U.journal, e = D.jday(Jn.k).acts.find((x) => x.id === el.dataset.id); if (!e) return; Jn.actEdit = e.id; Jn.actName = e.name; Jn.actMin = e.min ? String(e.min) : ''; Jn.actKm = e.km ? String(e.km).replace('.', ',') : ''; Jn.actErr = false; R(); const f = document.querySelector('[data-in="diet-actname"]'); if (f) f.focus(); },
+    djactedno: () => { const Jn = U.journal; Jn.actEdit = null; Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; R(); },
     djactadd: () => {
       // v7: wymagany tylko rodzaj; czas i dystans opcjonalne (puste = 0, nie są pokazywane).
       const Jn = U.journal, name = Jn.actName.trim(), min = parseInt(Jn.actMin, 10) || 0, km = parseFloat(String(Jn.actKm).replace(',', '.')) || 0;
       if (!name) { Jn.actErr = true; R(); return; }
-      D.addActivity(Jn.k, name, min, Math.round(km * 100) / 100); Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; R();
+      if (Jn.actEdit) D.updateActivity(Jn.k, Jn.actEdit, name, min, Math.round(km * 100) / 100); else D.addActivity(Jn.k, name, min, Math.round(km * 100) / 100);
+      Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; Jn.actEdit = null; R();
     },
-    djactdel: (el) => { D.removeActivity(U.journal.k, el.dataset.id); R(); },
+    djactdel: (el) => { const Jn = U.journal; D.removeActivity(Jn.k, el.dataset.id); if (Jn.actEdit === el.dataset.id) { Jn.actEdit = null; Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; } R(); },
     djfrom: () => { U.journal.fromOpen = !U.journal.fromOpen; U.cals.jfrom = { vm: U.journal.from.slice(0, 7) }; R(); },
     djsort: () => { U.journal.sortOpen = !U.journal.sortOpen; R(); },
     djsortpick: (el) => { U.journal.sort = el.dataset.v; U.journal.sortOpen = false; R(); },

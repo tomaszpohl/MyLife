@@ -195,6 +195,9 @@
   function addDev(k, text) { const d = jday(k); d.devs = d.devs.concat([{ id: id('v'), text }]); jput(k, d); }
   function removeDev(k, vid) { const d = jday(k); d.devs = d.devs.filter((x) => x.id !== vid); jput(k, d); }
   function addActivity(k, name, min, km) { const d = jday(k); d.acts = d.acts.concat([{ id: id('a'), name, min, km }]); jput(k, d); }
+  // v32 (makieta 09.11.2026): edycja wpisu w tym samym miejscu listy
+  function updateDev(k, vid, text) { const d = jday(k); d.devs = d.devs.map((x) => (x.id === vid ? { id: x.id, text } : x)); jput(k, d); }
+  function updateActivity(k, aid, name, min, km) { const d = jday(k); d.acts = d.acts.map((x) => (x.id === aid ? { id: x.id, name, min, km } : x)); jput(k, d); }
   function removeActivity(k, aid) { const d = jday(k); d.acts = d.acts.filter((x) => x.id !== aid); jput(k, d); }
   // v31 (makieta 08.11.2026): wpis z aktywności cyklicznych odhaczonych w dniu k (czytany na bieżąco z Treningu, bez kopii w Diecie).
   const recEntry = (k) => (window.TrainRec ? window.TrainRec.journalEntry(k) : null);
@@ -414,7 +417,7 @@
     fmtNum, dayShort, dateLong, dateDots, slotShort,
     menus, getMenu, addMenu, similarGroups, applyMerges, aliasOf, simKey, deleteMenu, restoreMenu, renameMenu, actText, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
     planFor, slotOptions, setOverride,
-    jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: firstEntryDay, recEntry, dayActs, bodyCount: (fromK, toK) => bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).length,
+    jday, markMeal, addDev, removeDev, addActivity, removeActivity, updateDev, updateActivity, stats, firstJournalDay: firstEntryDay, recEntry, dayActs, bodyCount: (fromK, toK) => bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).length,
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune,
     BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,

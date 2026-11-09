@@ -293,6 +293,18 @@
     Object.keys(t.subDone || {}).forEach((k) => { delete t.subDone[k][sid]; if (!Object.keys(t.subDone[k]).length) delete t.subDone[k]; });
   }
   function removeSub(id, sid) { const t = get(id); if (!t) return; stripSub(t, sid); save(); }
+  // v32 (makieta 09.11.2026): zmiana nazwy i kolejności podzadania w zadaniu nadrzędnym (stan „wykonane” po id – bez zmian).
+  function renameSub(id, sid, title) {
+    const t = get(id), v = String(title).trim().slice(0, 60); if (!t || !v) return false;
+    const s = (t.subs || []).find((x) => x.id === sid); if (!s) return false;
+    s.title = v; save(); return true;
+  }
+  function moveSub(id, sid, dir) {
+    const t = get(id); if (!t || !t.subs) return false;
+    const i = t.subs.findIndex((x) => x.id === sid), j = i + dir;
+    if (i < 0 || j < 0 || j >= t.subs.length) return false;
+    const a = t.subs.slice(); const [m] = a.splice(i, 1); a.splice(j, 0, m); t.subs = a; save(); return true;
+  }
 
   function exportJSON() {
     const out = JSON.stringify({ app: 'MyLife', exported: new Date().toISOString(), ...db }, null, 2);
@@ -322,7 +334,7 @@
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
-    newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub,
+    newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub, renameSub, moveSub,
     exportJSON, importJSON, exportData, importData, wipe, lastBackup
   };
 })();

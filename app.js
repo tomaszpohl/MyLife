@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v31 · 08.11.2026';
+  const APP_VERSION = 'v32 · 09.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -30,6 +30,7 @@
     arrow: svg(13, 2.2, '<path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>'),
     down: svg(20, 2, '<path d="m6 9 6 6 6-6"></path>'),
     up: svg(20, 2, '<path d="m6 15 6-6 6 6"></path>'),
+    pen: svg(18, 1.8, '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"></path>'),
     chevR: svg(22, 2, '<path d="m9 6 6 6-6 6"></path>'),
     chevRS: svg(18, 2, '<path d="m9 6 6 6-6 6"></path>'),
     clock: svg(20, 1.8, '<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>'),
@@ -182,12 +183,24 @@
   function subPreview(t, k) {
     return `<div class="subro" role="group" aria-label="Podzadania: ${esc(t.title)}">${C.subsFor(t, k).map((u) => `<div class="${u.done ? 'done' : ''}"><span class="b" aria-hidden="true">${u.done ? I.check : ''}</span><span class="tt">${esc(u.title)}</span>${u.done ? '<span class="sr-only">, wykonane</span>' : ''}</div>`).join('')}</div>`;
   }
-  // Lista podzadań w widoku Dzień: odhaczanie i usuwanie (z „Cofnij”).
+  // Lista podzadań w widoku Dzień: odhaczanie, od v32 kolejność (↑/↓) i edycja nazwy w karcie (tam też usuwanie z „Cofnij”).
   function subPanel(t, k) {
-    return `<div class="subpanel" role="group" aria-label="Podzadania: ${esc(t.title)}">${C.subsFor(t, k).map((u) => `<div class="subrow${u.done ? ' done' : ''}">
+    const list = C.subsFor(t, k), n = list.length, E = S.subEdit;
+    return `<div class="subpanel" role="group" aria-label="Podzadania: ${esc(t.title)}">${list.map((u, i) => {
+      if (E && E.id === t.id && E.sid === u.id) {
+        const off = !E.text.trim();
+        return `<div class="subedit" role="group" aria-label="Edycja podzadania">
+        <input id="subedit" class="finput" type="text" maxlength="60" aria-label="Nazwa podzadania" value="${esc(E.text)}" autocomplete="off">
+        <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
+          <button class="btn-cancel small" data-a="subedno">Anuluj</button><button class="subedok${off ? ' off' : ''}" data-a="subedok" aria-disabled="${off}">Zapisz</button></div></div>`;
+      }
+      return `<div class="subrow${u.done ? ' done' : ''}">
         <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
         <div class="st">${esc(u.title)}</div>
-        <button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button></div>`).join('')}</div>`;
+        <button class="submv" data-a="submv" data-id="${t.id}" data-sid="${u.id}" data-d="-1" aria-label="Przesuń w górę: ${esc(u.title)}" aria-disabled="${i === 0}">${I.up}</button>
+        <button class="submv" data-a="submv" data-id="${t.id}" data-sid="${u.id}" data-d="1" aria-label="Przesuń w dół: ${esc(u.title)}" aria-disabled="${i === n - 1}">${I.down}</button>
+        <button class="subdel" data-a="subed" data-id="${t.id}" data-sid="${u.id}" aria-label="Edytuj podzadanie: ${esc(u.title)}">${I.pen}</button></div>`;
+    }).join('')}</div>`;
   }
   // Termin, którego dotyczy odhaczanie w Edytuj zadanie: dzień, z którego otwarto edycję, albo najbliższy termin od dziś.
   function occKey(t) {
@@ -771,7 +784,12 @@
     actsub: (el) => { const a = RCx().get(el.dataset.id); if (a) RCx().setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); render(); },
     actopen: (el) => go('#/train/recur/' + el.dataset.id),
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
-    subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); setUndo(snap, 'sub', ''); render(); },
+    subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); S.subEdit = null; setUndo(snap, 'sub', ''); render(); },
+    // v32: kolejność i edycja podzadania w widoku Dzień
+    submv: (el) => { if (el.getAttribute('aria-disabled') === 'true') return; const sid = el.dataset.sid, d = el.dataset.d; if (C.moveSub(el.dataset.id, sid, +d)) { render(); const b = app.querySelector('[data-a=submv][data-sid="' + sid + '"][data-d="' + d + '"]'); if (b && b.getAttribute('aria-disabled') !== 'true') b.focus(); } },
+    subed: (el) => { const t = C.get(el.dataset.id), s = t && (t.subs || []).find((x) => x.id === el.dataset.sid); if (!s) return; S.subEdit = { id: t.id, sid: s.id, text: s.title }; render(); const f = document.getElementById('subedit'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } },
+    subedno: () => { S.subEdit = null; render(); },
+    subedok: () => { const E = S.subEdit; if (!E || !E.text.trim()) return; C.renameSub(E.id, E.sid, E.text); S.subEdit = null; render(); },
     fsubadd: () => {
       const v = (S.ui.subDraft || '').trim(); if (!v || !S.draft) return;
       if (S.draft.id && C.get(S.draft.id)) { C.addSub(S.draft.id, v); syncDraftSubs(); }
@@ -981,7 +999,14 @@
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onChange(el, k);
     }
   });
+  app.addEventListener('input', (e) => {
+    if (e.target.id !== 'subedit' || !S.subEdit) return;
+    S.subEdit.text = e.target.value.slice(0, 60);
+    const b = app.querySelector('[data-a=subedok]'), off = !S.subEdit.text.trim(); if (b) { b.classList.toggle('off', off); b.setAttribute('aria-disabled', off); }
+  });
   app.addEventListener('keydown', (e) => {
+    // v32: karta edycji podzadania – Enter zapisuje, Escape anuluje
+    if (e.target.id === 'subedit' && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); if (e.key === 'Enter') actions.subedok(); else actions.subedno(); return; }
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
