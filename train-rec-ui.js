@@ -18,23 +18,27 @@
   };
   const U = { tab: 'list', per: 'w', dlg: null };
   const NAMES = { daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc', custom: 'Własne…' };
+  // v31: podpowiedź z informacją o Dzienniku diety (makieta 08.11.2026)
+  const HINT = 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą. Wykonana trafia do Dziennika diety (Aktywność fizyczna) razem z czasem trwania.';
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
 
   function openDlg(a) {
-    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), rep: false, confirm: false }
-      : { id: 0, name: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
+    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', rep: false, confirm: false }
+      : { id: 0, name: '', dur: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
   }
   function check(d) {
     const ex = d.id ? RC.get(d.id) : null, start = ex ? ex.start : C.todayKey(), custom = d.type === 'custom';
     const cnt = parseInt(d.count, 10), untilOk = /^\d{4}-\d{2}-\d{2}$/.test(d.until) && d.until >= start;
     let err = '';
+    const durV = parseInt(d.dur, 10), durOk = d.dur === '' || (durV >= 1 && durV <= 600);
     if (!d.name.trim()) err = 'Podaj nazwę aktywności.';
+    else if (!durOk) err = 'Czas trwania: od 1 do 600 minut (albo zostaw puste).';
     else if (custom && d.unit === 'week' && !d.days.length) err = 'Wybierz co najmniej jeden dzień tygodnia.';
     else if (custom && d.end === 'date' && !untilOk) err = 'Podaj datę zakończenia nie wcześniejszą niż start (' + RC.dm(start) + ').';
     else if (custom && d.end === 'count' && !(cnt >= 1)) err = 'Podaj liczbę powtórzeń (min. 1).';
     const rep = custom ? { type: 'custom', n: d.n, unit: d.unit, days: d.days.slice().sort(), end: d.end, until: d.end === 'date' ? d.until : '', count: d.end === 'count' ? cnt : 0 }
       : { type: d.type, n: 1, unit: 'day', days: [], end: 'never', until: '', count: 0 };
-    return { ok: !err, err, rep, start, preview: RC.repText({ start, rep }) };
+    return { ok: !err, err, rep, start, durOk, dur: d.dur === '' ? '' : String(durV), preview: RC.repText({ start, rep }) };
   }
   const box = (on, sm) => `<span class="tcbox${sm ? ' sm' : ''}${on ? ' on' : ''}">${on ? K.check : ''}</span>`;
 
@@ -44,12 +48,12 @@
       const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== T;
       return `<div class="dcard tcact">
         <div class="tcrow"><button class="tcchk" data-a="tcdone" data-id="${a.id}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}">${box(x.done)}</button>
-          <div class="tcmain"><div class="tcname${x.done ? ' done' : ''}">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a))}</span></div></div>
+          <div class="tcmain"><div class="tcname${x.done ? ' done' : ''}">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a))}</span></div></div>
           ${x.over ? `<span class="tclate">zaległe: ${x.over}</span>` : ''}</div>
         ${multi ? `<div class="tcsubs" role="group" aria-label="Podzadania: ${esc(a.name)}">${x.ds.map((k) => { const on = !!a.done[k]; return `<button class="tcsub" data-a="tcsub" data-id="${a.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RC.dm(k))}">${box(on, 1)}<span class="${on ? 'done' : ''}">${esc(a.name + ' - ' + RC.dm(k))}</span></button>`; }).join('')}</div>` : ''}
       </div>`;
     }).join('');
-    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a))}</span></div></div>
+    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a))}</span></div></div>
       <button class="iconbtn tcpen" data-a="tcedit" data-id="${a.id}" aria-label="Edytuj aktywność ${esc(a.name)}">${K.pencil}</button></div>`).join('');
     return `<button class="tprimary" data-a="tcnew">${K.plus}<span>Dodaj aktywność</span></button>
       <div class="eyebrow" style="margin-top:4px">Na dziś · ${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</div>
@@ -87,6 +91,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">${d.id ? 'Edytuj aktywność' : 'Nowa aktywność'}</div>
         <button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="tcclose" aria-label="Zamknij">${K.x}</button></div>
       <label class="ffield"><span class="eyebrow">Nazwa</span><input class="finput" type="text" maxlength="40" placeholder="np. Spacer" value="${esc(d.name)}" data-in="train-cname" autocomplete="off"></label>
+      <label class="ffield"><span class="eyebrow">Czas trwania (min) <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span><input class="finput${c.durOk ? '' : ' bad'}" type="text" inputmode="numeric" maxlength="3" placeholder="np. 40" value="${esc(d.dur)}" data-in="train-cdur" autocomplete="off"></label>
       <div class="ffield"><span class="eyebrow">Powtarzanie</span>
         <button class="select${d.rep ? ' open tv' : ''}" data-a="tcrep" aria-haspopup="listbox" aria-expanded="${d.rep}"><span>${NAMES[d.type]}</span><span class="frot${d.rep ? ' up' : ''}" style="display:flex">${K.down}</span></button>
         ${d.rep ? `<div class="bdlist" role="listbox" aria-label="Powtarzanie">${Object.keys(NAMES).map((k) => `<button role="option" class="bdopt tv${d.type === k ? ' on' : ''}" aria-selected="${d.type === k}" data-a="tctype" data-v="${k}"><span>${NAMES[k]}</span>${d.type === k ? `<span style="display:flex;color:var(--violet)">${K.check}</span>` : ''}</button>`).join('')}</div>` : ''}
@@ -102,7 +107,7 @@
           ${id === 'date' && d.end === 'date' ? A.dateBtn(d.until, 'tcuntil', '', 'Data zakończenia') : ''}
           ${id === 'count' ? `<input class="num-in" style="width:68px;height:44px;border-radius:12px" type="text" inputmode="numeric" maxlength="3" aria-label="Liczba powtórzeń" value="${esc(d.count)}" data-in="train-ccount">` : ''}</div>`).join('')}</div>
       </div>` : ''}
-      <div data-tchint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą.' : c.err)}</div>
+      <div data-tchint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.ok ? HINT : c.err)}</div>
       ${d.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć aktywność wraz z historią wykonania? Zniknie też z planera dnia.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="tcdelno">Anuluj</button><button class="btn-del" style="height:48px;font-size:15px" data-a="tcdelyes">Usuń</button></div></div>`
         : `<div style="display:flex;gap:10px">${d.id ? `<button class="tcdelbtn" data-a="tcdelask" aria-label="Usuń aktywność">${K.trash}</button>` : ''}<button class="btn-cancel small" data-a="tcclose">Anuluj</button><button class="tprimary${c.ok ? '' : ' off'}" style="flex:1;height:48px" data-a="tcsave">Zapisz</button></div>`}
     </div></div>`;
@@ -118,7 +123,7 @@
     const d = U.dlg; if (!d) return;
     const c = check(d), b = document.querySelector('[data-a=tcsave]'), h = document.querySelector('[data-tchint]'), pv = document.querySelector('[data-tcpv] span');
     if (b) b.classList.toggle('off', !c.ok);
-    if (h) { h.textContent = c.ok ? 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą.' : c.err; h.style.color = c.ok ? 'var(--muted)' : '#F2D9A0'; }
+    if (h) { h.textContent = c.ok ? HINT : c.err; h.style.color = c.ok ? 'var(--muted)' : '#F2D9A0'; }
     if (pv) pv.textContent = c.preview;
   }
 
@@ -137,7 +142,7 @@
     tcend: (el) => { U.dlg.end = el.dataset.v; R(); },
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;
-      RC.upsert({ id: d.id || 0, name: d.name.trim(), start: c.start, rep: c.rep });
+      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep });
       U.dlg = null; R();
     },
     tcdelask: () => { U.dlg.confirm = true; R(); },
@@ -154,6 +159,7 @@
     onInput(el, k) {
       const d = U.dlg; if (!d) return false;
       if (k === 'train-cname') d.name = el.value.slice(0, 40);
+      else if (k === 'train-cdur') { el.value = el.value.replace(/\D/g, '').slice(0, 3); d.dur = el.value; const v = parseInt(d.dur, 10); el.classList.toggle('bad', !(d.dur === '' || (v >= 1 && v <= 600))); }
       else if (k === 'train-cuntil') d.until = el.value;
       else if (k === 'train-ccount') { el.value = el.value.replace(/\D/g, '').slice(0, 3); d.count = el.value; if (d.end !== 'count') { d.end = 'count'; R(); return true; } }
       else return false;

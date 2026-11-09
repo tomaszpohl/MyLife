@@ -196,6 +196,15 @@
   function removeDev(k, vid) { const d = jday(k); d.devs = d.devs.filter((x) => x.id !== vid); jput(k, d); }
   function addActivity(k, name, min, km) { const d = jday(k); d.acts = d.acts.concat([{ id: id('a'), name, min, km }]); jput(k, d); }
   function removeActivity(k, aid) { const d = jday(k); d.acts = d.acts.filter((x) => x.id !== aid); jput(k, d); }
+  // v31 (makieta 08.11.2026): wpis z aktywności cyklicznych odhaczonych w dniu k (czytany na bieżąco z Treningu, bez kopii w Diecie).
+  const recEntry = (k) => (window.TrainRec ? window.TrainRec.journalEntry(k) : null);
+  // Wszystkie wpisy aktywności dnia: najpierw wpis z aktywności cyklicznych, potem wpisy ręczne.
+  const dayActs = (k) => { const r = recEntry(k); return (r ? [r] : []).concat(jday(k).acts); };
+  // Pierwszy wpis w Dzienniku: oznaczenie posiłku, odstępstwo, aktywność ręczna albo wykonana aktywność cykliczna.
+  function firstEntryDay() {
+    const ks = Object.keys(db.journal).concat(window.TrainRec ? window.TrainRec.doneDays() : []).sort();
+    return ks[0] || null;
+  }
   // Aktywność (v7): wymagany tylko rodzaj, czas i dystans opcjonalne.
   const actText = (x, sep) => [x.name].concat(x.min > 0 ? [x.min + ' min'] : [], x.km > 0 ? [fmtNum(x.km) + ' km'] : []).join(sep || ', ');
   // Statystyki: zliczane po nazwie dania (warianty razem – decyzja właściciela).
@@ -312,47 +321,59 @@
 
   // ---------- Eksport dziennika do .xlsx (jeden arkusz, dzień po dniu) ----------
   const xmlEsc = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  // Nagłówek kolumny „zjedzone” jak w przykładzie z makiety („I śn. zjedzone”, „Obiad zjedzony”, „Kolacja zjedzona”).
+  function eatenHead(s) {
+    const n = s.trim(), low = n.toLocaleLowerCase('pl');
+    const m = /^(i{1,3}|iv)\s+śniadanie$/i.exec(n);
+    if (m) return m[1].toUpperCase() + ' śn. zjedzone';
+    if (low === 'śniadanie') return 'Śniadanie zjedzone';
+    if (/a$/.test(low)) return n + ' zjedzona';
+    if (/e$/.test(low)) return n + ' zjedzone';
+    return n + ' zjedzony';
+  }
   function journalRows(fromK, toK) {
     const slots = [];
     for (let k = fromK; k <= toK; k = C.addDays(k, 1)) { const p = planFor(k); if (p) p.meals.forEach((m) => { if (slots.indexOf(m.slot) < 0) slots.push(m.slot); }); }
-    const head = ['Data', 'Dzień tygodnia'].concat(slots).concat(['Odstępstwa od diety', 'Aktywność fizyczna']);
+    // v31 (makieta 08.11.2026): dla każdego posiłku dwie kolumny – zjedzone (1 / 0 / puste) i nazwa posiłku; aktywności – wpisy rozdzielone średnikiem.
+    const head = ['Data', 'Dzień tygodnia'];
+    slots.forEach((s) => head.push(eatenHead(s), s));
+    head.push('Odstępstwa', 'Aktywności');
     const rows = [];
     for (let k = fromK; k <= toK; k = C.addDays(k, 1)) {
       const p = planFor(k), j = jday(k);
-      const row = [dateDots(k), C.DAY_NAME[C.dow(k)]];
+      const row = [dateDots(k), C.DAY_NAME[C.dow(k)].toLocaleLowerCase('pl')];
       slots.forEach((slot) => {
         const meal = p && p.meals.find((x) => x.slot === slot);
         const st = j.meals[slot];
-        const stTxt = st === 'eaten' ? 'zjedzone' : st === 'skipped' ? 'pominięte' : 'brak oznaczenia';
-        row.push(meal && meal.dish ? meal.dish.name + ' – ' + stTxt : (st ? stTxt : ''));
+        row.push(st === 'eaten' ? 1 : st === 'skipped' ? 0 : '', meal && meal.dish ? meal.dish.name : '');
       });
       row.push(j.devs.map((x) => x.text).join('; '));
-      row.push(j.acts.map((x) => actText(x)).join('; '));
+      row.push(dayActs(k).map((x) => actText(x, ' ')).join('; '));
       rows.push(row);
     }
     return [head].concat(rows);
   }
   // Arkusz „Skład ciała”: wiersz na pomiar (od najstarszego), wartości jako liczby; puste = brak wartości.
-  function bodyRows(fromK, toK) {
+  function bodyRows(fromK, toK) {   // v31: bez zakresu (fromK = null) – wszystkie wprowadzone wyniki
     const head = ['Data', 'Godzina'].concat(BODY.map((m) => m.name + (m.unit ? ' [' + m.unit + ']' : ''))).concat(['Zakres tłuszczu [%]', 'Zakres masy tłuszczowej [kg]']);
     const rng = (r, dec) => (r ? fmtNum(r[0], dec) + '–' + fmtNum(r[1], dec) : '');
-    return [head].concat(bodyList().filter((e) => e.d >= fromK && e.d <= toK).map((e) => [dateDots(e.d), e.t || ''].concat(BODY.map((m) => (e.v[m.id] == null ? '' : e.v[m.id]))).concat([rng(e.fatR, 0), rng(e.massR, 1)])));
+    return [head].concat(bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).map((e) => [dateDots(e.d), e.t || ''].concat(BODY.map((m) => (e.v[m.id] == null ? '' : e.v[m.id]))).concat([rng(e.fatR, 0), rng(e.massR, 1)])));
   }
-  async function exportXlsx(fromK, toK) {
+  async function exportXlsx(fromK, toK, bodyInRange) {
     const rows = journalRows(fromK, toK);
     const colL = (i) => { let s = ''; i++; while (i) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
     // Komórka: liczba (typ liczbowy, do obliczeń w arkuszu) albo tekst.
     const cell = (v, ref, hdr) => (typeof v === 'number' && !hdr ? `<c r="${ref}" s="2"><v>${v}</v></c>` : `<c r="${ref}" t="inlineStr"${hdr ? ' s="1"' : ' s="2"'}><is><t xml:space="preserve">${xmlEsc(v == null ? '' : v)}</t></is></c>`);
     const sheetXml = (rws, widthOf) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${rws[0].map((h, i) => `<col min="${i + 1}" max="${i + 1}" width="${widthOf(i)}" customWidth="1"/>`).join('')}</cols><sheetData>${rws.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => cell(v, colL(ci) + (ri + 1), ri === 0)).join('') + '</row>').join('')}</sheetData></worksheet>`;
-    // v16: drugi arkusz „Skład ciała” – pomiary z tego samego zakresu dat (decyzja właściciela).
-    const body = bodyRows(fromK, toK);
+    // v31 (makieta 08.11.2026): arkusz „Skład ciała” domyślnie ze wszystkimi wynikami; z zakresu dziennika tylko po zaznaczeniu pola.
+    const body = bodyRows(bodyInRange ? fromK : null, toK);
     const zip = new window.JSZip();
     zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
     zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
     zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dziennik" sheetId="1" r:id="rId1"/><sheet name="Skład ciała" sheetId="2" r:id="rId3"/></sheets></workbook>');
     zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>');
     zip.file('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf/><xf fontId="1" applyFont="1"><alignment wrapText="1" vertical="top"/></xf><xf applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>');
-    zip.file('xl/worksheets/sheet1.xml', sheetXml(rows, (i) => (i === 0 ? 12 : i === 1 ? 14 : 34)));
+    zip.file('xl/worksheets/sheet1.xml', sheetXml(rows, (i) => (i === 0 ? 12 : i === 1 ? 14 : i < rows[0].length - 2 ? (i % 2 === 0 ? 11 : 30) : 40)));
     zip.file('xl/worksheets/sheet2.xml', sheetXml(body, (i) => (i === 0 ? 12 : i === 1 ? 9 : 16)));
     return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
@@ -393,7 +414,7 @@
     fmtNum, dayShort, dateLong, dateDots, slotShort,
     menus, getMenu, addMenu, similarGroups, applyMerges, aliasOf, simKey, deleteMenu, restoreMenu, renameMenu, actText, menuInfo, status, activate, cancelPlan, currentMenu, actOn,
     planFor, slotOptions, setOverride,
-    jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: () => Object.keys(db.journal).sort()[0] || null,
+    jday, markMeal, addDev, removeDev, addActivity, removeActivity, stats, firstJournalDay: firstEntryDay, recEntry, dayActs, bodyCount: (fromK, toK) => bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).length,
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune,
     BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,

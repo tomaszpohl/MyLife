@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v30 · 05.11.2026';
+  const APP_VERSION = 'v31 · 08.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -156,7 +156,7 @@
   // ---------- Aktywności cykliczne Treningu w planerze (v20) ----------
   const RCx = () => window.TrainRec;
   const actsFor = (k) => (RCx() ? RCx().forDay(k) : []);
-  const actRep = (a) => `<div class="rep">${I.repeat}<span>${esc(RCx().repText(a))} · aktywność</span></div>`;
+  const actRep = (a) => `<div class="rep">${I.repeat}<span>${esc(RCx().repText(a) + RCx().durText(a))} · aktywność</span></div>`;
   function actRow(x, k) {
     const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== k, key = 'a|' + a.id + '|' + k, open = multi && !!S.subOpen[key];
     const nd = x.ds.filter((i) => a.done[i]).length;

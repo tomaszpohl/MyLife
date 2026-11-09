@@ -18,6 +18,7 @@
     up: ic(18, 2, '<path d="m6 15 6-6 6 6"></path>'),
     pencil: ic(18, 1.8, '<path d="M4 20h4L19 9l-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path>'),
     check: ic(18, 2.6, '<path d="m5 12 5 5 9-10"></path>'),
+    rep: ic(12, 2, '<path d="M17 2l3 3-3 3"></path><path d="M4 11V9a4 4 0 0 1 4-4h12"></path><path d="M7 22l-3-3 3-3"></path><path d="M20 13v2a4 4 0 0 1-4 4H4"></path>'),
     x: ic(18, 2.4, '<path d="M6 6l12 12M18 6 6 18"></path>'),
     plus: ic(20, 2.4, '<path d="M12 5v14M5 12h14"></path>'),
     trash: ic(18, 2, '<path d="M4 7h16"></path><path d="M10 11v6M14 11v6"></path><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path><path d="M9 7V4h6v3"></path>'),
@@ -387,7 +388,9 @@
     if (Jn.tab === 'day') {
       const k = Jn.k, p = D.planFor(k), j = D.jday(k);
       const eaten = Object.values(j.meals).filter((x) => x === 'eaten').length;
-      const mins = j.acts.reduce((t, a) => t + (a.min || 0), 0), kms = j.acts.reduce((t, a) => t + (a.km || 0), 0);
+      // v31: wpis z aktywności cyklicznych (bez usuwania) + wpisy ręczne; suma liczy oba.
+      const allActs = D.dayActs(k);
+      const mins = allActs.reduce((t, a) => t + (a.min || 0), 0), kms = allActs.reduce((t, a) => t + (a.km || 0), 0);
       const actTotal = (mins || kms) ? 'Razem ' + [mins ? mins + ' min' : '', kms ? D.fmtNum(kms) + ' km' : ''].filter(Boolean).join(' · ') : '';
       body = `<div class="navrow">
           <button class="iconbtn soft" data-a="djnav" data-d="-1" aria-label="Poprzedni dzień">${I.prev}</button>
@@ -403,12 +406,12 @@
           ${j.devs.length ? j.devs.map((e) => `<div class="jentry"><div style="flex:1">${esc(e.text)}</div><button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : '<div class="para">Brak odstępstw tego dnia.</div>'}
           <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="Dodaj odstępstwo">${J.plus}</button></div></div>
         <div class="dcard"><div class="dhead"><div class="eyebrow">Aktywność fizyczna</div>${actTotal ? `<div style="font-size:12px;color:var(--muted)">${actTotal}</div>` : ''}</div>
-          ${j.acts.length ? j.acts.map((e) => { const t = D.actText(e, ' · '); return `<div class="jentry"><div style="flex:1">${esc(t)}</div><button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
+          ${allActs.length ? allActs.map((e) => { const t = D.actText(e, ' · '); if (e.auto) return `<div class="jentry"><div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 0"><div>${esc(t)}</div><div class="jauto">${J.rep}<span>Z aktywności cyklicznych (zmienisz w Treningu lub w planie dnia)</span></div></div></div>`; return `<div class="jentry"><div style="flex:1">${esc(t)}</div><button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
           <input class="quick" style="flex:none" type="text" aria-label="Rodzaj aktywności (wymagane)" placeholder="Rodzaj, np. spacer" value="${esc(Jn.actName)}" data-in="diet-actname">
           <div class="jadd"><input class="quick" type="text" inputmode="numeric" maxlength="3" aria-label="Czas w minutach (opcjonalnie)" placeholder="Czas (min)" value="${esc(Jn.actMin)}" data-in="diet-actmin">
             <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (opcjonalnie)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
             <button class="plus" data-a="djactadd" aria-label="Dodaj aktywność">${J.plus}</button></div>
-          <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne.'}</div></div>`;
+          <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne. Wykonane aktywności cykliczne dopisują się same jako jeden wpis sumaryczny.'}</div></div>`;
     } else {
       const s = D.stats(Jn.from, T);
       const SORTS = [['skipped-desc', 'Najczęściej pomijane'], ['skipped-asc', 'Najmniej pomijane'], ['eaten-desc', 'Najczęściej zjedzone'], ['eaten-asc', 'Najmniej zjedzone']];
@@ -499,9 +502,13 @@
   }
 
   // ---------- Ustawienia: eksport i import diety ----------
+  // v31: zakres dziennika – od pierwszego wpisu (domyślnie; bez wpisów – dziś) albo od wybranego dnia.
+  function expRange() { const St = U.settings, T = today(); if (St.expMode === 'day') return { from: St.expFrom, first: false }; const f = D.firstJournalDay(); return { from: f && f <= T ? f : T, first: !!(f && f <= T) }; }
   function settingsSections() {
     const St = U.settings, T = today();
     if (!St.expFrom) St.expFrom = C.addDays(T, -6);
+    if (!St.expMode) St.expMode = 'first';   // v31: domyślnie od pierwszego wpisu
+    const rg = expRange(), nB = D.bodyCount(St.bodyOnly ? rg.from : null, T), nDays = C.diffDays(rg.from, T) + 1;
     // v9: import i eksport diety w jednej zwijanej pozycji (najpierw Import, potem Eksport), domyślnie zwinięte.
     const open = !!St.open;
     return `<section class="scard sgroup">
@@ -520,10 +527,18 @@
           <div class="sgsep"></div>
           <div class="sgpart">
         <div class="eyebrow">Eksport diety</div>
-        <div class="para" style="line-height:1.45">Dziennik diety do arkusza .xlsx: wiersz na dzień: data, dzień tygodnia, każdy posiłek z daniem i statusem (zjedzone / pominięte), odstępstwa od diety oraz aktywność fizyczna (czas i dystans). Drugi arkusz „Skład ciała” – pomiary z tego samego okresu.</div>
-        <div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
-          ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>
-        <div style="font-size:12px;color:var(--muted)">Zakres: od ${esc(D.dateLong(St.expFrom))} do dziś (${esc(D.dateLong(T))})</div>
+        <div class="para" style="line-height:1.45">Plik .xlsx z dwoma arkuszami. „Dziennik”: wiersz na dzień – data, dzień tygodnia, dla każdego posiłku dwie kolumny (zjedzone: 1, niezjedzone: 0, brak danych: puste oraz nazwa posiłku), odstępstwa od diety i aktywności fizyczne (każdy wpis to jedna wartość, wpisy oddzielone średnikiem). „Skład ciała”: domyślnie wszystkie wprowadzone wyniki.</div>
+        <div class="seg small" role="radiogroup" aria-label="Początek zakresu dziennika">${[['first', 'Od pierwszego wpisu'], ['day', 'Od wybranego dnia']].map(([v, l]) => `<button role="radio" aria-checked="${St.expMode === v}" class="${St.expMode === v ? 'on' : ''}" data-a="dexpmode" data-v="${v}">${l}</button>`).join('')}</div>
+        ${St.expMode === 'day' ? `<div class="ddrop"><button class="select" data-a="dexpcal" aria-haspopup="dialog" aria-expanded="${St.calOpen}"><span><span style="color:var(--muted)">Od dnia (włącznie): </span>${esc(D.dateLong(St.expFrom))}</span><span style="color:var(--muted);display:flex">${St.calOpen ? J.up : J.down}</span></button>
+          ${St.calOpen ? calendar('exp', St.expFrom, { max: T, label: 'Eksport od dnia' }) : ''}</div>` : ''}
+        <div style="font-size:12px;color:var(--muted)">Dziennik: od ${esc(D.dateLong(rg.from))}${rg.first ? ' (pierwszy wpis)' : ''} do dziś (${esc(D.dateLong(T))}) · ${nDays} ${C.plural(nDays, 'dzień', 'dni', 'dni')}</div>
+        <button class="tbw" role="checkbox" aria-checked="${!!St.bodyOnly}" data-a="dexpbody"><span class="bx cy${St.bodyOnly ? ' on' : ''}" aria-hidden="true">${St.bodyOnly ? J.check : ''}</span><span>Skład ciała tylko z zakresu dziennika</span></button>
+        <div style="font-size:12px;color:var(--muted);margin-top:-6px">Arkusz „Skład ciała”: ${St.bodyOnly ? 'pomiary z zakresu dziennika' : 'wszystkie wprowadzone wyniki'} – ${nB} ${C.plural(nB, 'pomiar', 'pomiary', 'pomiarów')}.</div>
+        <div class="expex"><div class="eyebrow">Arkusz „Dziennik” – przykład</div>
+          <div class="expscroll"><table><tr><th>Data</th><th>Dzień</th><th>I śn. zjedzone</th><th>I śniadanie</th><th>II śn. zjedzone</th><th>II śniadanie</th><th>Obiad zjedzony</th><th>Obiad</th><th>Kolacja zjedzona</th><th>Kolacja</th><th>Odstępstwa</th><th>Aktywności</th></tr>
+            <tr><td>17.10.2026</td><td>sobota</td><td>1</td><td>Płatki owsiane z mlekiem</td><td>1</td><td>Jogurt z granolą</td><td>1</td><td>Kurczak z ryżem</td><td>0</td><td>Sałatka z tuńczykiem</td><td>Pizza zamiast kolacji</td><td>Spacer 40 min</td></tr>
+            <tr><td>19.10.2026</td><td>poniedziałek</td><td>1</td><td>Płatki owsiane z mlekiem</td><td>1</td><td>Jogurt z granolą</td><td></td><td>Kurczak z ryżem</td><td></td><td>Sałatka z tuńczykiem</td><td></td><td>Aktywności cykliczne (2): Spacer, Rozciąganie 55 min; Rower 60 min 18 km</td></tr></table></div>
+          <div style="font-size:12px;color:var(--muted)">1 = zjedzone, 0 = niezjedzone, puste = brak danych. Wpisy aktywności oddzielone średnikiem – jeden wpis to jedna wartość.</div></div>
         <button class="bigbtn" data-a="dexport">${J.sheet}<span class="two"><span>Eksportuj dziennik (.xlsx)</span><span>Plik Excel zapisany na tym telefonie</span></span></button>
         ${St.expMsg ? `<div class="okbox" role="status">${St.expErr ? I.warn : I.ok}<span>${esc(St.expMsg)}</span></div>` : ''}
           </div></div>` : ''}
@@ -689,14 +704,17 @@
     dwtip: (el) => { U.weight.tip = +el.dataset.i; R(); },
     // Ustawienia
     dsetgroup: () => { U.settings.open = !U.settings.open; R(); },
+    dexpmode: (el) => { const St = U.settings; St.expMode = el.dataset.v; St.calOpen = false; St.expMsg = ''; R(); },
+    dexpbody: () => { const St = U.settings; St.bodyOnly = !St.bodyOnly; St.expMsg = ''; R(); },
     dexpcal: () => { U.settings.calOpen = !U.settings.calOpen; U.cals.exp = { vm: U.settings.expFrom.slice(0, 7) }; R(); },
     dexport: async () => {
       const St = U.settings;
       try {
-        const blob = await D.exportXlsx(St.expFrom, today());
-        const name = 'mylife-dziennik-diety-' + St.expFrom + '_' + today() + '.xlsx';
+        const T = today(), rg = expRange(), nD = C.diffDays(rg.from, T) + 1, nB = D.bodyCount(St.bodyOnly ? rg.from : null, T);
+        const blob = await D.exportXlsx(rg.from, T, !!St.bodyOnly);
+        const name = 'dieta-dziennik-' + rg.from + '_' + T + '.xlsx';
         A.downloadBlob(blob, name);
-        St.expMsg = 'Zapisano plik ' + name; St.expErr = false;
+        St.expMsg = 'Zapisano plik ' + name + ' (Dziennik: ' + nD + ' ' + C.plural(nD, 'dzień', 'dni', 'dni') + ' od ' + D.dateLong(rg.from) + '; Skład ciała: ' + nB + ' ' + C.plural(nB, 'pomiar', 'pomiary', 'pomiarów') + (St.bodyOnly ? '' : ', wszystkie') + ')'; St.expErr = false;
       } catch (e) { St.expMsg = 'Nie udało się utworzyć pliku: ' + e.message; St.expErr = true; }
       R();
     },

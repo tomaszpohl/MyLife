@@ -982,3 +982,14 @@ a.dcard { color: var(--text); }
 .tsugg button:last-child { border-bottom: none; }
 .tsugg .n { min-width: 0; }
 .tsugg .s { flex: none; font-size: 11px; color: var(--muted); }
+.finput.bad { border-color: #6A2F36; }
+/* v31: Dziennik – wpis z aktywności cyklicznych; eksport diety – przykład arkusza, pole „Skład ciała tylko z zakresu” */
+.jauto { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--violet); }
+.tbw .bx.cy.on { background: var(--accent); border-color: var(--accent); color: #06222A; }
+.expex { display: flex; flex-direction: column; gap: 6px; }
+.expscroll { overflow-x: auto; scrollbar-width: none; border: 1px solid var(--line); border-radius: 10px; }
+.expscroll::-webkit-scrollbar { display: none; }
+.expscroll table { border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+.expscroll th, .expscroll td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.expscroll th { color: var(--muted); font-weight: 500; background: var(--surface-2); }
+.expscroll td { color: var(--text-2); }

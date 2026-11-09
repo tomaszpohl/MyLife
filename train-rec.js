@@ -1,7 +1,7 @@
 /* MyLife – Trening: aktywności cykliczne (v20, makieta „TrainRecur”, design.md „01.11 – Aktywności cykliczne”).
    Dane w bazie Treningu (mylife.train.v1 → rec = { next, list }), więc są w kopii modułu Trening.
    Aktywność: { id, name, start: 'RRRR-MM-DD', rep: { type: 'daily'|'weekly'|'monthly'|'custom', n, unit: 'day'|'week'|'month', days: [0–6], end: 'never'|'date'|'count', until, count },
-                done: { 'termin': 'data wykonania' } }.
+                dur (od v31: czas trwania w min, tekst, puste = brak), done: { 'termin': 'data wykonania' } }.
    Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają (od v25) do najbliższego terminu
    aktywności (dziś, jeśli dziś jest terminem, inaczej następny termin) jako zaległe podzadania z datą
    (decyzja właściciela: 60 dni jak w makiecie; Tydzień i Miesiąc też pokazują aktywności). Bez godzin i przypomnień. */
@@ -98,6 +98,19 @@
     if (r.end === 'count') t += ' · ' + (r.count || 1) + ' powt.';
     return t;
   }
+  // v31 (makieta 08.11.2026): tekst czasu trwania i wpis do Dziennika diety z aktywności odhaczonych w dniu k
+  // (dzień odhaczenia = wartość w done). Jeden wpis na dzień; kilka terminów tej samej aktywności – „×n”, czas mnożony.
+  const durText = (a) => (a.dur ? ' · ' + a.dur + ' min' : '');
+  function journalEntry(k) {
+    const items = list().map((a) => ({ name: a.name, n: Object.keys(a.done || {}).filter((x) => a.done[x] === k).length, dur: parseInt(a.dur, 10) || 0 }))
+      .filter((x) => x.n > 0).map((x) => ({ name: x.name + (x.n > 1 ? ' ×' + x.n : ''), min: x.n * x.dur }));
+    if (!items.length) return null;
+    const min = items.reduce((t, x) => t + x.min, 0);
+    return { name: items.length === 1 ? items[0].name : 'Aktywności cykliczne (' + items.length + '): ' + items.map((x) => x.name).join(', '), min, km: 0, auto: true };
+  }
+  // Dni, w których odhaczono jakąkolwiek aktywność (do „pierwszego wpisu” Dziennika i eksportu).
+  function doneDays() { const s = {}; list().forEach((a) => Object.keys(a.done || {}).forEach((x) => { s[a.done[x]] = 1; })); return Object.keys(s).sort(); }
+
   function upsert(e) {
     const R = TR.recDb();
     if (e.id && get(e.id)) R.list = R.list.map((x) => (x.id === e.id ? Object.assign({}, x, e) : x));
@@ -135,5 +148,5 @@
     return { planned, done, late, missed, streak, best, over, dots };
   }
 
-  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm };
+  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays };
 })();
