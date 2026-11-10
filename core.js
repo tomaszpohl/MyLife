@@ -264,9 +264,29 @@
   // Odhaczenie liczone osobno dla każdego terminu (decyzja właściciela): t.subDone = { 'RRRR-MM-DD': { idPodzadania: true } }.
   // Odhaczenie ostatniego podzadania oznacza zadanie jako wykonane w tym terminie; odznaczenie podzadania cofa to.
   const newSubId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  function subsFor(t, k) {
-    const dn = (t && t.subDone && t.subDone[k]) || {};
-    return ((t && t.subs) || []).map((x) => ({ id: x.id, title: x.title, done: !!dn[x.id] }));
+  // v34 (makieta 10.11.2026): podzadanie zadania cyklicznego usunięte z jednego dnia – t.subHide = { 'RRRR-MM-DD': [id] };
+  // ukryte nie są pokazywane w Dniu, Tygodniu i Miesiącu tego dnia (all = true – pełna lista, np. Edytuj zadanie).
+  function subsFor(t, k, all) {
+    const dn = (t && t.subDone && t.subDone[k]) || {}, hid = (!all && t && t.subHide && t.subHide[k]) || [];
+    return ((t && t.subs) || []).filter((x) => hid.indexOf(x.id) < 0).map((x) => ({ id: x.id, title: x.title, done: !!dn[x.id] }));
+  }
+  function hideSub(id, k, sid) {
+    const t = get(id); if (!t) return;
+    t.subHide = t.subHide || {}; const h = t.subHide[k] = t.subHide[k] || [];
+    if (h.indexOf(sid) < 0) h.push(sid);
+    if (t.subDone && t.subDone[k]) { delete t.subDone[k][sid]; if (!Object.keys(t.subDone[k]).length) delete t.subDone[k]; }
+    // po ukryciu: gdy wszystkie pozostałe są odhaczone, zadanie jest wykonane w tym terminie (jak przy odhaczaniu)
+    const vis = subsFor(t, k); t.done = t.done || {};
+    if (vis.length && vis.every((x) => x.done)) t.done[k] = true;
+    save();
+  }
+  // v34: kolejność po identyfikatorach widocznych podzadań – ukryte zostają na swoich miejscach.
+  function reorderSubs(id, visIds) {
+    const t = get(id); if (!t || !t.subs) return false;
+    const pos = [], byId = {};
+    t.subs.forEach((x, i) => { byId[x.id] = x; if (visIds.indexOf(x.id) >= 0) pos.push(i); });
+    if (pos.length !== visIds.length) return false;
+    const a = t.subs.slice(); pos.forEach((p, i) => { a[p] = byId[visIds[i]]; }); t.subs = a; save(); return true;
   }
   function subCount(t, k) { const l = subsFor(t, k); return { done: l.filter((x) => x.done).length, total: l.length }; }
   function applySubToggle(t, k, sid) {
@@ -276,7 +296,7 @@
     if (on) m[sid] = true; else delete m[sid];
     if (!Object.keys(m).length) delete t.subDone[k];
     t.done = t.done || {};
-    const all = (t.subs || []).length > 0 && t.subs.every((x) => m[x.id]);
+    const vis = subsFor(t, k), all = vis.length > 0 && vis.every((x) => m[x.id]);   // v34: bez podzadań ukrytych w tym dniu
     if (on && all) t.done[k] = true;
     else if (!on) delete t.done[k];
   }
@@ -334,7 +354,7 @@
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
-    newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub, renameSub, moveSub,
+    newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub, renameSub, moveSub, hideSub, reorderSubs,
     exportJSON, importJSON, exportData, importData, wipe, lastBackup
   };
 })();

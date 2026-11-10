@@ -47,8 +47,8 @@
   }
   function occ(a, k) {
     if (!base(a, k)) return false;
-    if (a.rep.end === 'count') { const l = lastOcc(a); return !!l && k <= l; }
-    return true;
+    if (a.rep.end === 'count') { const l = lastOcc(a); if (!l || k > l) return false; }
+    return !(a.skip && a.skip[k]);   // v34: termin usunięty w planie dnia – nie jest terminem (zaległe, wykonania, statystyki)
   }
   // v25 (makieta 03.11.2026): zaległe terminy – niewykonane terminy z ostatnich 60 dni przed dziś (oraz wykonane dziś albo w dniu D,
   // żeby po odhaczeniu zostały widoczne do końca dnia).
@@ -111,6 +111,11 @@
   // Dni, w których odhaczono jakąkolwiek aktywność (do „pierwszego wpisu” Dziennika i eksportu).
   function doneDays() { const s = {}; list().forEach((a) => Object.keys(a.done || {}).forEach((x) => { s[a.done[x]] = 1; })); return Object.keys(s).sort(); }
 
+  // v34 (makieta 10.11.2026): usunięcie jednego terminu aktywności (zaległe podzadanie z datą) – a.skip = { 'RRRR-MM-DD': true }.
+  function skipTerm(id, k) { const a = get(id); if (!a) return; a.skip = a.skip || {}; a.skip[k] = true; if (a.done) delete a.done[k]; TR.save(); }
+  function snapAct(id) { const a = get(id); return a ? JSON.parse(JSON.stringify(a)) : null; }
+  function restoreAct(s) { if (!s) return; const R = TR.recDb(); R.list = R.list.map((x) => (x.id === s.id ? s : x)); TR.save(); }
+
   function upsert(e) {
     const R = TR.recDb();
     if (e.id && get(e.id)) R.list = R.list.map((x) => (x.id === e.id ? Object.assign({}, x, e) : x));
@@ -148,5 +153,5 @@
     return { planned, done, late, missed, streak, best, over, dots };
   }
 
-  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays };
+  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct };
 })();

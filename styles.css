@@ -1009,3 +1009,21 @@ a.dcard { color: var(--text); }
 .jentry.editing { background: rgba(127, 214, 232, 0.06); border-radius: 10px; }
 .jedbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--accent); }
 .jedbar button { min-height: 44px; background: none; border: none; padding: 0 4px; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }
+/* v34: podzadanie – przeciągnięcie w prawo usuwa (tło jak przy zadaniach) */
+.subsw { position: relative; overflow-x: clip; border-radius: 10px; }
+.subsw .st { touch-action: pan-y; }
+.subswbg { position: absolute; inset: 0; display: none; align-items: center; gap: 8px; padding-left: 12px; background: #4A1F25; color: #FF9C8A; font-size: 13px; font-weight: 600; border-radius: 10px; }
+.subsw.swiping .subgrip { opacity: 0; }
+.subsw.swiping .subswbg { display: flex; }
+.subsw.armed .subswbg { background: #8A2F38; color: #FFE1DC; }
+.subsw.swiping > .subrow { position: relative; background: #0D1319; }
+.subsw.lifting { position: relative; z-index: 5; background: var(--surface-2); box-shadow: 0 8px 24px rgba(0,0,0,0.55); }
+/* v34: Lista zakupów – źródło listy i „Cofnij (n)” */
+.shopundo { flex: none; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line-2, #2B3848); background: var(--surface-2); color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.shopundo.off { color: var(--dim); opacity: 0.6; cursor: default; }
+.shopsrc { gap: 0; }
+.shopsrch { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: none; border: none; padding: 0; color: var(--muted); font: inherit; font-size: 11px; letter-spacing: 0.12em; font-weight: 600; text-align: left; cursor: pointer; }
+.shopsrcday { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.shopsrcday .dl { font-size: 13px; font-weight: 600; color: var(--text); }
+.shopsrcday .ml { font-size: 13px; color: var(--text-2); line-height: 1.35; }
+.shopsrcday .sl { color: var(--muted); }

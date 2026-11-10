@@ -302,6 +302,27 @@
     }
     return valid;
   }
+  // v34 (makieta 10.11.2026): źródło listy – zaznaczone posiłki pogrupowane po dniach, z daniem po zmianach („Zmień”).
+  function shopSource() {
+    const by = {};
+    shopSelected().forEach((key) => { const [k, slot] = key.split('|'); (by[k] = by[k] || []).push(slot); });
+    return Object.keys(by).sort().map((k) => {
+      const p = planFor(k);
+      return { k, meals: p.meals.filter((m) => by[k].indexOf(m.slot) >= 0 && m.dish).map((m) => ({ slot: m.slot, name: m.dish.name })) };
+    });
+  }
+  // v34: historia odhaczeń wygenerowanej listy (każde odhaczenie / odznaczenie = jeden krok); nowe „Generuj listę” ją czyści.
+  function shopToggle(key) {
+    const sh = db.shopping, b = Object.assign({}, sh.bought);
+    if (b[key]) delete b[key]; else b[key] = true;
+    db.shopping = Object.assign({}, sh, { bought: b, hist: (sh.hist || []).concat([key]) }); save();
+  }
+  function shopUndo() {
+    const sh = db.shopping, h = (sh.hist || []).slice(); if (!h.length) return false;
+    const key = h.pop(), b = Object.assign({}, sh.bought);
+    if (b[key]) delete b[key]; else b[key] = true;
+    db.shopping = Object.assign({}, sh, { bought: b, hist: h }); save(); return true;
+  }
   function shopItems() {
     const agg = {};
     shopSelected().forEach((key) => {
@@ -419,7 +440,7 @@
     planFor, slotOptions, setOverride,
     jday, markMeal, addDev, removeDev, addActivity, removeActivity, updateDev, updateActivity, stats, firstJournalDay: firstEntryDay, recEntry, dayActs, bodyCount: (fromK, toK) => bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).length,
     weights, setWeight, removeWeight,
-    shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune,
+    shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune, shopSource, shopToggle, shopUndo,
     BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,
     exportXlsx, journalRows, exportData, importData, summary
   };

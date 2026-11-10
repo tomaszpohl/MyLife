@@ -337,12 +337,16 @@
       const sorted = items.slice().sort((a, b) => (bought[a.key] ? 1 : 0) - (bought[b.key] ? 1 : 0) || a.name.localeCompare(b.name, 'pl'));
       const keys = D.shopSelected();
       const dayCount = new Set(keys.map((x) => x.split('|')[0])).size;
+      const hn = (sh.hist || []).length, src = D.shopSource(), srcOpen = U.shop.srcOpen !== false;
       return `<main class="screen">${topbar('Lista zakupów')}
         <div class="dscroll" data-scroll="diet-shop-list">
-          <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:var(--display);font-size:18px;font-weight:600">Do kupienia</div>
+          <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-family:var(--display);font-size:18px;font-weight:600">Do kupienia</div>
             <div style="font-size:13px;color:var(--muted)">${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} z ${dayCount} ${dayCount === 1 ? 'dnia' : 'dni'}</div></div>
+            <button class="shopundo${hn ? '' : ' off'}" data-a="dshopundo" aria-disabled="${!hn}" aria-label="${hn ? 'Cofnij ostatnie odhaczenie (' + hn + ' do cofnięcia)' : 'Nie ma czego cofać'}">${J.undo}<span>Cofnij (${hn})</span></button></div>
           <div><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding-bottom:6px"><span>Kupiono ${bn} z ${items.length}</span><span>${pct}%</span></div>
             <div class="bar"><div style="width:${pct}%"></div></div></div>
+          <div class="dcard tight shopsrc"><button class="shopsrch" data-a="dshopsrc" aria-expanded="${srcOpen}"><span>LISTA Z POSIŁKÓW · ${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} · ${dayCount} ${dayCount === 1 ? 'dzień' : 'dni'}</span><span style="display:flex">${srcOpen ? J.up : J.down}</span></button>
+            ${srcOpen ? src.map((d) => `<div class="shopsrcday"><div class="dl">${esc(D.dayShort(d.k))}</div>${d.meals.map((m) => `<div class="ml"><span class="sl">${esc(m.slot)}</span> – ${esc(m.name)}</div>`).join('')}</div>`).join('') : ''}</div>
           <div class="dcard tight">${sorted.map((x) => `<button class="shoprow${bought[x.key] ? ' done' : ''}" role="checkbox" aria-checked="${!!bought[x.key]}" data-a="dbuy" data-key="${esc(x.key)}">
             <span class="cbox">${bought[x.key] ? I.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="amt"><span>${D.fmtNum(x.grams)} g</span>${x.measure ? `<span class="meas">${esc(x.measure)}</span>` : ''}</span></button>`).join('')}</div>
         </div>
@@ -676,9 +680,11 @@
       const sel = {}; if (!all) keys.forEach((x) => { sel[x] = true; });
       D.shopSet({ sel }); R();
     },
-    dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {} }); R(); },
+    dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {}, hist: [] }); R(); },
+    dshopundo: () => { if (D.shopUndo()) R(); },
+    dshopsrc: () => { U.shop.srcOpen = U.shop.srcOpen === false; R(); },
     dshopback: () => { D.shopSet({ stage: 'select' }); R(); },
-    dbuy: (el) => { const b = Object.assign({}, D.shopping().bought); if (b[el.dataset.key]) delete b[el.dataset.key]; else b[el.dataset.key] = true; D.shopSet({ bought: b }); R(); },
+    dbuy: (el) => { D.shopToggle(el.dataset.key); R(); },
     // Dziennik
     djtab: (el) => { U.journal.tab = el.dataset.v; U.journal.rec = null; R(); },
     djrec: (el) => { U.journal.rec = el.dataset.slot; R(); },

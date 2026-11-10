@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v33 · 09.11.2026';
+  const APP_VERSION = 'v34 · 10.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -167,7 +167,7 @@
           <button class="body" data-a="actopen" data-id="${a.id}" aria-label="Edytuj aktywność: ${esc(a.name)}"><span class="title">${esc(a.name)}</span>${actRep(a)}</button>
           ${multi ? `<button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} zaległe terminy: ${esc(a.name)}, wykonane ${nd} z ${x.ds.length}"><span class="cnt">${nd}/${x.ds.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>` : ''}
           <button class="check" data-a="actdone" data-id="${a.id}" data-k="${k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}"><span class="box">${x.done ? I.check : ''}</span></button>
-        </div>${open ? `<div class="subpanel" role="group" aria-label="Terminy: ${esc(a.name)}">${x.ds.map((i) => { const on = !!a.done[i]; return `<div class="subrow${on ? ' done' : ''}"><button class="subchk" data-a="actsub" data-id="${a.id}" data-k="${i}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RCx().dm(i))}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(a.name + ' - ' + RCx().dm(i))}</div></div>`; }).join('')}</div>` : ''}</div>`;
+        </div>${open ? `<div class="subpanel" role="group" aria-label="Terminy: ${esc(a.name)}">${x.ds.map((i) => { const on = !!a.done[i]; return `${i < k ? `<div class="subsw" data-subsw="${i}" data-id="${a.id}" data-k="${i}" data-kind="act">${swBg('Usuń ten termin')}` : '<div>'}<div class="subrow${on ? ' done' : ''}"><button class="subchk" data-a="actsub" data-id="${a.id}" data-k="${i}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RCx().dm(i))}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(a.name + ' - ' + RCx().dm(i))}</div></div></div>`; }).join('')}</div>` : ''}</div>`;
   }
 
   // ---------- Podzadania (v13) ----------
@@ -183,6 +183,8 @@
   function subPreview(t, k) {
     return `<div class="subro" role="group" aria-label="Podzadania: ${esc(t.title)}">${C.subsFor(t, k).map((u) => `<div class="${u.done ? 'done' : ''}"><span class="b" aria-hidden="true">${u.done ? I.check : ''}</span><span class="tt">${esc(u.title)}</span>${u.done ? '<span class="sr-only">, wykonane</span>' : ''}</div>`).join('')}</div>`;
   }
+  // v34: tło przeciągania podzadania w prawo (kosz + napis; po progu „Puść, aby usunąć”)
+  const swBg = (t) => `<div class="subswbg" aria-hidden="true">${I.trashS}<span data-t="${t}">${t}</span></div>`;
   // Lista podzadań w widoku Dzień: odhaczanie, od v32 kolejność (↑/↓) i edycja nazwy w karcie (tam też usuwanie z „Cofnij”).
   function subPanel(t, k) {
     const list = C.subsFor(t, k), n = list.length, E = S.subEdit;
@@ -194,11 +196,11 @@
         <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
           <button class="btn-cancel small" data-a="subedno">Anuluj</button><button class="subedok${off ? ' off' : ''}" data-a="subedok" aria-disabled="${off}">Zapisz</button></div></div>`;
       }
-      return `<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
+      return `<div class="subsw" data-subsw="${u.id}" data-id="${t.id}" data-k="${k}" data-kind="${C.isRecurring(t) ? 'rec' : 'one'}">${swBg(C.isRecurring(t) ? 'Usuń z tego dnia' : 'Usuń')}<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
         <button class="subgrip" data-sgrip="${u.id}" data-id="${t.id}" aria-label="Zmień kolejność: ${esc(u.title)} (${i + 1} z ${n})" aria-describedby="subgrip-hint">${I.grip}</button>
         <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
         <div class="st">${esc(u.title)}</div>
-        <button class="subdel" data-a="subed" data-id="${t.id}" data-sid="${u.id}" aria-label="Edytuj podzadanie: ${esc(u.title)}">${I.pen}</button></div>`;
+        <button class="subdel" data-a="subed" data-id="${t.id}" data-sid="${u.id}" aria-label="Edytuj podzadanie: ${esc(u.title)}">${I.pen}</button></div></div>`;
     }).join('')}<span id="subgrip-hint" hidden>Przeciągnij albo użyj strzałek w górę i w dół, aby zmienić kolejność podzadań.</span></div>`;
   }
   // Termin, którego dotyczy odhaczanie w Edytuj zadanie: dzień, z którego otwarto edycję, albo najbliższy termin od dziś.
@@ -643,7 +645,7 @@
   // Edytuj zadanie – dodatkowo „wykonane”, a każda zmiana zapisuje się od razu.
   function subCard(d, editing) {
     const fk = editing ? occKey(d) : null;
-    const list = editing ? C.subsFor(d, fk) : (d.subs || []).map((x) => ({ id: x.id, title: x.title, done: false }));
+    const list = editing ? C.subsFor(d, fk, true) : (d.subs || []).map((x) => ({ id: x.id, title: x.title, done: false }));
     const n = list.length, dn = list.filter((x) => x.done).length;
     const head = !n ? '' : editing ? 'wykonane ' + dn + ' z ' + n + (C.isRecurring(d) ? ' · ' + relDate(fk) : '') : n + ' ' + C.plural(n, 'podzadanie', 'podzadania', 'podzadań');
     const draft = S.ui.subDraft || '';
@@ -802,7 +804,7 @@
       else d.subs = (d.subs || []).filter((x) => x.id !== el.dataset.sid);
       render();
     },
-    undo: () => { if (S.undo) { C.restore(S.undo.snap); S.undo = null; render(); } },
+    undo: () => { if (S.undo) { if (S.undo.fn) S.undo.fn(); else C.restore(S.undo.snap); S.undo = null; render(); } },
     new: () => { S.draft = null; go('#/task/new'); },
     edit: (el) => { S.draft = null; S.editK = el.dataset.k || null; go('#/task/' + el.dataset.id); },
     cancel: () => { S.draft = null; back(); },
@@ -1153,7 +1155,7 @@
     e.preventDefault(); e.stopPropagation();
     const sid = g.dataset.sgrip;
     if (S.subEdit) { S.subEdit = null; render(); g = app.querySelector('[data-sgrip="' + sid + '"]'); if (!g) return; }   // rozpoczęcie przeciągania zamyka edycję
-    const panel = g.closest('.subpanel'), rows = [...panel.querySelectorAll('.subrow[data-sid]')], row = g.closest('.subrow'), from = rows.indexOf(row);
+    const panel = g.closest('.subpanel'), rows = [...panel.querySelectorAll('.subsw')], row = g.closest('.subsw'), from = rows.indexOf(row);
     const pitch = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight;
     sd = { id: g.dataset.id, sid, row, rows, from, to: from, y0: e.clientY, pitch };
     try { g.setPointerCapture(e.pointerId); } catch (err) {}
@@ -1178,7 +1180,7 @@
     if (!sd) return;
     const r = sd; sd = null;
     suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
-    if (!cancel && r.to !== r.from) C.moveSub(r.id, r.sid, r.to - r.from);
+    if (!cancel && r.to !== r.from) { const ids = r.rows.map((x) => x.dataset.subsw); const [m] = ids.splice(r.from, 1); ids.splice(r.to, 0, m); C.reorderSubs(r.id, ids); }
     render();
   }
   app.addEventListener('pointerup', (e) => { if (sd) { e.stopPropagation(); endSubDrag(false); } }, true);
@@ -1188,8 +1190,57 @@
     if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
     e.preventDefault();
     const sid = g.dataset.sgrip;
-    if (C.moveSub(g.dataset.id, sid, e.key === 'ArrowUp' ? -1 : 1)) { S.subEdit = null; render(); const ng = app.querySelector('[data-sgrip="' + sid + '"]'); if (ng) ng.focus(); }
+    const ids = [...g.closest('.subpanel').querySelectorAll('.subsw')].map((x) => x.dataset.subsw), i = ids.indexOf(sid), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+    if (j >= 0 && j < ids.length) { ids.splice(i, 1); ids.splice(j, 0, sid); }
+    if (j >= 0 && j < ids.length && C.reorderSubs(g.dataset.id, ids)) { S.subEdit = null; render(); const ng = app.querySelector('[data-sgrip="' + sid + '"]'); if (ng) ng.focus(); }
   });
+
+  // ---------- v34 (makieta 10.11.2026): podzadanie przeciągnięte w prawo za tytuł (≥ 100 px) – usunięcie z „Cofnij” ----------
+  let ss = null;
+  app.addEventListener('pointerdown', (e) => {
+    const st = e.target.closest('.subsw[data-kind] .st');
+    if (!st || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const w = st.closest('.subsw');
+    ss = { w, fg: w.querySelector('.subrow'), x0: e.clientX, y0: e.clientY, dx: 0, on: false, id: e.pointerId };
+  });
+  app.addEventListener('pointermove', (e) => {
+    if (!ss) return;
+    const dx = e.clientX - ss.x0, dy = e.clientY - ss.y0;
+    if (!ss.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { ss = null; return; }
+      if (dx < 10) return;
+      ss.on = true; ss.w.classList.add('swiping'); try { ss.w.setPointerCapture(ss.id); } catch (err) {}
+    }
+    e.preventDefault();
+    ss.dx = Math.max(0, Math.min(160, dx));
+    ss.fg.style.transform = 'translateX(' + ss.dx + 'px)';
+    const armed = ss.dx >= 100, t = ss.w.querySelector('.subswbg span');
+    ss.w.classList.toggle('armed', armed); t.textContent = armed ? 'Puść, aby usunąć' : t.dataset.t;
+  });
+  function endSubSwipe(ok) {
+    if (!ss) return;
+    const r = ss; ss = null;
+    if (!r.on) return;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
+    if (ok && r.dx >= 100) { subSwipeDel(r.w.dataset); return; }
+    r.fg.style.transition = 'transform .15s ease'; r.fg.style.transform = '';
+    setTimeout(() => { r.w.classList.remove('swiping', 'armed'); r.fg.style.transition = ''; }, 160);
+  }
+  app.addEventListener('pointerup', () => endSubSwipe(true));
+  app.addEventListener('pointercancel', () => endSubSwipe(false));
+  // Skutek zależy od rodzaju: zadanie cykliczne – tylko z tego dnia; jednorazowe – usunięcie; aktywność – ten jeden termin.
+  function subSwipeDel(d) {
+    S.subEdit = null;
+    if (d.kind === 'act') {
+      const R = RCx(), snap = R.snapAct(+d.id); R.skipTerm(+d.id, d.k);
+      setUndo(null, 'sub', ''); S.undo.fn = () => R.restoreAct(snap);
+    } else {
+      const snap = C.snapshot();
+      if (d.kind === 'rec') C.hideSub(d.id, d.k, d.subsw); else C.removeSub(d.id, d.subsw);
+      setUndo(snap, 'sub', '');
+    }
+    render();
+  }
 
   // ---------- Przesunięcie: w prawo = usuń, w lewo = przełóż (jak w makiecie) ----------
   let sw = null;
