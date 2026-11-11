@@ -1,4 +1,4 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 35
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 35.1
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
@@ -23,13 +23,13 @@ Zadania mają opcjonalną godzinę (od v35; wcześniej bez godzin), bez przypomn
 **Godzina i Kalendarz Google (od v35, makieta 11.11):** zadanie może mieć godzinę (pole „Godzina (opcjonalnie)” w Nowe/Edytuj zadanie); godzina jest pod tytułem w Dniu, Tygodniu i Miesiącu, a obok niej ikona stanu synchronizacji: zielona chmurka z haczykiem – zsynchronizowane z Kalendarzem Google, bursztynowa przekreślona – nie (błąd, czeka na wysłanie albo kalendarz rozłączony). Zadania z kalendarza mają niebieską ikonę kalendarza przy tytule; działają jak zwykłe zadania (odhaczanie, podzadania, kolejność, usuwanie przesunięciem w prawo, przekładanie w lewo, edycja), a zmiany wracają do Google. Powtarzanie wydarzenia z Google zmienia się w Google.
 
 **Jak połączyć Kalendarz Google:**
-1. W Google Cloud Console utwórz projekt, włącz Google Calendar API, skonfiguruj ekran zgody (Zewnętrzni, tryb „Testowanie”, dodaj siebie jako użytkownika testowego) i utwórz klienta OAuth „Aplikacja internetowa” z autoryzowanym źródłem JavaScript = adres aplikacji (np. `https://twoj-login.github.io`, bez ścieżki i ukośnika).
+1. W Google Cloud Console utwórz projekt, włącz Google Calendar API, skonfiguruj ekran zgody (Zewnętrzni, tryb „Testowanie”, dodaj siebie jako użytkownika testowego) i utwórz klienta OAuth „Aplikacja internetowa” z autoryzowanym źródłem JavaScript = początek adresu aplikacji (np. `https://twoj-login.github.io`, bez ścieżki i ukośnika) i – **od v35.1** – autoryzowanym identyfikatorem URI przekierowania = pełny adres aplikacji (np. `https://twoj-login.github.io/nazwa-repo/`; dokładny adres do skopiowania pokazują Ustawienia → „Kalendarz Google” → „Adres przekierowania”).
 2. Ustawienia → „Kalendarz Google” → wpisz **identyfikator klienta** (…apps.googleusercontent.com) → „Połącz z Kalendarzem Google”.
-3. W oknie wybierz **datę początku synchronizacji** i **co synchronizować**: wysłać zadania do Google, pobrać wydarzenia z Google albo jedno i drugie → „Połącz i synchronizuj” → zaloguj się w oknie Google (przy aplikacji w trybie testowym Google pokaże ostrzeżenie „Google nie zweryfikował tej aplikacji” – „Kontynuuj”).
+3. W oknie wybierz **datę początku synchronizacji** i **co synchronizować**: wysłać zadania do Google, pobrać wydarzenia z Google albo jedno i drugie → „Połącz i synchronizuj” → aplikacja przechodzi do strony logowania Google (od v35.1 w tym samym oknie, bez okienka, które telefon blokował), a po zalogowaniu wraca do Ustawień i synchronizuje (przy aplikacji w trybie testowym Google pokaże ostrzeżenie „Google nie zweryfikował tej aplikacji” – „Kontynuuj”).
 
 Co się synchronizuje (decyzje właściciela z 11.11.2026): **główny kalendarz** konta Google; do Google trafiają **tylko zadania z godziną** (od daty początku; zadania cykliczne jako wydarzenia cykliczne, pominięte terminy jako wyjątki), wydarzenia z Google – także całodniowe – trafiają do planera (od daty początku do ok. 13 miesięcy naprzód). Dodanie, zmiana i usunięcie działa w obie strony; przy zmianie w obu miejscach wygrywa nowsza. Odhaczenie, podzadania i kolejność zostają w MyLife. Aktywności cykliczne z Treningu nie są synchronizowane.
 
-Kiedy: po połączeniu, przy „Synchronizuj teraz”, a gdy logowanie Google jest ważne (ok. godziny) – także sama po każdej zmianie w planerze, po uruchomieniu i po powrocie do aplikacji. Po wygaśnięciu logowania zmiany czekają (bursztynowa chmurka), a „Synchronizuj teraz” otwiera okno logowania. Aplikacja nie synchronizuje się, gdy jest zamknięta. „Rozłącz Kalendarz Google” zostawia zadania w aplikacji, chowa wydarzenia z Google z planera (wracają po ponownym połączeniu) i niczego nie usuwa w Google.
+Kiedy: po połączeniu, przy „Synchronizuj teraz”, a gdy logowanie Google jest ważne (ok. godziny) – także sama po każdej zmianie w planerze, po uruchomieniu i po powrocie do aplikacji. Po wygaśnięciu logowania zmiany czekają (bursztynowa chmurka), a „Synchronizuj teraz” przechodzi na chwilę do strony logowania Google i wraca. Aplikacja nie synchronizuje się, gdy jest zamknięta. „Rozłącz Kalendarz Google” zostawia zadania w aplikacji, chowa wydarzenia z Google z planera (wracają po ponownym połączeniu) i niczego nie usuwa w Google.
 
 Przełożenie zadania cyklicznego dotyczy tylko tego jednego terminu. Przełożony termin staje się osobnym zadaniem jednorazowym.
 
@@ -130,7 +130,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v35.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v35.1.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -151,7 +151,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v35 · 11.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v35.1 · 11.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -194,6 +194,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v35.1 (11.11.2026)**: logowanie do Kalendarza Google przez przejście do strony Google w tym samym oknie (zamiast okienka, które telefon blokował – „Telefon zablokował okno logowania Google”); w Ustawieniach adres przekierowania do wpisania w Google Cloud.
 - **v35 (11.11.2026)**: Planer dnia – opcjonalna godzina zadania (formularze, Dzień, Tydzień, Miesiąc); synchronizacja z Kalendarzem Google w obie strony (Ustawienia → „Kalendarz Google”, identyfikator klienta, data początku i kierunek; zadania z godziną ↔ główny kalendarz; wydarzenia z Google z ikoną kalendarza; ikona stanu synchronizacji; ekran „Błędy synchronizacji”); usunięty import finansów z Ustawień.
 - **v34 (10.11.2026)**: Planer dnia – usuwanie podzadania przesunięciem w prawo (powtarzalne – tylko z tego dnia, jednorazowe – na stałe, zaległy termin aktywności – pominięcie terminu) z „Cofnij”; Lista zakupów – karta „Lista z posiłków” (dni i dania, zwijana) i „Cofnij (n)” dla odhaczeń.
 - **v33 (09.11.2026)**: Planer dnia – kolejność podzadań uchwytem (przeciąganie za palcem albo strzałki ↑/↓ na uchwycie) zamiast przycisków ↑/↓ z v32; dotknięcie aktywności w planie dnia otwiera okno „Edytuj aktywność”, a „Anuluj”, ✕, „Zapisz”, „Usuń” i „wstecz” wracają do planu dnia.

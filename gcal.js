@@ -34,31 +34,37 @@
   function tok() { try { const o = JSON.parse(localStorage.getItem(TOK)); if (o && o.t && o.exp > Date.now() + 60000) return o.t; } catch (e) {} return null; }
   function setTok(t, sec) { try { localStorage.setItem(TOK, JSON.stringify({ t, exp: Date.now() + (sec || 3600) * 1000 })); } catch (e) {} }
   function clearTok() { try { localStorage.removeItem(TOK); } catch (e) {} }
-  const gis = () => window.google && window.google.accounts && window.google.accounts.oauth2;
-  function loadGis() {
-    if (gis()) return Promise.resolve();
-    return new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-      s.onload = () => (gis() ? res() : rej(new Error('Nie udało się wczytać logowania Google.')));
-      s.onerror = () => rej(new Error('Nie udało się wczytać logowania Google – sprawdź połączenie z internetem.'));
-      document.head.appendChild(s);
-    });
+  // v35.1: logowanie przez przekierowanie całej strony (OAuth 2.0 dla aplikacji JavaScript, response_type=token) zamiast okienka
+  // Google Identity Services – w zainstalowanej aplikacji (PWA) telefon blokował okienko logowania („popup_failed_to_open”).
+  // Po zalogowaniu Google wraca na adres aplikacji z #access_token=…; dokończenie (połączenie / synchronizacja) jest zapisane w PEND.
+  const PEND = 'mylife.cal.pend';
+  const redirectUri = () => location.origin + location.pathname;
+  function login(prompt, after) {
+    if (!st.cid) return Promise.reject(new Error('Wpisz identyfikator klienta Google.'));
+    if (navigator.onLine === false) return Promise.reject(new Error('Brak połączenia z internetem – logowanie Google nie jest możliwe.'));
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem(PEND, JSON.stringify(Object.assign({ state, back: location.hash || '#/settings', at: Date.now() }, after || { kind: 'sync' }))); } catch (e) {}
+    const q = { client_id: st.cid, redirect_uri: redirectUri(), response_type: 'token', scope: SCOPE, include_granted_scopes: 'true', state };
+    if (prompt) q.prompt = prompt;
+    location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map((k) => k + '=' + enc(q[k])).join('&'));
+    return new Promise(() => {});   // strona przechodzi do Google
   }
-  // Wczytanie skryptu logowania z wyprzedzeniem (okno logowania musi się otworzyć zaraz po dotknięciu przycisku).
-  const preload = () => { if (navigator.onLine !== false) loadGis().catch(() => {}); };
-  function login(prompt) {
-    const run = () => new Promise((res, rej) => {
-      if (!st.cid) { rej(new Error('Wpisz identyfikator klienta Google.')); return; }
-      const tc = gis().initTokenClient({
-        client_id: st.cid, scope: SCOPE,
-        callback: (r) => { if (r && r.access_token) { setTok(r.access_token, +r.expires_in || 3600); res(r.access_token); } else rej(new Error((r && (r.error_description || r.error)) || 'Logowanie Google zostało przerwane.')); },
-        error_callback: (e) => rej(new Error(e && e.type === 'popup_closed' ? 'Zamknięto okno logowania Google.' : e && e.type === 'popup_failed_to_open' ? 'Telefon zablokował okno logowania Google. Spróbuj ponownie.' : 'Logowanie Google nie powiodło się.'))
-      });
-      tc.requestAccessToken({ prompt: prompt || '' });
-    });
-    return gis() ? run() : loadGis().then(run);
-  }
+  // Powrót z Google (wywoływane od razu przy wczytaniu skryptu – przed routerem aplikacji, który czyta adres po „#”).
+  let resumed = null;
+  (function consume() {
+    const h = location.hash || '';
+    if (!/(^#|&)(access_token|error)=/.test(h)) return;
+    const q = {}; h.replace(/^#/, '').split('&').forEach((kv) => { const i = kv.indexOf('='); if (i > 0) q[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
+    let p = null; try { p = JSON.parse(localStorage.getItem(PEND)); localStorage.removeItem(PEND); } catch (e) {}
+    const back = (p && p.back && p.back.indexOf('access_token') < 0 ? p.back : '#/settings');
+    try { history.replaceState(null, '', location.pathname + location.search + back); } catch (e) { location.hash = back; }
+    if (!p || p.state !== q.state) { resumed = { kind: 'error', msg: 'Logowanie Google nie zostało dokończone (nieprawidłowa odpowiedź). Spróbuj ponownie.' }; return; }
+    if (q.access_token) { setTok(q.access_token, +q.expires_in || 3600); resumed = p; return; }
+    resumed = { kind: 'error', msg: q.error === 'access_denied' ? 'Nie zezwolono na dostęp do Kalendarza Google.' : 'Logowanie Google nie powiodło się (' + (q.error_description || q.error) + ').' };
+  })();
+  // Zwraca (raz) informację o powrocie z logowania: { kind: 'connect', since, mode } | { kind: 'sync' } | { kind: 'error', msg } | null.
+  const takeResume = () => { const r = resumed; resumed = null; return r; };
+  const preload = () => {};
 
   // ---------- API ----------
   function ApiErr(status, msg) { const e = new Error(msg); e.status = status; return e; }
@@ -69,6 +75,7 @@
       .catch(() => { throw ApiErr(0, 'Brak połączenia z siecią'); })
       .then((r) => {
         if (r.status === 204) return null;
+        if (r.status === 401) clearTok();   // token odrzucony – następne „Synchronizuj teraz” zaloguje ponownie
         return r.json().catch(() => ({})).then((j) => { if (!r.ok) throw ApiErr(r.status, (j && j.error && j.error.message) || 'Błąd ' + r.status); return j; });
       });
   }
@@ -326,14 +333,15 @@
 
   // ---------- Połączenie ----------
   function setCid(v) { st.cid = String(v || '').trim(); save(); }
-  async function connect(since, mode) {
-    await login('');
-    st.on = true; st.since = since; st.mode = mode; st.err = []; save();
-    return sync(true);
+  // Połączenie: bez ważnego logowania – przekierowanie do Google, a po powrocie finishConnect (gcal-ui).
+  function connect(since, mode) {
+    if (!tok()) return login('consent', { kind: 'connect', since, mode });
+    return finishConnect(since, mode);
   }
+  function finishConnect(since, mode) { st.on = true; st.since = since; st.mode = mode; st.err = []; save(); return sync(true); }
   function disconnect() {
     const t = tok();
-    try { if (t && gis()) window.google.accounts.oauth2.revoke(t, () => {}); } catch (e) {}
+    try { if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + enc(t), { method: 'POST', mode: 'no-cors' }).catch(() => {}); } catch (e) {}
     clearTok(); clearTimeout(timer);
     st.on = false; st.err = []; save();
   }
@@ -351,5 +359,5 @@
   const onChange = (f) => listeners.push(f);
   const hasToken = () => !!tok();
 
-  window.GCal = { load, state, sync, schedule, connect, disconnect, setCid, status, fromCal, onChange, isBusy, preload, hasToken, sig, rrule, TZ };
+  window.GCal = { load, state, sync, schedule, connect, finishConnect, takeResume, redirectUri, disconnect, setCid, status, fromCal, onChange, isBusy, preload, hasToken, sig, rrule, TZ };
 })();

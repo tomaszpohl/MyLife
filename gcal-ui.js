@@ -22,11 +22,13 @@
           <div class="kv"><span>Kierunek</span><span>${esc(MODE_TXT[s.mode] || '')}</span></div>
           <div class="kv"><span>Ostatnia synchronizacja</span><span>${esc(s.last || '—')}</span></div></div>
           <button class="primary" data-a="gsync"${busy ? ' disabled' : ''}>${busy ? 'Synchronizuję…' : 'Synchronizuj teraz'}</button>
-          <div class="para" style="font-size:12px;line-height:1.45">Synchronizuje wydarzenia od daty uruchomienia synchronizacji (${esc(s.since ? C.dmy(s.since) : '—')}).${G.hasToken() ? '' : ' Logowanie Google wygasa po około godzinie – wtedy przycisk otworzy okno logowania, a do tego czasu zmiany czekają.'}</div>`
+          <div class="para" style="font-size:12px;line-height:1.45">Synchronizuje wydarzenia od daty uruchomienia synchronizacji (${esc(s.since ? C.dmy(s.since) : '—')}).${G.hasToken() ? '' : ' Logowanie Google wygasa po około godzinie – wtedy przycisk przejdzie na chwilę do strony logowania Google, a do tego czasu zmiany czekają.'}</div>`
         : `<div class="para" style="line-height:1.45">Kalendarz Google nie jest połączony. Po połączeniu wskażesz datę, od której ma ruszyć synchronizacja, oraz czy wysłać zadania do Google, pobrać wydarzenia, czy jedno i drugie.</div>
           <div class="ffield"><label class="eyebrow" for="gcid">Identyfikator klienta Google (Client ID)</label>
             <input id="gcid" class="finput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="${esc(cid)}" data-in="gcal-cid">
-            <div class="para" style="font-size:12px;line-height:1.45">Z Google Cloud Console → Google Auth Platform → Klienci (aplikacja internetowa, źródło: adres tej aplikacji). Identyfikator nie jest tajny; tajny klucz klienta nie jest potrzebny.</div></div>`}
+            <div class="para" style="font-size:12px;line-height:1.45">Z Google Cloud Console → Google Auth Platform → Klienci (aplikacja internetowa). Identyfikator nie jest tajny; tajny klucz klienta nie jest potrzebny.</div></div>
+          <div class="ffield"><div class="eyebrow">Adres przekierowania</div><div class="gredir" data-sel>${esc(G.redirectUri())}</div>
+            <div class="para" style="font-size:12px;line-height:1.45">Wpisz ten adres dokładnie tak (z ukośnikiem na końcu, jeśli jest) w kliencie OAuth w polu „Autoryzowane identyfikatory URI przekierowania”, a jego początek (https://…github.io) w „Autoryzowane źródła JavaScript”.</div></div>`}
         ${U.msg ? `<div class="okbox${U.err ? ' warn' : ''}" role="status">${U.err ? I.warn : I.ok}<span>${esc(U.msg)}</span></div>` : ''}
         ${nErr ? `<a class="gerrlink" href="#/syncerr"><span>Błędy synchronizacji: ${nErr}</span>${A.svg(18, 2, '<path d="m9 6 6 6-6 6"></path>')}</a>` : ''}
         ${on ? '<button class="gdisc" data-a="gaskdisc" aria-haspopup="dialog">Rozłącz Kalendarz Google</button>'
@@ -55,7 +57,7 @@
         ${A.dateBtn(U.since, 'gsince', '', 'Synchronizuj od daty')}</div>
       <div role="radiogroup" aria-label="Co synchronizować" style="display:flex;flex-direction:column;gap:8px"><div class="eyebrow">Co synchronizować</div>
         ${MODES.map(([v, l, h]) => `<button class="sheet-opt${U.mode === v ? ' on' : ''}" role="radio" aria-checked="${U.mode === v}" data-a="gmode" data-v="${v}"><span class="dot"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">${l}</span><span style="font-size:12px;color:var(--muted)">${h}</span></span></button>`).join('')}</div>
-      <div style="font-size:12px;line-height:1.45;color:var(--muted)">Kalendarz: główny kalendarz konta Google. Otworzy się okno logowania Google.</div>
+      <div style="font-size:12px;line-height:1.45;color:var(--muted)">Kalendarz: główny kalendarz konta Google. Aplikacja przejdzie do strony logowania Google i po zalogowaniu wróci tutaj.</div>
       <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="gdlgno">Anuluj</button><button class="primary" style="height:48px" data-a="gconn"${busy ? ' disabled' : ''}>${busy ? 'Łączę…' : 'Połącz i synchronizuj'}</button></div>
     </div></div>`;
   }
@@ -109,6 +111,14 @@
     A = app; esc = A.esc; I = A.I;
     Object.assign(A.actions, actions);
     G.onChange(() => { const n = A.route().name; if (n === 'settings' || n === 'syncerr' || n === 'plan') A.render(); });
+    // v35.1: powrót z logowania Google (przekierowanie) – dokończenie połączenia albo synchronizacji.
+    const r = G.takeResume();
+    if (r) {
+      U.open = true;
+      if (r.kind === 'error') { U.msg = r.msg; U.err = true; }
+      else if (r.kind === 'connect') setTimeout(() => run(G.finishConnect(r.since, r.mode), null, true), 0);
+      else setTimeout(() => run(G.sync(true), null, A.route().name !== 'syncerr'), 0);
+    }
   }
   window.GCalUI = { init, settingsSection, viewErrors, onInput, onEscape, reset };
 })();
