@@ -48,8 +48,10 @@
     const b = box(out, title);
     try {
       const r = await fetch(url, opt);
-      let body = ''; try { body = (await r.text()).slice(0, 300); } catch (e) {}
-      b.lastChild.outerHTML = '<div><span class="ok">Przyjęte</span> – odpowiedź ' + r.status + (body ? '<br><code>' + body.replace(/</g, '&lt;') + '</code>' : '') + '</div>';
+      let body = ''; try { body = await r.text(); } catch (e) {}
+      // treść skrócona tylko na ekranie (token dostępu nie jest pokazywany)
+      const shown = body.replace(/("(access|refresh)_token"\s*:\s*")[^"]+/g, '$1…ukryty…').slice(0, 300);
+      b.lastChild.outerHTML = '<div><span class="ok">Przyjęte</span> – odpowiedź ' + r.status + (shown ? '<br><code>' + shown.replace(/</g, '&lt;') + '</code>' : '') + '</div>';
       return { ok: true, status: r.status, body };
     } catch (e) {
       b.lastChild.outerHTML = '<div><span class="bad">Zablokowane</span> – przeglądarka nie dostała odpowiedzi (' + e.message + ')</div>';
