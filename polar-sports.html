@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polar – lista aktywności</title>
+<style>
+  body { margin: 0; background: #0A0E13; color: #E8EEF5; font-family: system-ui, sans-serif; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 6px; } h2 { font-size: 17px; margin: 22px 0 8px; }
+  p { color: #93A1B2; font-size: 14px; line-height: 1.45; }
+  button { width: 100%; min-height: 52px; border: none; border-radius: 14px; background: #5BD0E8; color: #06222A; font-size: 16px; font-weight: 600; margin: 8px 0 12px; }
+  button.sec { background: #171F2A; color: #5BD0E8; border: 1px solid #2B3848; }
+  input { width: 100%; box-sizing: border-box; height: 48px; margin: 4px 0 10px; padding: 0 12px; border-radius: 12px; border: 1px solid #2B3848; background: #11171F; color: #E8EEF5; font-size: 15px; }
+  label { font-size: 12px; letter-spacing: .1em; color: #93A1B2; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #202B38; vertical-align: top; }
+  th { color: #93A1B2; font-size: 12px; font-weight: 600; }
+  td.n { color: #93A1B2; font-variant-numeric: tabular-nums; }
+  .mine { color: #7BE0A0; font-weight: 600; }
+  .bad { color: #FF9C8A; font-weight: 600; }
+  code { font-size: 12px; color: #C9D3DF; overflow-wrap: anywhere; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Polar – lista aktywności (sportów)</h1>
+<p>Pobiera przez Twojego workera katalog sportów Polar (<code>/v4/data/sports/list</code>) oraz sporty z Twoich treningów z ostatnich 90 dni. Sporty, które już trenowałeś, są oznaczone na zielono.</p>
+<label for="wurl">Adres workera</label><input id="wurl" placeholder="https://mylife-polar.…workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+<button id="go">Zaloguj przez workera i pobierz listę</button>
+<div id="out"></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const RET = location.origin + location.pathname;
+  const pad = (n) => String(n).padStart(2, '0');
+  const dt = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T00:00:00';
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  try { $('wurl').value = localStorage.getItem('pt.worker') || ''; } catch (e) {}
+  $('go').addEventListener('click', () => {
+    const w = $('wurl').value.trim().replace(/\/+$/, '');
+    if (!/^https:\/\//.test(w)) { $('out').innerHTML = '<p class="bad">Wpisz adres workera (https://…).</p>'; return; }
+    const nonce = Math.random().toString(36).slice(2);
+    try { localStorage.setItem('pt.worker', w); sessionStorage.setItem('ps.nonce', nonce); } catch (e) {}
+    location.assign(w + '/auth/start?return=' + encodeURIComponent(RET) + '&nonce=' + nonce + '&scope=' + encodeURIComponent('sports:read training_sessions:read'));
+  });
+
+  // Nazwa sportu: polska wersja z nazw lokalizowanych, jeśli jest; inaczej nazwa podstawowa.
+  function names(s) {
+    const base = s.name || s.sportName || s.englishName || s.id || '';
+    let pl = '', en = '';
+    const ln = s.localizedNames || s.translations || s.localizations || s.names;
+    const pick = (lang, text) => { const l = String(lang || '').toLowerCase(); if (!pl && (l === 'pl' || l.indexOf('pl') === 0 || l.indexOf('pol') === 0)) pl = text; if (!en && (l === 'en' || l.indexOf('en') === 0)) en = text; };
+    if (Array.isArray(ln)) ln.forEach((x) => pick(x.language || x.locale || x.lang || x.languageCode, x.text || x.name || x.value || x.translation));
+    else if (ln && typeof ln === 'object') Object.keys(ln).forEach((k) => pick(k, typeof ln[k] === 'string' ? ln[k] : (ln[k] && (ln[k].text || ln[k].name))));
+    return { pl: pl || '', en: en || base };
+  }
+  const sid = (s) => String((s.identifier && s.identifier.id) || s.id || s.sportId || '');
+  const listOf = (j) => Array.isArray(j) ? j : (j.sports || j.sportList || j.items || j.data || Object.values(j).find(Array.isArray) || []);
+
+  (async function back() {
+    if (!/polar_(access|error)=/.test(location.hash)) return;
+    const q = new URLSearchParams(location.hash.slice(1)); history.replaceState(null, '', location.pathname);
+    const out = $('out');
+    let w = '', n = ''; try { w = localStorage.getItem('pt.worker') || ''; n = sessionStorage.getItem('ps.nonce') || ''; } catch (e) {}
+    if (q.get('polar_error')) { out.innerHTML = '<p class="bad">Błąd logowania: ' + esc(q.get('polar_error')) + '</p>'; return; }
+    if (!n || q.get('polar_nonce') !== n) { out.innerHTML = '<p class="bad">Nie zgadza się nonce – spróbuj jeszcze raz.</p>'; return; }
+    const h = { Authorization: 'Bearer ' + q.get('polar_access'), Accept: 'application/json' };
+    out.innerHTML = '<p>Pobieram…</p>';
+    try {
+      const r = await fetch(w + '/data/sports/list', { headers: h });
+      const j = await r.json();
+      if (!r.ok) { out.innerHTML = '<p class="bad">Polar zwrócił ' + r.status + '</p><code>' + esc(JSON.stringify(j).slice(0, 600)) + '</code>'; return; }
+      const sports = listOf(j);
+      // Sporty z treningów z ostatnich 90 dni
+      const mine = {};
+      try {
+        const to = new Date(), from = new Date(Date.now() - 89 * 864e5);
+        const r2 = await fetch(w + '/data/training-sessions/list?from=' + encodeURIComponent(dt(from)) + '&to=' + encodeURIComponent(dt(new Date(to.getTime() + 864e5))), { headers: h });
+        const j2 = await r2.json();
+        (listOf(j2) || []).forEach((t) => { const id = String((t.sport && (t.sport.id || (t.sport.identifier && t.sport.identifier.id))) || t.sportId || ''); if (id) mine[id] = (mine[id] || 0) + 1; });
+      } catch (e) {}
+      const rows = sports.map((s) => ({ id: sid(s), n: names(s), type: s.type || s.sportType || '', cnt: mine[sid(s)] || 0 }))
+        .sort((a, b) => (b.cnt - a.cnt) || (a.n.pl || a.n.en).localeCompare(b.n.pl || b.n.en, 'pl'));
+      const used = rows.filter((x) => x.cnt);
+      out.innerHTML = '<h2>Twoje sporty z ostatnich 90 dni: ' + used.length + '</h2>' +
+        (used.length ? '<p class="mine">' + used.map((x) => esc(x.n.pl || x.n.en) + ' (' + x.cnt + ')').join(', ') + '</p>' : '<p>Brak treningów w tym okresie.</p>') +
+        '<h2>Katalog Polar: ' + rows.length + ' sportów</h2>' +
+        '<table><thead><tr><th>Nazwa (PL)</th><th>Nazwa (EN)</th><th>Typ</th><th>ID</th></tr></thead><tbody>' +
+        rows.map((x) => '<tr' + (x.cnt ? ' class="mine"' : '') + '><td>' + esc(x.n.pl || '—') + '</td><td>' + esc(x.n.en) + '</td><td>' + esc(x.type) + '</td><td class="n">' + esc(x.id) + '</td></tr>').join('') +
+        '</tbody></table>' +
+        '<button class="sec" id="copy">Kopiuj listę jako tekst</button>' +
+        '<h2>Przykładowy wpis z katalogu (surowe dane)</h2><code>' + esc(JSON.stringify(sports[0] || j, null, 2).slice(0, 1500)) + '</code>';
+      $('copy').addEventListener('click', () => {
+        const txt = rows.map((x) => [x.n.pl, x.n.en, x.type, x.id, x.cnt || ''].join('\t')).join('\n');
+        navigator.clipboard.writeText('PL\tEN\tTyp\tID\tMoje treningi (90 dni)\n' + txt).then(() => { $('copy').textContent = 'Skopiowano'; });
+      });
+    } catch (e) { out.innerHTML = '<p class="bad">Nie udało się pobrać listy: ' + esc(e.message) + '</p>'; }
+  })();
+</script>
+</body>
+</html>
