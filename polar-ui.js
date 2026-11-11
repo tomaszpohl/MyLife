@@ -18,8 +18,8 @@
             <div class="kv"><span>Synchronizacja od</span><span>${esc(s.since ? C.dmy(s.since) : '—')}</span></div>
             <div class="kv"><span>Ostatnia synchronizacja</span><span>${esc(s.last || '—')}</span></div></div>
           <button class="primary pfbtn" data-a="pfsync"${busy ? ' disabled' : ''}>${busy ? 'Synchronizuję…' : 'Synchronizuj teraz'}</button>
-          <div class="para" style="font-size:12px;line-height:1.45">Pobiera treningi z Polar Flow od daty początku (${esc(s.since ? C.dmy(s.since) : '—')}) i odhacza aktywności cykliczne z przypisanymi sportami. Dane tylko do odczytu – nic nie jest wysyłane do Polar.</div>`
-        : `<div class="para" style="line-height:1.45">Podaj adres pośrednika (Cloudflare Worker) i datę, od której mają być pobrane treningi. Client ID i klucz klienta Polar są w workerze – aplikacja ich nie przechowuje.</div>
+          <div class="para" style="font-size:12px;line-height:1.45">Pobiera treningi z Polar Flow od daty początku (${esc(s.since ? C.dmy(s.since) : '—')}) i odhacza aktywności cykliczne z przypisanymi sportami. Dane tylko do odczytu – nic nie jest wysyłane do Polar. Treningi siłowe (sport „Trening siłowy”) nie są pobierane – takie treningi dodajesz w aplikacji ręcznie.</div>`
+        : `<div class="para" style="line-height:1.45">Podaj adres pośrednika (Cloudflare Worker) i datę, od której mają być pobrane treningi. Client ID i klucz klienta Polar są w workerze – aplikacja ich nie przechowuje. Treningi siłowe (sport „Trening siłowy”) nie są pobierane – dodajesz je w aplikacji ręcznie.</div>
           <div class="ffield"><label class="eyebrow" for="pfurl">Adres pośrednika (workera) *</label>
             <input id="pfurl" class="finput${urlBad ? ' bad' : ''}" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://nazwa.konto.workers.dev" value="${esc(url)}" data-in="polar-url">
             ${urlBad ? '<div class="terr" role="alert">Podaj pełny adres zaczynający się od https://.</div>' : ''}</div>

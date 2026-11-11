@@ -282,6 +282,8 @@
   function invInit() {
     const V = U.inv, mx = F.invs().reduce((m, e) => (e.d > m ? e.d : m), '');
     V.mode = 'y'; V.yr = mx ? +mx.slice(0, 4) : +today().slice(0, 4); V.from = mx ? mx.slice(0, 8) + '01' : ym(today()) + '-01';
+    // v37 (makieta v184): widok Statystyki · ROI · Historia wpłat (domyślnie Statystyki); historia domyślnie w miesiącu ostatniego wpisu
+    V.tab = 'stat'; V.rd = null; V.hmode = 'm'; V.hym = mx ? mx.slice(0, 7) : ym(today()); V.hfy = mx ? +mx.slice(0, 4) : +today().slice(0, 4); V.hfrom = V.from;
   }
   function invCheck(D) {
     const a = cnum(D.amt), dateOk = /^\d{4}-\d{2}-\d{2}$/.test(D.d) && D.d <= today(), goalOk = String(D.goal).trim() !== '';
@@ -323,8 +325,12 @@
           : `<button class="btn-del" style="height:44px;font-size:14px" data-a="fvdelask">${J.trash}Usuń inwestycję</button>`) : ''}
       </div></div>`;
     }
+    if (!V.tab) V.tab = 'stat';
+    const tabs = `<div class="seg small gold" role="radiogroup" aria-label="Widok inwestycji">${[['stat', 'Statystyki'], ['roi', 'ROI'], ['hist', 'Historia wpłat']].map(([v, l]) => `<button role="radio" aria-checked="${V.tab === v}" class="${V.tab === v ? 'on' : ''}" data-a="fvtab" data-v="${v}">${l}</button>`).join('')}</div>`;
+    if (V.tab !== 'stat') return `<main class="screen" style="position:relative">${topbar('Inwestycje')}
+      <div class="dscroll" data-scroll="fin-inv">${tabs}${V.tab === 'roi' ? invRoi() : invHist(CO)}</div>${modal}${V.rd ? invRoiDlg() : ''}</main>`;
     return `<main class="screen" style="position:relative">${topbar('Inwestycje')}
-      <div class="dscroll" data-scroll="fin-inv">
+      <div class="dscroll" data-scroll="fin-inv">${tabs}
         <button class="primary gold" style="flex:none" data-a="fvnew">${J.plusL}<span>Dodaj inwestycję</span></button>
         <div class="dcard" style="gap:10px">
           <div class="eyebrow">Statystyki</div>
@@ -340,9 +346,74 @@
             <div class="flegend">${legend.map((l) => `<div>${dot(l.color)}<span style="flex:1;min-width:0">${esc(l.name)}</span><span style="text-align:right"><b>${l.amt}</b><small>${l.pct}</small></span></div>`).join('')}</div>`
             : '<div class="para" style="text-align:center;font-size:14px;padding:8px 0">Brak inwestycji w wybranym okresie.</div>'}
         </div>
-        ${per.length ? `<div class="dcard tight" style="padding-bottom:6px"><div class="dhead"><div class="eyebrow">Wpisy w okresie</div></div>
-          ${rows.map((e) => `<button class="frow fvrow" data-a="fvedit" data-id="${e.id}" aria-label="${esc('Edytuj inwestycję: ' + e.goal + ', ' + F.money(e.amt) + ', ' + F.dlabelY(e.d))}">${dot(CO.color(F.gkey(e.goal)))}<span class="ft"><span>${esc(e.goal)}</span><span>${esc(F.dlabelY(e.d))}</span></span><b style="font-size:15px">${F.money(e.amt)}</b></button>`).join('')}</div>` : ''}
       </div>${modal}</main>`;
+  }
+  const invRow = (e, CO) => `<button class="frow fvrow" data-a="fvedit" data-id="${e.id}" aria-label="${esc('Edytuj inwestycję: ' + e.goal + ', ' + F.money(e.amt) + ', ' + F.dlabelY(e.d))}">${dot(CO.color(F.gkey(e.goal)))}<span class="ft"><span>${esc(e.goal)}</span><span>${esc(F.dlabelY(e.d))}</span></span><b style="font-size:15px">${F.money(e.amt)}</b></button>`;
+  // v37: Historia wpłat – własny okres Miesiąc / Rok / Od daty (niezależny od statystyk), suma, liczba i lista wpisów (dotknięcie = edycja)
+  function invHist(CO) {
+    const V = U.inv, T = today(), m = V.hmode;
+    let a, b, lab, nextOff = false, per = '';
+    if (m === 'm') { a = V.hym + '-01'; b = V.hym + '-31'; lab = 'Wpłacono w miesiącu'; nextOff = V.hym >= ym(T); per = C.MONTH_NOM[+V.hym.slice(5, 7) - 1] + ' ' + V.hym.slice(0, 4); }
+    else if (m === 'y') { a = V.hfy + '-01-01'; b = V.hfy + '-12-31'; lab = 'Wpłacono w roku'; nextOff = V.hfy >= +T.slice(0, 4); per = String(V.hfy); }
+    else { a = V.hfrom; b = T; lab = 'Wpłacono od wskazanej daty (' + F.dlabelY(V.hfrom) + ')'; }
+    const list = F.invIn(a, b), tot = F.r2(list.reduce((t, e) => t + e.amt, 0));
+    const rows = list.slice().reverse().sort((x, y) => (x.d < y.d ? 1 : x.d > y.d ? -1 : 0));
+    return `<div class="dcard" style="gap:12px"><div class="eyebrow">Historia wpłat</div>
+        ${seg([['m', 'Miesiąc'], ['y', 'Rok'], ['f', 'Od daty']], m, 'fvhmode').replace('class="seg"', 'class="seg small gold"')}
+        ${m !== 'f' ? `<div class="navrow"><button class="iconbtn soft" data-a="fvhnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button><div class="big">${esc(per)}</div>
+            <button class="iconbtn soft" data-a="fvhnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
+          : `<div class="ffield"><span class="eyebrow">Od dnia</span>${A.dateBtn(V.hfrom, 'fvhfrom', '', 'Od dnia')}</div>`}
+        <div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:var(--muted)">${esc(lab)}</div><div class="fbig" style="color:var(--gold);font-size:26px">${F.money(tot)}</div><div style="font-size:12px;color:var(--muted)">${list.length} ${C.plural(list.length, 'wpis', 'wpisy', 'wpisów')}</div></div></div>
+      ${list.length ? `<div class="dcard tight" style="padding-bottom:6px"><div class="dhead"><div class="eyebrow">Wpisy w okresie</div></div>${rows.map((e) => invRow(e, CO)).join('')}</div>`
+        : '<div class="dcard" style="text-align:center;font-size:13px;color:var(--muted);padding:20px 16px">Brak wpłat w wybranym okresie.</div>'}`;
+  }
+  // v37: ROI – zwrot z inwestycji (aktywa z Majątku powiązane z celami)
+  const rsgn = (v) => (v > 0 ? '+' : '') + F.money(v);
+  const rcol = (v) => (v >= 0 ? 'var(--ok)' : 'var(--danger)');
+  const rpct = (g, inv) => (inv > 0 ? (g > 0 ? '+' : g < 0 ? '−' : '') + pf(Math.abs(g) / inv * 100) : '—');
+  function invRoi() {
+    const comps = F.retComps(), CO = F.invColors(), gname = (k) => CO.names[k] || k;
+    const tIn = F.r2(comps.reduce((t, x) => t + x.inv, 0)), tVal = F.r2(comps.reduce((t, x) => t + x.a.val, 0)), tG = F.r2(tVal - tIn);
+    const mx = Math.max(1, ...comps.map((x) => Math.abs(x.gain)));
+    return `<div class="dcard" style="gap:12px"><div class="eyebrow">Zwrot z inwestycji</div>
+        ${comps.length ? `<div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:var(--muted)">${tG >= 0 ? 'Zysk z inwestycji' : 'Strata z inwestycji'}</div><div class="fbig" style="font-size:30px;color:${rcol(tG)}">${rsgn(tG)}</div><div style="font-size:13px;font-weight:600;color:${rcol(tG)}">${rpct(tG, tIn) + (tIn > 0 ? ' od wpłat' : '')}</div></div>
+          <div class="tstats in"><div><div class="l">WPŁACONO</div><div class="v" style="font-size:15px">${F.money(tIn)}</div></div><div><div class="l">WARTOŚĆ TERAZ</div><div class="v" style="font-size:15px">${F.money(tVal)}</div></div></div>
+          <div style="display:flex;flex-direction:column">${comps.map((x) => `<button class="froi" data-a="fvrdedit" data-id="${x.l.id}" aria-label="${esc('Edytuj powiązanie: ' + x.a.name + ', ' + rsgn(x.gain))}">
+              <span class="r1"><span style="font-size:15px;font-weight:600">${esc(x.a.name)}</span><b style="color:${rcol(x.gain)}">${rsgn(x.gain)}</b></span>
+              <span style="font-size:12px;color:var(--muted)">Cele: ${esc(x.l.goals.map(gname).join(', '))}</span>
+              <span class="r1" style="font-size:12px;color:var(--text-2)"><span>Wpłacono ${F.money(x.inv)} → wartość ${F.money(x.a.val)}</span><span style="font-weight:600;color:${rcol(x.gain)}">${rpct(x.gain, x.inv)}</span></span>
+              <span class="bar"><span style="width:${Math.max(4, Math.round(100 * Math.abs(x.gain) / mx))}%;background:${rcol(x.gain)}"></span></span></button>`).join('')}</div>`
+          : '<div style="font-size:13px;line-height:1.45;color:var(--muted)">Powiąż aktywo z Majątku z celami inwestycji, a zobaczysz zysk lub stratę: aktualna wartość aktywa minus suma wpłat na wybrane cele.</div>'}
+        <button class="flinkbtn" data-a="fvrdnew" aria-haspopup="dialog">Powiąż aktywo z Majątku</button>
+        <div style="font-size:12px;line-height:1.4;color:var(--dim)">Wpłaty = wszystkie wpisy wybranych celów (bez względu na okres statystyk). Wartość aktywa pochodzi z Majątku – zmiana tutaj zapisze się też w Majątku.</div></div>`;
+  }
+  function rdCalc() {
+    const rd = U.inv.rd, isNew = rd.t === 'new', asset = F.items().find((i) => i.id === rd.aid && i.type === 'a');
+    const nv = parseVal(rd.val), valOk = isNew || (nv !== null && nv >= 0), ok = !!asset && rd.goals.length > 0 && valOk;
+    const inv = F.retInvested(rd.goals), cur = isNew ? (asset ? asset.val : 0) : (nv === null ? 0 : nv);
+    const hint = !asset ? 'Wybierz aktywo i co najmniej jeden cel.' : !rd.goals.length ? 'Wybierz co najmniej jeden cel inwestycji.' : !valOk ? 'Wpisz poprawną wartość.' : 'Wpłacono ' + F.money(inv) + ' · wartość ' + F.money(cur) + ' → ' + (cur - inv >= 0 ? 'zysk ' : 'strata ') + F.money(Math.abs(F.r2(cur - inv))) + '.';
+    return { ok, hint };
+  }
+  function invRoiDlg() {
+    const rd = U.inv.rd, isNew = rd.t === 'new', links = F.retLinks(), CO = F.invColors(), gname = (k) => CO.names[k] || k;
+    const usedA = links.filter((l) => l.id !== rd.id).map((l) => l.aid), usedG = [].concat(...links.filter((l) => l.id !== rd.id).map((l) => l.goals));
+    const assets = F.items().filter((i) => i.type === 'a'), freeA = assets.filter((i) => usedA.indexOf(i.id) < 0);
+    const freeG = Object.keys(CO.names).sort().filter((k) => usedG.indexOf(k) < 0);
+    const asset = assets.find((i) => i.id === rd.aid), { ok, hint } = rdCalc();
+    const ttl = isNew ? 'Powiąż aktywo z celami' : (asset ? asset.name : 'Powiązanie');
+    return `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="${esc(ttl)}">
+        <div style="font-family:var(--display);font-size:18px;font-weight:600">${esc(ttl)}</div>
+        ${isNew ? `<div class="ffield" role="radiogroup" aria-label="Aktywo z Majątku"><span style="font-size:13px;color:var(--muted)">Aktywo z Majątku *</span>
+          ${freeA.map((i) => `<button role="radio" aria-checked="${rd.aid === i.id}" class="frdopt${rd.aid === i.id ? ' on' : ''}" data-a="fvrdasset" data-id="${i.id}"><span>${esc(i.name)}</span><span style="color:var(--muted)">${F.money(i.val)}</span></button>`).join('')}
+          ${freeA.length ? '' : '<div style="font-size:13px;color:var(--muted)">Wszystkie aktywa są już powiązane. Dodaj aktywo w Majątku.</div>'}</div>` : ''}
+        <div class="ffield"><span style="font-size:13px;color:var(--muted)">Cele inwestycji tego aktywa *</span>
+          <div class="ttagrow">${freeG.map((k) => { const on = rd.goals.indexOf(k) >= 0; return `<button role="checkbox" aria-checked="${on}" class="frdgoal${on ? ' on' : ''}" style="--gc:${CO.color(k)}" data-a="fvrdgoal" data-k="${esc(k)}">${on ? '✓ ' : ''}${esc(gname(k))}</button>`; }).join('')}</div>
+          ${freeG.length ? '' : '<div style="font-size:13px;color:var(--muted)">Brak wolnych celów – pozostałe są powiązane z innymi aktywami.</div>'}</div>
+        ${isNew ? '' : `<label class="ffield"><span style="font-size:13px;color:var(--muted)">Aktualna wartość aktywa (zł)</span><input class="finput amt" type="text" inputmode="decimal" maxlength="12" value="${esc(rd.val)}" data-in="fin-rdval" aria-label="Aktualna wartość aktywa w złotych" autocomplete="off"></label>`}
+        <div data-rdhint role="status" style="font-size:13px;line-height:1.4;color:#F2D9A0">${esc(hint)}</div>
+        <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fvrdclose">Anuluj</button><button class="primary gold${ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fvrdsave">Zapisz</button></div>
+        ${isNew ? '' : '<button class="btn-del" style="height:44px;font-size:14px" data-a="fvrddel">Usuń powiązanie (aktywo zostaje w Majątku)</button>'}
+      </div></div>`;
   }
 
   // ---------- Okno „Nowe wydatki” (Finanse i Wydatki) ----------
@@ -350,7 +421,8 @@
     const Ad = U.add, d = Ad.draft, cats = F.activeCats();
     const canAdd = F.parseAmt(d.amt) > 0 && !!d.cat;
     const tot = F.sum(Ad.drafts), n = Ad.drafts.length;
-    const ed = !!Ad.edit, ttl = ed ? 'Edytuj wydatek' : 'Nowe wydatki';   // v28: ten sam formularz do edycji jednego wydatku
+    const ed = !!Ad.edit, de = !ed && Ad.de != null && Ad.drafts[Ad.de] != null;   // v28: edycja wydatku; v37: edycja pozycji „Do zapisania”
+    const ttl = ed ? 'Edytuj wydatek' : de ? 'Edytuj pozycję listy' : 'Nowe wydatki';
     return `<div class="overlay" style="z-index:20" role="dialog" aria-modal="true" aria-label="${ttl}">
       <div class="topbar"><button class="iconbtn" data-a="faddclose" aria-label="Zamknij bez zapisywania">${I.close}</button><h1>${ttl}</h1></div>
       <div class="dscroll" data-scroll="fin-add">
@@ -367,12 +439,13 @@
             ${!cats.length ? '<div style="font-size:13px;color:#F2D9A0;line-height:1.4">Nie masz jeszcze własnych kategorii. Dotknij „zmień” i dodaj pierwszą.</div>' : ''}
             ${catDropdown(cats, d.cat)}
           </div>
-          ${ed ? '' : `<div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>`}
-          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : ed ? 'Wymagane są kwota i kategoria. Zmiana daty przeniesie wydatek do innego dnia.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
+          ${ed ? '' : de ? `<div style="display:flex;gap:10px"><button class="btn2" style="flex:1;font-weight:600" data-a="fdecancel">Anuluj edycję</button><button class="fnow${canAdd ? '' : ' off'}" data-a="fdesave">Zapisz zmiany</button></div>`
+            : `<div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>`}
+          <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : de ? 'Edytujesz pozycję z listy „Do zapisania”. Wymagane są kwota i kategoria.' : ed ? 'Wymagane są kwota i kategoria. Zmiana daty przeniesie wydatek do innego dnia.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
           ${Ad.msg ? okbox(Ad.msg) : ''}
         </div>
         ${n && !ed ? `<div class="dcard tight"><div class="dhead"><div class="eyebrow">Do zapisania</div><div style="font-size:13px;font-weight:600">Razem: ${F.money(tot)}</div></div>
-          ${Ad.drafts.map((e, i) => { const c = F.catOf(e.cat); return `<div class="frow">${dot(c.color)}<span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(F.dlabel(e.date) + ' · ' + c.name)}</span></span><b>${F.money(e.amt)}</b><button class="iconbtn soft" data-a="fdraftdel" data-i="${i}" aria-label="Usuń z listy: ${esc(e.desc || c.name)}">${J.x}</button></div>`; }).join('')}</div>` : ''}
+          ${Ad.drafts.map((e, i) => { const c = F.catOf(e.cat), on = de && Ad.de === i; return `<div class="frow fdrow${on ? ' on' : ''}">${dot(c.color)}<button class="fdedit" data-a="fdeedit" data-i="${i}" aria-label="${esc('Edytuj pozycję z listy: ' + (e.desc || c.name) + ', ' + F.money(e.amt))}"><span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(F.dlabel(e.date) + ' · ' + c.name)}</span></span><b>${F.money(e.amt)}</b><span class="pen" aria-hidden="true">${J.pen || '✎'}</span></button><button class="iconbtn soft" data-a="fdraftdel" data-i="${i}" aria-label="Usuń z listy: ${esc(e.desc || c.name)}">${J.x}</button></div>`; }).join('')}</div>` : ''}
       </div>
       <div class="footbar">${ed ? `<button class="primary${canAdd ? '' : ' dim'}" data-a="feditsave">Zapisz zmiany</button>`
         : `<button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button>`}</div>
@@ -812,7 +885,21 @@
     },
     // v28: karta „Dziś” na ekranie Finanse -> lista wydatków bieżącego miesiąca z rozwiniętym dniem dzisiejszym
     fhometoday: () => { const T = today(), E = U.exp; E.tab = 'list'; E.lm = ym(T); E.open[T] = true; E.msg = ''; E.undo = null; location.hash = '#/fin/exp'; },
-    fdraftdel: (el) => { U.add.drafts.splice(+el.dataset.i, 1); R_(); },
+    fdraftdel: (el) => {
+      const Ad = U.add, i = +el.dataset.i; Ad.drafts.splice(i, 1);
+      if (Ad.de != null) { if (Ad.de === i) { Ad.de = null; Ad.draft = Object.assign(newDraft(), { date: Ad.draft.date }); Ad.err = false; } else if (Ad.de > i) Ad.de--; }   // usunięcie edytowanej kończy edycję
+      R_();
+    },
+    // v37 (makieta v183): edycja pozycji listy „Do zapisania” – wczytanie do formularza, zapis podmienia pozycję (bez zapisu wydatku)
+    fdeedit: (el) => { const Ad = U.add, i = +el.dataset.i, e = Ad.drafts[i]; if (!e) return; Ad.de = i; Ad.draft = { date: e.date, desc: e.desc || '', amt: e.amt.toFixed(2).replace('.', ','), cat: e.cat }; Ad.err = false; Ad.dd = false; Ad.q = ''; Ad.msg = ''; U.cal = null; R_(); },
+    fdecancel: () => { const Ad = U.add; Ad.de = null; Ad.draft = Object.assign(newDraft(), { date: Ad.draft.date }); Ad.err = false; Ad.dd = false; U.cal = null; R_(); },
+    fdesave: () => {
+      const Ad = U.add, d = Ad.draft, amt = F.parseAmt(d.amt);
+      if (Ad.de == null) return;
+      if (!(amt > 0) || !d.cat) { Ad.err = true; R_(); return; }
+      Ad.drafts[Ad.de] = { date: d.date, desc: String(d.desc).trim(), amt, cat: d.cat };
+      Ad.de = null; Ad.draft = Object.assign({}, d, { desc: '', amt: '' }); Ad.err = false; Ad.dd = false; U.cal = null; R_();
+    },
     faddsave: () => {
       const Ad = U.add; if (!Ad || !Ad.drafts.length) return;
       const added = F.addExpenses(Ad.drafts), tot = F.sum(added);
@@ -957,6 +1044,28 @@
     fgdelno: () => { U.goals.dlg.confirm = false; R_(); },
     fgdelyes: () => { F.goalRemove(U.goals.dlg.id); U.goals.dlg = null; R_(); },
     // Inwestycje (v19)
+    // v37: widoki Inwestycji, Historia wpłat, ROI
+    fvtab: (el) => { U.inv.tab = el.dataset.v; U.inv.rd = null; R_(); },
+    fvhmode: (el) => { U.inv.hmode = el.dataset.v; R_(); },
+    fvhnav: (el) => {
+      const V = U.inv, d = +el.dataset.d, T = today();
+      if (V.hmode === 'm') { const n = addMonths(V.hym, d); if (n <= ym(T)) V.hym = n; } else { const n = V.hfy + d; if (n <= +T.slice(0, 4)) V.hfy = n; }
+      R_();
+    },
+    fvhfrom: () => { const V = U.inv; A.datePick({ value: V.hfrom, min: '2020-01-01', max: today(), onPick: (k) => { V.hfrom = k; } }); },
+    fvrdnew: () => { U.inv.rd = { t: 'new', id: null, aid: null, goals: [], val: '' }; R_(); },
+    fvrdedit: (el) => { const x = F.retComps().find((c) => c.l.id === el.dataset.id); if (!x) return; U.inv.rd = { t: 'edit', id: x.l.id, aid: x.l.aid, goals: x.l.goals.slice(), val: String(x.a.val).replace('.', ',') }; R_(); },
+    fvrdclose: () => { U.inv.rd = null; R_(); },
+    fvrdasset: (el) => { U.inv.rd.aid = el.dataset.id; R_(); },
+    fvrdgoal: (el) => { const rd = U.inv.rd, k = el.dataset.k; rd.goals = rd.goals.indexOf(k) >= 0 ? rd.goals.filter((x) => x !== k) : rd.goals.concat([k]); R_(); },
+    fvrdsave: () => {
+      const rd = U.inv.rd, a = F.items().find((i) => i.id === rd.aid && i.type === 'a'), nv = parseVal(rd.val);
+      if (!a || !rd.goals.length || (rd.t !== 'new' && !(nv !== null && nv >= 0))) return;
+      F.retSave({ id: rd.id, aid: rd.aid, goals: rd.goals });
+      if (rd.t !== 'new' && F.r2(nv) !== a.val) F.updateItem(a.id, nv);   // zapis w Majątku: „Aktualizacja: … (a → b)” i punkt wykresu
+      U.inv.rd = null; R_();
+    },
+    fvrddel: () => { F.retRemove(U.inv.rd.id); U.inv.rd = null; R_(); },
     fvdate: () => { const D = U.inv.dlg; A.datePick({ value: D.d, min: '2020-01-01', max: today(), onPick: (k) => { D.d = k; } }); },
     fvfrom: () => { const V = U.inv; A.datePick({ value: V.from, min: '2020-01-01', max: today(), onPick: (k) => { V.from = k; } }); },
     fvmode: (el) => { U.inv.mode = el.dataset.v; U.cal = null; R_(); },
@@ -996,6 +1105,7 @@
     else if (k === 'fin-gname') U.goals.dlg.name = v.slice(0, 40);
     else if (k === 'fin-gtarget') { el.value = amtClean(v, 12); U.goals.dlg.target = el.value; }
     else if (k === 'fin-gsaved') { el.value = amtClean(v, 12); U.goals.dlg.saved = el.value; }
+    else if (k === 'fin-rdval') { el.value = amtClean(v, 12); U.inv.rd.val = el.value; const c = rdCalc(), h = document.querySelector('[data-rdhint]'), b = document.querySelector('[data-a=fvrdsave]'); if (h) h.textContent = c.hint; if (b) b.classList.toggle('dim', !c.ok); return; }
     else if (k === 'fin-vamt') { el.value = amtClean(v, 12); U.inv.dlg.amt = el.value; }
     else if (k === 'fin-vcustom') { U.inv.dlg.custom = v.slice(0, 30); const b = document.querySelector('[data-a=fvgadd]'); if (b) b.classList.toggle('off', !v.trim()); return; }
     else if (k === 'fin-planq') { U.plan.q = v.slice(0, 24); planFilter(); return; }
@@ -1062,6 +1172,7 @@
     if (U.cats) { U.cats = null; return true; }
     if (U.cush.dlg) { U.cush.dlg = null; return true; }
     if (U.goals.dlg) { U.goals.dlg = null; return true; }
+    if (U.inv.rd) { U.inv.rd = null; return true; }
     if (U.inv.dlg) { if (U.inv.dlg.dd) U.inv.dlg.dd = false; else U.inv.dlg = null; return true; }
     if (U.add) { U.add = null; return true; }
     if (U.worth.edit || U.worth.add) { U.worth.edit = null; U.worth.add = null; return true; }
@@ -1072,7 +1183,7 @@
   function onRoute(r) {
     U.add = null; U.cats = null; U.cal = null; U.home.msg = '';
     U.exp.msg = ''; U.exp.undo = null; U.res.msg = ''; U.res.undo = null; U.res.add = null;
-    U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null; U.goals.dlg = null; U.inv.dlg = null;
+    U.worth.edit = null; U.worth.add = null; U.worth.sel = null; U.cush.dlg = null; U.goals.dlg = null; U.inv.dlg = null; U.inv.rd = null;
     if (r.name === 'fin' && r.arg === 'inv') invInit();
     if (r.name === 'fin' && r.arg === 'plan') { U.plan.scope = 'month'; planInit(); }
     if (r.name === 'fin' && r.arg === 'exp') U.exp.tab = r.arg2 === 'cat' ? 'cat' : 'list';

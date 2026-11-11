@@ -14,6 +14,7 @@
   const KEY = 'mylife.polar.v1', TOK = 'mylife.polar.tok', PEND = 'mylife.polar.pend';
   const DEF_URL = 'https://mylife-polar.tomekpohl.workers.dev';
   const SCOPE = 'training_sessions:read sports:read';
+  const SKIP = 'STRENGTH_TRAINING';   // v37 (makieta v183): trening siłowy nie jest synchronizowany – dodaje się go ręcznie
   const CHUNK = 90;          // dni na zapytanie (limit API)
   const BACK = 30;           // kolejne synchronizacje pobierają też ostatnie 30 dni (treningi przesłane z zegarka później)
   const AUTO = 15 * 60000;   // samoczynna synchronizacja przy otwarciu aplikacji – nie częściej niż co 15 min
@@ -110,7 +111,7 @@
     const pol = { kcal: numOr(t.calories, t.kiloCalories, t.energy), hrAvg: numOr(t.hrAvg, t.averageHeartRate, hr.average, hr.avg), hrMax: numOr(t.hrMax, t.maximumHeartRate, hr.maximum, hr.max), load: numOr(t.trainingLoad, t.cardioLoad, t.trainingLoadPro && t.trainingLoadPro.cardioLoad) };
     Object.keys(pol).forEach((k) => { if (pol[k] != null) pol[k] = Math.round(pol[k]); });
     const name = String(t.name || '').trim().slice(0, 40) || sport;
-    return { d, min, w: { d, name, src: 'polar', pid: flat((t.identifier && t.identifier.id) || t.identifier || t.id), pol, tags: [], ex: [{ name: sport, kind: 'car', min, iv: false, ivs: [], watts: null, km }] } };
+    return { d, min, w: { d, name, src: 'polar', sport: code || '', pid: flat((t.identifier && t.identifier.id) || t.identifier || t.id), pol, tags: [], ex: [{ name: sport, kind: 'car', min, iv: false, ivs: [], watts: null, km }] } };
   }
 
   // ---------- Synchronizacja ----------
@@ -132,21 +133,23 @@
     const seen = {}, items = [];
     all.forEach((t) => { const x = toWorkout(t, codes[sportId(t)] || ''); if (!x.w.pid || seen[x.w.pid] || !/^\d{4}-\d{2}-\d{2}$/.test(x.d) || x.d < st.since || x.d > today) return; seen[x.w.pid] = 1; items.push({ t, x, code: codes[sportId(t)] || '' }); });
     items.sort((p, q) => String(p.t.startTime || '').localeCompare(String(q.t.startTime || '')));
-    let added = 0, had = 0; const ticks = {};
+    let added = 0, had = 0, skip = 0; const ticks = {};
     items.forEach(({ x, code }) => {
+      if (code === SKIP) { skip++; return; }
       if (TR.polSeen(x.w.pid)) { had++; return; }
       TR.upsert(x.w); added++;
       if (RC && code) RC.polarTick(code, x.d, x.min).forEach((k) => { ticks[k.name] = (ticks[k.name] || 0) + k.n; });
     });
     st.last = stamp(); st.lastD = today; st.at = Date.now(); save();
-    return { total: items.length, added, had, ticks, from };
+    return { total: items.length - skip, added, had, ticks, from, skip };
   }
   function message(r, first) {
     const tk = Object.keys(r.ticks), nt = tk.reduce((s, k) => s + r.ticks[k], 0);
+    const skTxt = r.skip ? ' Pominięto ' + r.skip + ' ' + C.plural(r.skip, 'trening siłowy', 'treningi siłowe', 'treningów siłowych') + ' (nie ' + (r.skip === 1 ? 'jest synchronizowany' : 'są synchronizowane') + ').' : '';
     const tickTxt = nt ? ' Odhaczono ' + nt + ' ' + C.plural(nt, 'termin', 'terminy', 'terminów') + ' ' + (tk.length === 1 ? 'aktywności „' + tk[0] + '”' : 'aktywności: ' + tk.map((k) => k + ' (' + r.ticks[k] + ')').join(', ')) + '.' : '';
-    if (first) return 'Połączono z Polar Flow. Pobrano ' + r.total + ' ' + C.plural(r.total, 'trening', 'treningi', 'treningów') + ' od ' + C.dmy(st.since) + (r.had ? ' (' + r.added + ' ' + C.plural(r.added, 'nowy', 'nowe', 'nowych') + ', ' + r.had + ' już ' + C.plural(r.had, 'był', 'były', 'było') + ' w historii)' : '') + '.' + tickTxt;
-    if (!r.added) return 'Synchronizacja zakończona. Brak nowych treningów od ostatniej synchronizacji. Zmiany zrobione w aplikacji nie są nadpisywane.' + tickTxt;
-    return 'Synchronizacja zakończona. Nowe treningi: ' + r.added + '.' + tickTxt + ' Zmiany zrobione w aplikacji nie są nadpisywane.';
+    if (first) return 'Połączono z Polar Flow. Pobrano ' + r.total + ' ' + C.plural(r.total, 'trening', 'treningi', 'treningów') + ' od ' + C.dmy(st.since) + (r.had ? ' (' + r.added + ' ' + C.plural(r.added, 'nowy', 'nowe', 'nowych') + ', ' + r.had + ' już ' + C.plural(r.had, 'był', 'były', 'było') + ' w historii)' : '') + '.' + tickTxt + skTxt;
+    if (!r.added) return 'Synchronizacja zakończona. Brak nowych treningów od ostatniej synchronizacji. Zmiany zrobione w aplikacji nie są nadpisywane.' + tickTxt + skTxt;
+    return 'Synchronizacja zakończona. Nowe treningi: ' + r.added + '.' + tickTxt + ' Zmiany zrobione w aplikacji nie są nadpisywane.' + skTxt;
   }
   // interactive: po wygaśnięciu logowania przejście do Polar (przycisk); bez – cicha próba (otwarcie aplikacji).
   function sync(interactive, first) {
@@ -172,5 +175,5 @@
   const onChange = (f) => listeners.push(f);
 
   load();
-  window.Polar = { load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
+  window.Polar = { SKIP, load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
 })();

@@ -44,6 +44,13 @@
   const ivMinutes = (ivs) => Math.round((ivs || []).reduce((t, v) => t + (v.rounds || 0) * ((v.work || 0) + (v.rest || 0)), 0) / 60 * 10) / 10;
   function load() {
     try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && Array.isArray(o.list)) db = norm(Object.assign(empty(), o)); } } catch (e) { console.warn('Trening: nie udało się wczytać danych', e); }
+    // v37 (decyzja właściciela 11.11.2026): jednorazowo usuń treningi z Polar o sporcie „Trening siłowy” pobrane przez v36
+    // i niezmienione w aplikacji (jedno ćwiczenie kondycyjne „Trening siłowy”, bez znaczników); identyfikatory zostają w pol.seen.
+    if (!db.pol.c37) {
+      const bad = (w) => w.src === 'polar' && (w.sport === 'STRENGTH_TRAINING' || (!w.sport && (w.tags || []).length === 0 && (w.ex || []).length === 1 && w.ex[0].kind === 'car' && w.ex[0].name === 'Trening siłowy' && !w.ex[0].iv && !w.ex[0].watts));
+      const n = db.list.length; db.list = db.list.filter((w) => !bad(w)); db.pol.c37 = 1;
+      if (db.list.length !== n || localStorage.getItem(KEY)) { try { save(); } catch (e) {} }
+    }
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert('Nie udało się zapisać treningów na telefonie: ' + e.message); }

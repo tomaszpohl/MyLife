@@ -28,7 +28,7 @@
   const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
   const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {}, order: [] } });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {}, order: [] }, invRet: { links: [] } });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -45,6 +45,7 @@
     d.cats = Object.assign({ mode: 'default', custom: [] }, d.cats || {});
     d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
     ['goals', 'inv', 'invGoals'].forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });   // v19: cele i inwestycje
+    d.invRet = { links: (d.invRet && Array.isArray(d.invRet.links)) ? d.invRet.links : [] };   // v37: zwrot z inwestycji (aktywo ↔ cele)
     d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {}, order: (d.plan && Array.isArray(d.plan.order)) ? d.plan.order : [] };   // v27: planer wydatków (plany miesięczne); v28: kolejność kategorii
     // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
     if (!d.cats.recolored) {
@@ -144,6 +145,7 @@
     const it = db.worth.items.find((i) => i.id === wid); if (!it) return;
     db.worth.items = db.worth.items.filter((i) => i.id !== wid);
     db.cush.items = db.cush.items.filter((k) => k.aid !== wid);   // usunięte aktywo znika też z poduszki
+    db.invRet.links = db.invRet.links.filter((l) => l.aid !== wid);   // v37: i z powiązań zwrotu z inwestycji
     pushHist('Usunięto pozycję: ' + it.name, hx('del', it, it.val, 0));
     save();
   }
@@ -244,6 +246,23 @@
     return { names, color: (k) => INV_PAL[Math.max(0, keys.indexOf(k)) % INV_PAL.length] };
   }
 
+  // ---------- Zwrot z inwestycji (v37, makieta v183/v184) ----------
+  // Powiązanie = aktywo z Majątku + cele inwestycji (klucze `gkey`; jeden cel tylko przy jednym aktywie).
+  // Zysk/strata = wartość aktywa − suma wszystkich wpłat na wybrane cele (bez względu na okres).
+  const retLinks = () => db.invRet.links.slice();
+  const retInvested = (goals) => r2(db.inv.filter((e) => goals.indexOf(gkey(e.goal)) >= 0).reduce((t, e) => t + e.amt, 0));
+  function retComps() {
+    return db.invRet.links.map((l) => ({ l, a: db.worth.items.find((i) => i.id === l.aid && i.type === 'a') })).filter((x) => x.a)
+      .map((x) => { const inv = retInvested(x.l.goals); return Object.assign(x, { inv, gain: r2(x.a.val - inv) }); });
+  }
+  function retSave(o) {   // { id?, aid, goals }
+    const goals = (o.goals || []).map(gkey).filter((k, i, a) => k && a.indexOf(k) === i);
+    if (o.id && db.invRet.links.some((l) => l.id === o.id)) db.invRet.links = db.invRet.links.map((l) => (l.id === o.id ? { id: l.id, aid: l.aid, goals } : l));
+    else db.invRet.links.push({ id: id('r'), aid: o.aid, goals });
+    save();
+  }
+  function retRemove(rid) { db.invRet.links = db.invRet.links.filter((l) => l.id !== rid); save(); }
+
   // ---------- Import z pliku .xlsx (v9) – dane są dodawane do istniejących, nic nie jest nadpisywane ----------
   const nkey = (t) => String(t || '').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/\s+/g, ' ').trim();
   // parts: wynik FinImport.analyze (tylko zaznaczone). Zwraca podsumowanie.
@@ -334,6 +353,7 @@
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
     goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
+    retLinks, retInvested, retComps, retSave, retRemove,
     planMonth, planYear, planSet, planCopy, planView, planOrder, planSetOrder, updateExpense, updateIncome,
     importParts, exportData, importData, summary
   };

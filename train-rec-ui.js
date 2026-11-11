@@ -26,14 +26,17 @@
   const polTxt = (a) => ((a.polar || []).length ? ' · Polar: ' + (a.polar.length === 1 ? PS().name(a.polar[0]) : pl(a.polar.length, 'sport', 'sporty', 'sportów')) : '');
   function polOpts(d) {
     const l = PS().list().filter((q) => PS().match(q, d.polQ));
-    return l.length ? l.map((q) => { const on = d.pol.indexOf(q.code) >= 0; return `<button role="option" class="tcpopt${on ? ' on' : ''}" aria-selected="${on}" data-a="tcpol" data-c="${q.code}"><span>${esc(q.name)}</span><span class="mk" aria-hidden="true">${on ? '✓' : ''}</span></button>`; }).join('')
+    return l.length ? l.map((q) => {
+      const on = d.pol.indexOf(q.code) >= 0;
+      if (q.code === 'STRENGTH_TRAINING') return `<div role="option" class="tcpopt off" aria-disabled="true" aria-selected="false"><span>${esc(q.name)}<span class="tcpnote">Trening siłowy nie jest synchronizowany z Polar Flow</span></span></div>`;   // v37 (makieta v183)
+      return `<button role="option" class="tcpopt${on ? ' on' : ''}" aria-selected="${on}" data-a="tcpol" data-c="${q.code}"><span>${esc(q.name)}</span><span class="mk" aria-hidden="true">${on ? '✓' : ''}</span></button>`; }).join('')
       : `<div class="tcpnone">Brak sportów pasujących do „${esc(d.polQ.trim())}”.</div>`;
   }
   const polInfo = (d) => (d.pol.length ? 'Zaznaczono: ' + d.pol.length + ' z ' + PS().list().length + ' sportów Polar Flow.' : 'Do wyboru: ' + PS().list().length + ' sportów Polar Flow.');
   function polSection(d) {
     if (!PS()) return '';
     return `<div class="ffield tcpol"><span class="eyebrow">Sporty Polar Flow <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span>
-        <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow. Trening z zaznaczonego sportu odhacza terminy od najstarszego zaległego; przy podanym czasie trwania – tyle terminów, ile pełnych czasów trwania się w nim mieści.</div>
+        <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow (trening siłowy nie jest synchronizowany). Trening z zaznaczonego sportu odhacza terminy od najstarszego zaległego; przy podanym czasie trwania – tyle terminów, ile pełnych czasów trwania się w nim mieści.</div>
         ${d.pol.length ? `<div class="tcpchips">${d.pol.map((c) => `<span class="tcpchip">${esc(PS().name(c))}<button data-a="tcpol" data-c="${c}" aria-label="Usuń sport ${esc(PS().name(c))}">×</button></span>`).join('')}</div>` : ''}
         <input id="tc-polq" class="finput" type="search" autocomplete="off" placeholder="Szukaj sportu, np. spacer, bieg, rower" aria-label="Szukaj sportu Polar Flow" value="${esc(d.polQ)}" data-in="train-cpolq">
         <div class="tcplist" role="listbox" aria-multiselectable="true" aria-label="Sporty Polar Flow" data-pollist>${polOpts(d)}</div>
@@ -166,7 +169,7 @@
     },
     // v36: zaznaczenie / odznaczenie sportu Polar (lista i chip ×) – przewinięcie okna i listy zostaje
     tcpol: (el) => {
-      const d = U.dlg, c = el.dataset.c; if (!d || !c) return;
+      const d = U.dlg, c = el.dataset.c; if (!d || !c || (c === 'STRENGTH_TRAINING' && d.pol.indexOf(c) < 0)) return;
       const q = (s2) => document.querySelector(s2), m = q('.tcmodal'), l = q('[data-pollist]'), ms = m ? m.scrollTop : 0, ls = l ? l.scrollTop : 0;
       d.pol = d.pol.indexOf(c) >= 0 ? d.pol.filter((x) => x !== c) : d.pol.concat([c]);
       R();
