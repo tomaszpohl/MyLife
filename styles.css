@@ -1065,3 +1065,45 @@ a.dcard { color: var(--text); }
 .gnoerr .ic { width: 48px; height: 48px; border-radius: 24px; background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .gnoerr .t { font-size: 16px; font-weight: 600; }
 .gredir { padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); font-size: 14px; color: var(--text); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+
+/* v36 – Trening: dystans, znaczniki, wyszukiwarka Historii, treningi z Polar Flow (makieta v181/v182) */
+:root { --polar: #FF8A9A; --polar-bg: #2A1519; --polar-line: #6A2F36; }
+.tmeta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tpolb { height: 24px; padding: 0 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 12px; background: var(--polar-bg); border: 1px solid var(--polar-line); color: var(--polar); font-size: 12px; font-weight: 700; }
+.ttag { height: 24px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 12px; border: 1px solid var(--tc); color: var(--tc); font-size: 12px; font-weight: 600; }
+.ttag.big { height: 32px; padding: 0 2px 0 12px; border-radius: 16px; font-size: 13px; gap: 2px; }
+.ttag.big button { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--tc); font-size: 16px; font-family: inherit; }
+.ttags { display: flex; flex-direction: column; gap: 6px; }
+.ttagrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.ttagadd { flex: none; height: 44px; padding: 0 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--violet-line); color: var(--violet); font-size: 14px; font-weight: 600; }
+.ttagold { height: 32px; padding: 0 12px; border-radius: 16px; font-size: 13px; font-weight: 600; background: transparent; border: 1px dashed var(--tc); color: var(--tc); }
+.tpolcard { border-color: var(--polar-line); gap: 6px; }
+.tpolcard .h { font-size: 13px; font-weight: 600; color: var(--polar); }
+.tpolcard .r { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--text-2); }
+.tpolcard .r .b { font-family: var(--display); font-weight: 600; color: var(--text); }
+.tpolinfo { display: flex; flex-direction: column; gap: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); padding: 10px 12px; }
+.tpolinfo .h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--polar); }
+.tpolinfo .s { font-size: 12px; line-height: 1.4; color: var(--muted); }
+.thfind { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.thsearch { position: relative; display: flex; align-items: center; }
+.thsearch > span { position: absolute; left: 12px; color: var(--muted); display: flex; pointer-events: none; }
+.thsearch input, .thsel { width: 100%; height: 44px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; color: var(--text); font-size: 15px; font-family: inherit; }
+.thsearch input { padding: 0 12px 0 40px; }
+.thsel { padding: 0 12px; }
+.thlist { display: flex; flex-direction: column; gap: 12px; }
+.tnores { padding: 20px 16px; text-align: center; font-size: 14px; color: var(--muted); }
+/* Aktywności cykliczne – sporty Polar Flow */
+.tcpol { gap: 8px; }
+.tcpchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tcpchip { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 2px 0 12px; border-radius: 16px; font-size: 13px; font-weight: 600; background: var(--polar-bg); border: 1px solid var(--polar-line); color: var(--polar); }
+.tcpchip button { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--polar); font-size: 16px; font-family: inherit; }
+.tcplist { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); }
+.tcpopt { min-height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; background: transparent; border: none; border-bottom: 1px solid #1A232E; padding: 0 14px; color: var(--text); font-size: 14px; font-family: inherit; }
+.tcpopt.on { background: var(--polar-bg); }
+.tcpopt .mk { color: var(--polar); font-weight: 700; }
+.tcpnone { padding: 12px 14px; font-size: 13px; color: var(--muted); }
+/* Ustawienia – Polar Flow */
+.sgico.pfico { background: var(--polar-bg); color: var(--polar); }
+.primary.pfbtn { background: var(--polar); color: #2A0F14; }
+.okbox.pfmsg:not(.warn) { background: var(--polar-bg); color: #FFD3D9; }
+.pfask { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--polar-line); font-size: 13px; line-height: 1.45; color: var(--text-2); }

@@ -21,10 +21,28 @@
   // v31: podpowiedź z informacją o Dzienniku diety (makieta 08.11.2026)
   const HINT = 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą. Wykonana trafia do Dziennika diety (Aktywność fizyczna) razem z czasem trwania.';
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
+  // v36 (makieta v181): sporty Polar Flow powiązane z aktywnością.
+  const PS = () => window.PolarSports;
+  const polTxt = (a) => ((a.polar || []).length ? ' · Polar: ' + (a.polar.length === 1 ? PS().name(a.polar[0]) : pl(a.polar.length, 'sport', 'sporty', 'sportów')) : '');
+  function polOpts(d) {
+    const l = PS().list().filter((q) => PS().match(q, d.polQ));
+    return l.length ? l.map((q) => { const on = d.pol.indexOf(q.code) >= 0; return `<button role="option" class="tcpopt${on ? ' on' : ''}" aria-selected="${on}" data-a="tcpol" data-c="${q.code}"><span>${esc(q.name)}</span><span class="mk" aria-hidden="true">${on ? '✓' : ''}</span></button>`; }).join('')
+      : `<div class="tcpnone">Brak sportów pasujących do „${esc(d.polQ.trim())}”.</div>`;
+  }
+  const polInfo = (d) => (d.pol.length ? 'Zaznaczono: ' + d.pol.length + ' z ' + PS().list().length + ' sportów Polar Flow.' : 'Do wyboru: ' + PS().list().length + ' sportów Polar Flow.');
+  function polSection(d) {
+    if (!PS()) return '';
+    return `<div class="ffield tcpol"><span class="eyebrow">Sporty Polar Flow <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span>
+        <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow. Trening z zaznaczonego sportu odhacza terminy od najstarszego zaległego; przy podanym czasie trwania – tyle terminów, ile pełnych czasów trwania się w nim mieści.</div>
+        ${d.pol.length ? `<div class="tcpchips">${d.pol.map((c) => `<span class="tcpchip">${esc(PS().name(c))}<button data-a="tcpol" data-c="${c}" aria-label="Usuń sport ${esc(PS().name(c))}">×</button></span>`).join('')}</div>` : ''}
+        <input id="tc-polq" class="finput" type="search" autocomplete="off" placeholder="Szukaj sportu, np. spacer, bieg, rower" aria-label="Szukaj sportu Polar Flow" value="${esc(d.polQ)}" data-in="train-cpolq">
+        <div class="tcplist" role="listbox" aria-multiselectable="true" aria-label="Sporty Polar Flow" data-pollist>${polOpts(d)}</div>
+        <div style="font-size:12px;color:var(--muted)" data-polinfo>${esc(polInfo(d))}</div></div>`;
+  }
 
   function openDlg(a) {
-    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', rep: false, confirm: false }
-      : { id: 0, name: '', dur: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
+    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', pol: (a.polar || []).slice(), polQ: '', rep: false, confirm: false }
+      : { id: 0, name: '', dur: '', pol: [], polQ: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
   }
   function check(d) {
     const ex = d.id ? RC.get(d.id) : null, start = ex ? ex.start : C.todayKey(), custom = d.type === 'custom';
@@ -53,7 +71,7 @@
         ${multi ? `<div class="tcsubs" role="group" aria-label="Podzadania: ${esc(a.name)}">${x.ds.map((k) => { const on = !!a.done[k]; return `<button class="tcsub" data-a="tcsub" data-id="${a.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RC.dm(k))}">${box(on, 1)}<span class="${on ? 'done' : ''}">${esc(a.name + ' - ' + RC.dm(k))}</span></button>`; }).join('')}</div>` : ''}
       </div>`;
     }).join('');
-    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a))}</span></div></div>
+    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a) + (PS() ? polTxt(a) : ''))}</span></div></div>
       <button class="iconbtn tcpen" data-a="tcedit" data-id="${a.id}" aria-label="Edytuj aktywność ${esc(a.name)}">${K.pencil}</button></div>`).join('');
     return `<button class="tprimary" data-a="tcnew">${K.plus}<span>Dodaj aktywność</span></button>
       <div class="eyebrow" style="margin-top:4px">Na dziś · ${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</div>
@@ -92,6 +110,7 @@
         <button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="tcclose" aria-label="Zamknij">${K.x}</button></div>
       <label class="ffield"><span class="eyebrow">Nazwa</span><input class="finput" type="text" maxlength="40" placeholder="np. Spacer" value="${esc(d.name)}" data-in="train-cname" autocomplete="off"></label>
       <label class="ffield"><span class="eyebrow">Czas trwania (min) <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span><input class="finput${c.durOk ? '' : ' bad'}" type="text" inputmode="numeric" maxlength="3" placeholder="np. 40" value="${esc(d.dur)}" data-in="train-cdur" autocomplete="off"></label>
+      ${polSection(d)}
       <div class="ffield"><span class="eyebrow">Powtarzanie</span>
         <button class="select${d.rep ? ' open tv' : ''}" data-a="tcrep" aria-haspopup="listbox" aria-expanded="${d.rep}"><span>${NAMES[d.type]}</span><span class="frot${d.rep ? ' up' : ''}" style="display:flex">${K.down}</span></button>
         ${d.rep ? `<div class="bdlist" role="listbox" aria-label="Powtarzanie">${Object.keys(NAMES).map((k) => `<button role="option" class="bdopt tv${d.type === k ? ' on' : ''}" aria-selected="${d.type === k}" data-a="tctype" data-v="${k}"><span>${NAMES[k]}</span>${d.type === k ? `<span style="display:flex;color:var(--violet)">${K.check}</span>` : ''}</button>`).join('')}</div>` : ''}
@@ -142,8 +161,16 @@
     tcend: (el) => { U.dlg.end = el.dataset.v; R(); },
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;
-      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep });
+      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep, polar: d.pol.slice() });
       U.dlg = null; if (!retDay()) R();
+    },
+    // v36: zaznaczenie / odznaczenie sportu Polar (lista i chip ×) – przewinięcie okna i listy zostaje
+    tcpol: (el) => {
+      const d = U.dlg, c = el.dataset.c; if (!d || !c) return;
+      const q = (s2) => document.querySelector(s2), m = q('.tcmodal'), l = q('[data-pollist]'), ms = m ? m.scrollTop : 0, ls = l ? l.scrollTop : 0;
+      d.pol = d.pol.indexOf(c) >= 0 ? d.pol.filter((x) => x !== c) : d.pol.concat([c]);
+      R();
+      const m2 = q('.tcmodal'), l2 = q('[data-pollist]'); if (m2) m2.scrollTop = ms; if (l2) l2.scrollTop = ls;
     },
     tcdelask: () => { U.dlg.confirm = true; R(); },
     tcdelno: () => { U.dlg.confirm = false; R(); },
@@ -165,6 +192,7 @@
       if (k === 'train-cname') d.name = el.value.slice(0, 40);
       else if (k === 'train-cdur') { el.value = el.value.replace(/\D/g, '').slice(0, 3); d.dur = el.value; const v = parseInt(d.dur, 10); el.classList.toggle('bad', !(d.dur === '' || (v >= 1 && v <= 600))); }
       else if (k === 'train-cuntil') d.until = el.value;
+      else if (k === 'train-cpolq') { d.polQ = el.value.slice(0, 40); const l = document.querySelector('[data-pollist]'); if (l) { l.innerHTML = polOpts(d); l.scrollTop = 0; } return true; }
       else if (k === 'train-ccount') { el.value = el.value.replace(/\D/g, '').slice(0, 3); d.count = el.value; if (d.end !== 'count') { d.end = 'count'; R(); return true; } }
       else return false;
       live(); return true;

@@ -2,6 +2,7 @@
    Dane w bazie Treningu (mylife.train.v1 → rec = { next, list }), więc są w kopii modułu Trening.
    Aktywność: { id, name, start: 'RRRR-MM-DD', rep: { type: 'daily'|'weekly'|'monthly'|'custom', n, unit: 'day'|'week'|'month', days: [0–6], end: 'never'|'date'|'count', until, count },
                 dur (od v31: czas trwania w min, tekst, puste = brak), done: { 'termin': 'data wykonania' } }.
+   Od v36: `polar: [kody sportów Polar]` – trening z Polar w tym sporcie odhacza terminy (polarTick).
    Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają (od v25) do najbliższego terminu
    aktywności (dziś, jeśli dziś jest terminem, inaczej następny termin) jako zaległe podzadania z datą
    (decyzja właściciela: 60 dni jak w makiecie; Tydzień i Miesiąc też pokazują aktywności). Bez godzin i przypomnień. */
@@ -122,6 +123,26 @@
     else { e.id = R.next++; e.done = e.done || {}; R.list.push(e); }
     TR.save(); return get(e.id);
   }
+  // v36 (Polar Flow, ustalenia właściciela 11.11.2026): nowy trening z Polar w sporcie `code` z dnia d (min minut) odhacza
+  // terminy aktywności z tym sportem w `a.polar` – od najstarszego niewykonanego (60 dni przed treningiem) do dnia treningu.
+  // Z czasem trwania: tyle terminów, ile pełnych czasów trwania mieści się w treningu (krótszy trening – nic); bez – jeden.
+  // Wykonanie zapisuje się z datą treningu (trafia też do wpisu w Dzienniku diety).
+  function polarTick(code, d, min) {
+    const out = [];
+    list().forEach((a) => {
+      if (!Array.isArray(a.polar) || a.polar.indexOf(code) < 0) return;
+      const dur = parseInt(a.dur, 10) || 0, n = dur ? Math.floor((Math.round((min || 0) * 10) / 10) / dur) : 1;
+      if (n <= 0) return;
+      const lo = C.addDays(d, -LOOK), ks = [];
+      a.done = a.done || {};
+      for (let x = lo > a.start ? lo : a.start; x <= d && ks.length < n; x = C.addDays(x, 1)) if (occ(a, x) && !a.done[x]) ks.push(x);
+      if (!ks.length) return;
+      ks.forEach((x) => { a.done[x] = d; });
+      out.push({ id: a.id, name: a.name, n: ks.length });
+    });
+    if (out.length) TR.save();
+    return out;
+  }
   function remove(id) { const R = TR.recDb(); R.list = R.list.filter((x) => x.id !== +id); TR.save(); }
 
   // Statystyki: okres 'w' (7 dni), 'm' (30 dni), 'a' (cały okres) – jak w makiecie.
@@ -153,5 +174,5 @@
     return { planned, done, late, missed, streak, best, over, dots };
   }
 
-  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct };
+  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick };
 })();

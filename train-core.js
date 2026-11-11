@@ -4,17 +4,29 @@
    Ćwiczenie siłowe:     { name, kind: 'str', bw (od v29: ciężar własny – kg = 0, poza Postępami), sets: [{ n (serie), kg, reps }] }.
    Ćwiczenie kondycyjne: { name, kind: 'car', min, iv, ivs: [{ work (s), rest (s), rounds }], watts (W, opcjonalnie) }.
    Od v18 (30.10): czas ALBO interwały (kilka wierszy; czas = suma rund × (praca + odpoczynek)), średnia moc.
-   Moduł startuje pusty (decyzja właściciela). */
+   Moduł startuje pusty (decyzja właściciela).
+   v36 (makieta v181/v182, Polar Flow): ćwiczenie kondycyjne ma opcjonalny dystans `km` (liczba, 0,1–999,9; null = brak);
+   trening ma znaczniki `tags: [tekst]` (małe litery, do 6); trening z Polar: `src: 'polar'`, `pid` (identyfikator Polar),
+   `pol: { kcal, hrAvg, hrMax, load }` (tylko do odczytu). Rejestr znaczników `tags` (kolejność wpisania = kolor) i zapamiętane
+   identyfikatory treningów Polar `pol.seen` (usunięty trening nie wraca) są w tej samej bazie, więc w kopii modułu Trening. */
 (function () {
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.train.v1';
-  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] } });   // v20: rec – aktywności cykliczne
+  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], pol: { seen: {} } });   // v20: rec – aktywności cykliczne
   let db = empty();
 
   // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
   function norm(d) {
     if (!d.rec || !Array.isArray(d.rec.list)) d.rec = { next: 1, list: [] };
+    if (!Array.isArray(d.tags)) d.tags = [];
+    if (!d.pol || typeof d.pol !== 'object') d.pol = { seen: {} };
+    if (!d.pol.seen || typeof d.pol.seen !== 'object') d.pol.seen = {};
+    (d.list || []).forEach((w) => {
+      w.tags = Array.isArray(w.tags) ? w.tags : [];
+      w.tags.forEach((t) => { if (d.tags.indexOf(t) < 0) d.tags.push(t); });   // rejestr = wpisane + użyte w treningach
+      if (w.src === 'polar' && w.pid) d.pol.seen[w.pid] = 1;
+    });
     (d.list || []).forEach((w) => (w.ex || []).forEach((x) => {
       if (x.kind === 'str') { x.bw = !!x.bw; return; }
       if (x.kind !== 'car') return;
@@ -25,6 +37,7 @@
       delete x.work; delete x.rest;
       if (!x.ivs.length) x.iv = false;
       if (x.watts === undefined) x.watts = null;
+      if (x.km === undefined) x.km = null;
     }));
     return d;
   }
@@ -40,6 +53,9 @@
   const get = (id) => db.list.find((w) => w.id === +id) || null;
   function upsert(w) {
     const e = JSON.parse(JSON.stringify(w));
+    e.tags = Array.isArray(e.tags) ? e.tags : [];
+    e.tags.forEach((t) => { if (db.tags.indexOf(t) < 0) db.tags.push(t); });
+    if (e.src === 'polar' && e.pid) db.pol.seen[e.pid] = 1;
     if (e.id && get(e.id)) db.list = db.list.map((x) => (x.id === e.id ? e : x));
     else { e.id = db.next++; db.list.push(e); }
     save(); return e;
@@ -112,6 +128,9 @@
   const summary = () => db.list.length + ' ' + C.plural(db.list.length, 'trening', 'treningi', 'treningów') +
     (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '');
   const recDb = () => db.rec;
+  // v36: rejestr znaczników (kolejność wpisania – od niej zależy kolor) i treningi z Polar Flow.
+  const tags = () => db.tags.slice();
+  const polSeen = (pid) => !!db.pol.seen[pid];
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen };
 })();

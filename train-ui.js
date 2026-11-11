@@ -1,7 +1,9 @@
 /* MyLife – moduł Trening: ekrany (v17).
    #/train – Trening (liczba treningów, czas od ostatniego, „Dodaj trening”, funkcje),
    #/train/history – Historia treningów, #/train/progress – Postępy, #/train/edit/<id|new> – formularz.
-   Kolor modułu: fiolet #B9A2FF (tło ikon #221C3A, ramka #4A3F7A). */
+   Kolor modułu: fiolet #B9A2FF (tło ikon #221C3A, ramka #4A3F7A).
+   v36 (makieta v181/v182): dystans w kondycji, znaczniki treningu (kolor wg kolejności w rejestrze), wyszukiwarka i filtr znacznika
+   w Historii, treningi z Polar Flow (ikona „Polar”, karta danych tylko do odczytu, edycja zachowuje src/pid/pol). */
 (function () {
   'use strict';
   const C = window.Core, TR = window.Train;
@@ -25,7 +27,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [] };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tag: '' };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -40,8 +42,16 @@
   const ivs = (x) => (x.iv && x.ivs ? x.ivs : []);
   function exDetail(x) {
     if (x.kind === 'str') return x.sets.map((r) => r.n + '×' + r.reps + ' · ' + kgTxt(r.kg, x.bw)).join('  +  ');
-    return fmt(x.min) + ' min' + (ivs(x).length ? ' · interwał ' + ivs(x).map((v) => v.rounds + '×(' + v.work + ' s / ' + v.rest + ' s)').join(' + ') : '') + (x.watts ? ' · śr. ' + x.watts + ' W' : '');
+    return fmt(x.min) + ' min' + (ivs(x).length ? ' · interwał ' + ivs(x).map((v) => v.rounds + '×(' + v.work + ' s / ' + v.rest + ' s)').join(' + ') : '') + (x.watts ? ' · śr. ' + x.watts + ' W' : '') + (x.km ? ' · ' + fmt(x.km) + ' km' : '');
   }
+  // v36: znaczniki – kolor wg miejsca w rejestrze (obrót odcienia o 137,508° z pominięciem 322°–22°, zarezerwowanych dla plakietki Polar).
+  function hue(idx) { let k = -1; for (let i = 0; i < 4000; i++) { const h = (i * 137.508) % 360; if (h >= 322 || h <= 22) continue; k++; if (k === idx) return Math.round(h); } return 200; }
+  const tagCol = (reg, t) => 'hsl(' + hue(Math.max(0, reg.indexOf(t))) + ', 70%, 68%)';
+  const POLI = ic(13, 2.2, '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"></path><path d="M4 4v5h5"></path><path d="M4 13a8 8 0 0 0 14 4.5l2-2.5"></path><path d="M20 20v-5h-5"></path>');
+  const polBadge = () => `<span class="tpolb" title="Zsynchronizowany z Polar Flow">${POLI}Polar</span>`;
+  const metaRow = (w, reg) => (w.src === 'polar' || (w.tags || []).length
+    ? `<div class="tmeta">${w.src === 'polar' ? polBadge() : ''}${(w.tags || []).map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : '');
+  const polRows = (p) => [['Kalorie', p.kcal != null ? p.kcal + ' kcal' : '—'], ['Tętno średnie / maks.', (p.hrAvg != null ? p.hrAvg : '—') + ' / ' + (p.hrMax != null ? p.hrMax : '—') + ' bpm'], ['Obciążenie treningowe', p.load != null ? String(p.load) : '—']];
   const chipsOf = (s) => [pl(s.ex, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')].concat(s.sets ? [pl(s.sets, 'seria', 'serie', 'serii')] : []).concat(s.mins ? [fmt(s.mins) + ' min kondycji'] : []);
   const topbar = (title, back) => `<div class="topbar">${A.navBtns(back)}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
   const flashBar = () => (T.flash ? `<div class="bmsg tmsg" role="status"><span style="flex:1;min-width:0">${esc(T.flash.text)}</span>${T.flash.undo ? '<button data-a="trundo">Cofnij</button>' : ''}</div>` : '');
@@ -65,18 +75,29 @@
   }
 
   // ---------- Historia treningów ----------
-  function viewHistory() {
-    const list = TR.list();
-    const cards = list.map((w) => {
+  // v36: wyszukiwarka po nazwie (fragment, bez wielkości liter i polskich znaków) i filtr znacznika – łączą się.
+  function histCards() {
+    const reg = TR.tags(), nq = norm(T.q.trim()), tag = reg.indexOf(T.tag) >= 0 ? T.tag : '';
+    const list = TR.list().filter((w) => (!nq || norm(w.name || 'Trening').indexOf(nq) >= 0) && (!tag || (w.tags || []).indexOf(tag) >= 0));
+    if (!list.length) return '<div class="dcard tnores" role="status">Brak treningów dla wybranych kryteriów.</div>';
+    return list.map((w) => {
       const s = TR.stats(w), chips = chipsOf(s);
       return `<a class="dcard tcard" href="#/train/day/${w.id}" aria-label="Pokaż ćwiczenia z dnia ${esc(dl(w.d))}">
           <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="tdate">${esc(dl(w.d))}</div><div class="tname">${esc(w.name || 'Trening')}</div>${s.vol > 0 ? `<div class="tvol">Suma ciężaru: ${grp(s.vol)} kg</div>` : ''}</div><div style="color:var(--dim);display:flex">${K.chev}</div></div>
+          ${metaRow(w, reg)}
           <div class="tchips">${chips.map((c) => `<span>${esc(c)}</span>`).join('')}</div>
           <div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div></a>`;
     }).join('');
+  }
+  function viewHistory() {
+    const all = TR.list(), reg = TR.tags();
+    if (reg.indexOf(T.tag) < 0) T.tag = '';
     return `<main class="screen">${topbar('Historia treningów')}
       <div class="dscroll" data-scroll="train-hist">${flashBar()}
-        ${list.length ? cards : `<div class="dcard tempty"><div style="color:var(--violet)">${K.big(P.dumbbell)}</div><div style="font-size:16px;font-weight:600">Brak treningów</div><div class="para" style="text-align:center">Dodaj pierwszy trening: wybierz datę i zapisz wykonane ćwiczenia.</div></div>`}
+        ${all.length ? `<div class="thfind"><div class="thsearch"><span aria-hidden="true">${K.search}</span><input id="th-q" type="search" autocomplete="off" maxlength="40" placeholder="Szukaj po nazwie treningu" aria-label="Szukaj treningu po nazwie" value="${esc(T.q)}" data-in="train-q"></div>
+            ${reg.length ? `<select class="thsel" aria-label="Filtruj po znaczniku" data-in="train-tag"><option value="">Wszystkie znaczniki</option>${reg.map((t) => `<option value="${esc(t)}"${T.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>` : ''}</div>
+          <div class="thlist" data-thlist>${histCards()}</div>`
+        : `<div class="dcard tempty"><div style="color:var(--violet)">${K.big(P.dumbbell)}</div><div style="font-size:16px;font-weight:600">Brak treningów</div><div class="para" style="text-align:center">Dodaj pierwszy trening: wybierz datę i zapisz wykonane ćwiczenia.</div></div>`}
       </div></main>`;
   }
 
@@ -93,7 +114,7 @@
         const n = x.sets.reduce((t, r) => t + r.n, 0), v = TR.volOf(x);
         sum = 'Razem: ' + pl(n, 'seria', 'serie', 'serii') + (v > 0 ? ' · suma ciężaru ' + grp(v) + ' kg' : '');
       } else {
-        rows = [['Czas', fmt(x.min) + ' min']].concat(ivs(x).map((v) => ['Interwał: ' + pl(v.rounds, 'runda', 'rundy', 'rund'), v.work + ' s / ' + v.rest + ' s'])).concat(x.watts ? [['Średnia moc', x.watts + ' W']] : []);
+        rows = [['Czas', fmt(x.min) + ' min']].concat(ivs(x).map((v) => ['Interwał: ' + pl(v.rounds, 'runda', 'rundy', 'rund'), v.work + ' s / ' + v.rest + ' s'])).concat(x.watts ? [['Średnia moc', x.watts + ' W']] : []).concat(x.km ? [['Dystans', fmt(x.km) + ' km']] : []);
       }
       return `<div class="dcard tdex"><div class="tdh"><div class="nm">${esc(x.name)}</div><span class="kind">${x.kind === 'str' ? 'Siłowe' : 'Kondycyjne'}</span></div>
           <div class="tdrows">${rows.map((r) => `<div><span>${esc(r[0])}</span><span class="b">${esc(r[1])}</span></div>`).join('')}</div>
@@ -103,7 +124,9 @@
       <div class="dscroll" data-scroll="train-day">${flashBar()}
         <div class="dcard tdhead"><div class="tdate">${esc(dl(w.d))}</div><div class="tname" style="font-size:20px">${esc(w.name || 'Trening')}</div>
           ${s.vol > 0 ? `<div class="tvol" style="font-size:14px">Suma ciężaru: ${grp(s.vol)} kg</div>` : ''}
+          ${metaRow(w, TR.tags())}
           <div class="tchips">${chipsOf(s).map((c) => `<span>${esc(c)}</span>`).join('')}</div></div>
+        ${w.src === 'polar' && w.pol ? `<div class="dcard tpolcard"><div class="h">Dane z Polar Flow (tylko do odczytu)</div>${polRows(w.pol).map((r) => `<div class="r"><span>${esc(r[0])}</span><span class="b">${esc(r[1])}</span></div>`).join('')}</div>` : ''}
         <div class="eyebrow" style="margin-top:2px">Wykonane ćwiczenia</div>
         ${exs}
         <a class="taddex" style="height:48px" href="#/train/edit/${w.id}">${K.pencil}<span>Edytuj trening</span></a>
@@ -161,14 +184,14 @@
 
   // ---------- Formularz treningu ----------
   const blankIv = () => ({ work: '', rest: '', rounds: '' });
-  const blankEx = () => ({ name: '', kind: 'str', bw: false, sets: [{ n: '3', kg: '', reps: '10' }], min: '', iv: false, ivs: [blankIv()], watts: '' });
+  const blankEx = () => ({ name: '', kind: 'str', bw: false, sets: [{ n: '3', kg: '', reps: '10' }], min: '', iv: false, ivs: [blankIv()], watts: '', km: '' });
   function draftFor(arg) {
     if (arg && arg !== 'new') {
       const w = TR.get(arg); if (!w) return null;
-      return { id: w.id, d: w.d, name: w.name, ex: w.ex.map((x) => ({ name: x.name, kind: x.kind, bw: x.kind === 'str' && !!x.bw, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: x.bw ? '' : fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
-        min: x.kind === 'car' && !x.iv ? fmt(x.min) : '', iv: !!x.iv, ivs: x.iv && x.ivs && x.ivs.length ? x.ivs.map((v) => ({ work: String(v.work), rest: String(v.rest), rounds: String(v.rounds) })) : [blankIv()], watts: x.watts ? String(x.watts) : '' })) };
+      return { id: w.id, d: w.d, name: w.name, tags: (w.tags || []).slice(), tagIn: '', src: w.src || '', pid: w.pid || '', pol: w.pol || null, ex: w.ex.map((x) => ({ name: x.name, kind: x.kind, bw: x.kind === 'str' && !!x.bw, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: x.bw ? '' : fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
+        min: x.kind === 'car' && !x.iv ? fmt(x.min) : '', iv: !!x.iv, ivs: x.iv && x.ivs && x.ivs.length ? x.ivs.map((v) => ({ work: String(v.work), rest: String(v.rest), rounds: String(v.rounds) })) : [blankIv()], watts: x.watts ? String(x.watts) : '', km: x.km ? fmt(x.km) : '' })) };
     }
-    return { id: null, d: C.todayKey(), name: '', ex: [blankEx()] };
+    return { id: null, d: C.todayKey(), name: '', tags: [], tagIn: '', src: '', pid: '', pol: null, ex: [blankEx()] };
   }
   const inRange = (t, lo, hi, int) => { const v = num(t); return v !== null && v >= lo && v <= hi && (!int || Math.floor(v) === v); };
   function check(D) {
@@ -184,7 +207,8 @@
         r.ivOk = !x.iv || (x.ivs.length > 0 && r.ivRows.every(Boolean));
         r.min = x.iv ? true : inRange(x.min, 1, 600, false);
         r.wattsOk = String(x.watts || '') === '' || inRange(x.watts, 1, 2000, true);
-        r.ok = r.name && r.min && r.ivOk && r.wattsOk;
+        r.kmOk = String(x.km || '') === '' || inRange(x.km, 0.1, 999.9, false);   // v36: dystans 0,1–999,9 km albo puste
+        r.ok = r.name && r.min && r.ivOk && r.wattsOk && r.kmOk;
       }
       return r;
     });
@@ -250,7 +274,9 @@
                   <button class="taddset" data-a="trivadd" data-i="${i}">${K.plus}<span>Dodaj interwał</span></button>
                   <div class="ttotal" data-total="${i}"${ivTotal(x) ? '' : ' hidden'}>Czas łącznie: ${ivTotal(x)}</div></div>` : ''}
               <div class="bfrow"><label for="ex-${i}-watts" style="flex:1;min-width:0;font-size:14px">Średnia moc <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label><input id="ex-${i}-watts" class="tin w96${bad(!r.wattsOk)}" type="text" inputmode="numeric" maxlength="4" value="${esc(x.watts)}" placeholder="—" data-in="train-watts" data-i="${i}" aria-label="Średnia moc w watach"><span class="bfu">W</span></div>
-              ${err(T.tried && !r.wattsOk, 'Moc: 1–2000 W albo zostaw puste.', 'w' + i)}</div>`}
+              ${err(T.tried && !r.wattsOk, 'Moc: 1–2000 W albo zostaw puste.', 'w' + i)}
+              <div class="bfrow"><label for="ex-${i}-km" style="flex:1;min-width:0;font-size:14px">Dystans <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label><input id="ex-${i}-km" class="tin w96${bad(!r.kmOk)}" type="text" inputmode="decimal" maxlength="6" value="${esc(x.km)}" placeholder="—" data-in="train-km" data-i="${i}" aria-label="Dystans w kilometrach"><span class="bfu">km</span></div>
+              ${err(T.tried && !r.kmOk, 'Dystans: 0,1–999,9 km albo zostaw puste.', 'k' + i)}</div>`}
         </div>`;
     }).join('');
     return `<main class="screen">${topbar(D.id ? 'Edytuj trening' : 'Nowy trening')}
@@ -259,7 +285,11 @@
             ${A.dateBtn(D.d, 'trdate', '', 'Data treningu')}</div>
           ${err(T.tried && !ck.dateOk, 'Podaj poprawną datę (nie późniejszą niż dziś).', 'date')}
           <div style="display:flex;flex-direction:column;gap:4px"><label for="t-name" style="font-size:14px">Nazwa treningu <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label>
-            <input id="t-name" class="tin txt" type="text" maxlength="40" value="${esc(D.name)}" placeholder="np. Trening A – klatka" data-in="train-wname"></div></div>
+            <input id="t-name" class="tin txt" type="text" maxlength="40" value="${esc(D.name)}" placeholder="np. Trening A – klatka" data-in="train-wname"></div>
+          ${tagBlock(D)}
+          ${D.src === 'polar' ? `<div class="tpolinfo"><div class="h">${polBadge()}<span>Zsynchronizowany z Polar Flow</span></div>
+            ${D.pol ? `<div class="s">Dane tylko do odczytu: ${esc((D.pol.kcal != null ? D.pol.kcal : '—') + ' kcal · tętno śr./maks. ' + (D.pol.hrAvg != null ? D.pol.hrAvg : '—') + '/' + (D.pol.hrMax != null ? D.pol.hrMax : '—') + ' · obciążenie treningowe ' + (D.pol.load != null ? D.pol.load : '—'))}</div>` : ''}
+            <div class="s">Możesz zmienić nazwę, ćwiczenia i znaczniki – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}</div>
         <div class="eyebrow" style="margin-top:2px">Ćwiczenia</div>
         ${exs}
         <button class="taddex" data-a="trexadd">${K.plus}<span>Dodaj ćwiczenie</span></button>
@@ -273,6 +303,22 @@
         <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>
     </main>`;
   }
+  // v36: znaczniki w formularzu – wpisane + „Dodaj”/Enter, × usuwa; „Wpisane wcześniej” tylko z rejestru (bez własnych propozycji).
+  function tagBlock(D) {
+    const reg = TR.tags().concat(D.tags.filter((t) => TR.tags().indexOf(t) < 0)), old = reg.filter((t) => D.tags.indexOf(t) < 0);
+    return `<div class="ttags"><label for="t-tag" style="font-size:14px">Znaczniki <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label>
+        ${D.tags.length ? `<div class="ttagrow">${D.tags.map((t) => `<span class="ttag big" style="--tc:${tagCol(reg, t)}">${esc(t)}<button data-a="trtagdel" data-t="${esc(t)}" aria-label="Usuń znacznik ${esc(t)}">×</button></span>`).join('')}</div>` : ''}
+        ${D.tags.length < 6 ? `<div style="display:flex;gap:8px"><input id="t-tag" class="tin txt" type="text" maxlength="20" autocomplete="off" enterkeyhint="done" placeholder="Wpisz znacznik, np. siłowy" value="${esc(D.tagIn)}" data-in="train-tagin"><button class="ttagadd" data-a="trtagadd">Dodaj</button></div>`
+          : '<div style="font-size:12px;color:var(--muted)">Najwyżej 6 znaczników w treningu.</div>'}
+        ${old.length && D.tags.length < 6 ? `<div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:12px;color:var(--muted)">Wpisane wcześniej:</div>
+          <div class="ttagrow">${old.map((t) => `<button class="ttagold" style="--tc:${tagCol(reg, t)}" data-a="trtagpick" data-t="${esc(t)}" aria-label="Dodaj znacznik ${esc(t)}">+ ${esc(t)}</button>`).join('')}</div></div>` : ''}</div>`;
+  }
+  function addTag(D, raw) {
+    const t = String(raw || '').trim().replace(/\s+/g, ' ').toLowerCase().slice(0, 20);
+    D.tagIn = '';
+    if (t && D.tags.indexOf(t) < 0 && D.tags.length < 6) D.tags.push(t);
+  }
+
   // v30 (makieta 05.11.2026, v165): podpowiedzi nazwy ćwiczenia (do 5) z nazw z tego formularza i z zapisanych treningów;
   // fragment nazwy bez wielkości liter i polskich znaków, najpierw dopasowania od początku; bez nazwy identycznej z wpisaną.
   function suggFor(i) {
@@ -322,6 +368,7 @@
         setBad('#ex-' + i + '-min', !r.min); showErr('m' + i, !r.min);
         x.ivs.forEach((v, j) => ['ivwork', 'ivrest', 'ivrounds'].forEach((f) => setBad('[data-in="train-' + f + '"][data-i="' + i + '"][data-j="' + j + '"]', !r.ivRows[j])));
         showErr('i' + i, !r.ivOk); setBad('#ex-' + i + '-watts', !r.wattsOk); showErr('w' + i, !r.wattsOk);
+        setBad('#ex-' + i + '-km', !r.kmOk); showErr('k' + i, !r.kmOk);
       }
     });
   }
@@ -350,10 +397,11 @@
       const D = T.draft; if (!D) return;
       const ck = check(D);
       if (!ck.ok) { T.tried = true; R(); const f = document.querySelector('.terr:not([hidden])'); if (f) f.scrollIntoView({ block: 'center' }); return; }
-      TR.upsert({ id: D.id, d: D.d, name: D.name.trim(), ex: D.ex.map((x) => (x.kind === 'str'
+      const extra = D.src === 'polar' ? { src: 'polar', pid: D.pid, pol: D.pol } : {};   // v36: trening z Polar zostaje oznaczony
+      TR.upsert(Object.assign({ id: D.id, d: D.d, name: D.name.trim(), tags: D.tags.slice(), ex: D.ex.map((x) => (x.kind === 'str'
         ? { name: x.name.trim(), kind: 'str', bw: !!x.bw, sets: x.sets.map((s) => ({ n: num(s.n), kg: x.bw ? 0 : num(s.kg), reps: num(s.reps) })) }
         : (() => { const iv = !!x.iv, list = iv ? x.ivs.map((v) => ({ work: num(v.work), rest: num(v.rest), rounds: num(v.rounds) })) : [];
-            return { name: x.name.trim(), kind: 'car', min: iv ? TR.ivMinutes(list) : num(x.min), iv, ivs: list, watts: String(x.watts || '') !== '' ? num(x.watts) : null }; })())) });
+            return { name: x.name.trim(), kind: 'car', min: iv ? TR.ivMinutes(list) : num(x.min), iv, ivs: list, watts: String(x.watts || '') !== '' ? num(x.watts) : null, km: String(x.km || '') !== '' ? Math.round(num(x.km) * 10) / 10 : null }; })())) }, extra));
       T.flash = { text: (D.id ? 'Zapisano zmiany treningu z ' : 'Zapisano trening z ') + dl(D.d) + '.', fresh: true };
       T.draft = null; A.back();
     },
@@ -369,14 +417,20 @@
     trpick: (el) => { T.sel = el.dataset.k; T.dd = false; T.day = null; R(); },
     trday: (el) => { T.day = +el.dataset.id; R(); },
     trdate: () => { const D = T.draft; if (D) A.datePick({ value: D.d, min: '2020-01-01', max: C.todayKey(), onPick: (k) => { D.d = k; } }); },
-    trtab: () => { T.tabOpen = !T.tabOpen; R(); }
+    trtab: () => { T.tabOpen = !T.tabOpen; R(); },
+    trtagadd: () => { const D = T.draft; if (!D) return; const f = document.getElementById('t-tag'); addTag(D, f ? f.value : D.tagIn); R(); const g = document.getElementById('t-tag'); if (g) g.focus(); },
+    trtagdel: (el) => ed((D) => { D.tags = D.tags.filter((t) => t !== el.dataset.t); }),
+    trtagpick: (el) => ed((D) => { if (D.tags.indexOf(el.dataset.t) < 0 && D.tags.length < 6) D.tags.push(el.dataset.t); })
   };
+  // v36: odświeżenie samej listy Historii podczas pisania (pole zachowuje fokus i klawiaturę).
+  function liveHist() { const l = document.querySelector('[data-thlist]'); if (l) l.innerHTML = histCards(); }
 
   window.TrainUI = {
     init(app) {
       A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions);
       // v30: podpowiedzi przy fokusie pola nazwy; znikają po opuszczeniu pola (z opóźnieniem, żeby zdążył zadziałać wybór)
       document.addEventListener('focusin', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name' && T.draft) { T.sg = +t.dataset.i; showSugg(T.sg); } });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.id === 't-tag' && T.draft) { e.preventDefault(); A.actions.trtagadd(); } });
       document.addEventListener('focusout', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name') { const i = +t.dataset.i; setTimeout(() => { if (T.sg === i && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.in === 'train-name' && +document.activeElement.dataset.i === i)) { T.sg = null; showSugg(-1); } }, 200); } }); if (window.TrainRecUI) window.TrainRecUI.init(app); },
     view(r) {
       if (r.arg === 'recur' && window.TrainRecUI) return window.TrainRecUI.view();
@@ -392,7 +446,9 @@
     icon: P.dumbbell,
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
+      if (k === 'train-q') { T.q = el.value.slice(0, 40); liveHist(); return; }
       const D = T.draft; if (!D) return;
+      if (k === 'train-tagin') { D.tagIn = el.value.slice(0, 20); return; }
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
@@ -405,9 +461,10 @@
       else if (k === 'train-ivrest') x.ivs[j].rest = clean(false, 4);
       else if (k === 'train-ivrounds') x.ivs[j].rounds = clean(false, 3);
       else if (k === 'train-watts') x.watts = clean(false, 4);
+      else if (k === 'train-km') x.km = clean(true, 6);
       live();
     },
-    onChange(el, k) { if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
+    onChange(el, k) { if (k === 'train-tag') { T.tag = el.value; R(); return; } if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
     onEscape() {
       if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
       if (T.sg != null) { T.sg = null; T.sugg = []; return true; }
@@ -421,6 +478,7 @@
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
+      if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tag = ''; }   // filtr Historii do wyjścia z niej
     }
   };
 })();

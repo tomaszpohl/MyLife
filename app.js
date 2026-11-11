@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v35.1 · 11.11.2026';
+  const APP_VERSION = 'v36 · 11.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -732,7 +732,7 @@
             <div class="sico">${I.lockL}</div>
             <div style="display:flex;flex-direction:column;gap:4px">
               <div style="font-family:var(--display);font-size:17px;font-weight:600">Dane tylko na tym telefonie</div>
-              <div class="para" style="line-height:1.45">Zadania i ustawienia są zapisywane w pamięci aplikacji. Aplikacja działa bez internetu i niczego nie wysyła na żadne serwery${window.GCal && window.GCal.state().on ? ' – poza zadaniami z godziną i wydarzeniami synchronizowanymi z połączonym Kalendarzem Google' : ''}.</div>
+              <div class="para" style="line-height:1.45">Zadania i ustawienia są zapisywane w pamięci aplikacji. Aplikacja działa bez internetu i niczego nie wysyła na żadne serwery${window.GCal && window.GCal.state().on ? ' – poza zadaniami z godziną i wydarzeniami synchronizowanymi z połączonym Kalendarzem Google' : ''}${window.Polar && window.Polar.state().on ? (window.GCal && window.GCal.state().on ? '; treningi z Polar Flow są tylko pobierane (przez pośrednika)' : ' – treningi z Polar Flow są tylko pobierane (przez pośrednika)') : ''}.</div>
             </div>
           </div>
           <div style="display:flex;flex-direction:column">
@@ -752,6 +752,7 @@
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
         ${window.GCalUI ? window.GCalUI.settingsSection() : ''}
+        ${window.PolarUI ? window.PolarUI.settingsSection() : ''}
       </div>
     </main>`;
   }
@@ -880,7 +881,7 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); back(); },
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); if (window.PolarUI) window.PolarUI.reset(); back(); },
     export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
@@ -986,6 +987,7 @@
         else if (k.indexOf('settle-') === 0 && window.SettleUI) window.SettleUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
         else if (k.indexOf('gcal-') === 0 && window.GCalUI) window.GCalUI.onInput(el, k);
+        else if (k.indexOf('polar-') === 0 && window.PolarUI) window.PolarUI.onInput(el, k);
     }
   });
   app.addEventListener('change', (e) => {
@@ -1036,6 +1038,7 @@
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
     if (e.key === 'Escape' && window.GCalUI && route().name === 'settings' && window.GCalUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.PolarUI && route().name === 'settings' && window.PolarUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
@@ -1369,6 +1372,8 @@
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
   if (window.GCal) { window.GCal.load(); }
   if (window.GCalUI) { window.GCalUI.init(window.App); }
+  if (window.PolarUI) { window.PolarUI.init(window.App); }
+  if (window.Polar) setTimeout(() => window.Polar.auto(), 2500);   // v36: pobranie nowych treningów przy otwarciu (co najwyżej co 15 min)
   if (window.GCal && window.GCal.state().on) { window.GCal.preload(); window.GCal.schedule(1500); }
   window.addEventListener('online', () => { if (window.GCal) window.GCal.schedule(1000); });
   window.addEventListener('hashchange', () => {
@@ -1389,6 +1394,7 @@
     if (document.visibilityState === 'visible' && renderedDay !== C.todayKey()) render();
     // v35: po powrocie do aplikacji pobierz zmiany z Kalendarza Google (gdy logowanie jest jeszcze ważne).
     if (document.visibilityState === 'visible' && window.GCal) window.GCal.schedule(800);
+    if (document.visibilityState === 'visible' && window.Polar) window.Polar.auto();
   });
   render();
 
