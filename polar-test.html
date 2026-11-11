@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Polar – zapytania z przeglądarki</title>
+<style>
+  body { margin: 0; background: #0A0E13; color: #E8EEF5; font-family: system-ui, sans-serif; padding: 20px 16px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p { color: #93A1B2; font-size: 14px; line-height: 1.45; }
+  button { width: 100%; min-height: 52px; border: none; border-radius: 14px; background: #5BD0E8; color: #06222A; font-size: 16px; font-weight: 600; margin: 8px 0 16px; }
+  .r { background: #11171F; border: 1px solid #202B38; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
+  .ok { color: #7BE0A0; font-weight: 600; } .bad { color: #FF9C8A; font-weight: 600; } .wait { color: #F2B94B; }
+  code { font-size: 12px; color: #C9D3DF; overflow-wrap: anywhere; }
+  .sum { font-size: 16px; font-weight: 600; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h1>Test: czy Polar przyjmuje zapytania z przeglądarki</h1>
+<p>Test nie wymaga logowania ani klucza – wysyła zapytania bez danych dostępowych. Odpowiedź „401 / 400” jest dobra (serwer odpowiedział i przeglądarka mogła ją odczytać). „Zablokowane” oznacza, że Polar nie przyjmuje zapytań z przeglądarki.</p>
+<p>Adres tej strony: <code id="org"></code></p>
+<button id="go">Uruchom test</button>
+<div id="out"></div>
+<script>
+  document.getElementById('org').textContent = location.origin;
+  const tests = [
+    { name: '1. Dane (API v4) – zapytanie proste', url: 'https://www.polaraccesslink.com/v4/data/hello', opt: { method: 'GET' } },
+    { name: '2. Dane (API v4) – z nagłówkiem Authorization (jak w aplikacji)', url: 'https://www.polaraccesslink.com/v4/data/hello', opt: { method: 'GET', headers: { Authorization: 'Bearer test', Accept: 'application/json' } } },
+    { name: '3. Logowanie – wymiana kodu na token (auth.polar.com)', url: 'https://auth.polar.com/oauth/token', opt: { method: 'POST', headers: { Authorization: 'Basic ' + btoa('test:test'), 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: 'grant_type=authorization_code&code=test' } }
+  ];
+  async function run() {
+    const out = document.getElementById('out'); out.innerHTML = '';
+    const res = [];
+    for (const t of tests) {
+      const box = document.createElement('div'); box.className = 'r';
+      box.innerHTML = '<div>' + t.name + '</div><div class="wait">sprawdzam…</div>'; out.appendChild(box);
+      let line, ok;
+      try {
+        const r = await fetch(t.url, t.opt);
+        let body = ''; try { body = (await r.text()).slice(0, 160); } catch (e) {}
+        ok = true; line = '<span class="ok">Przyjęte</span> – odpowiedź ' + r.status + ' ' + (r.statusText || '') + (body ? '<br><code>' + body.replace(/</g, '&lt;') + '</code>' : '');
+      } catch (e) {
+        ok = false; line = '<span class="bad">Zablokowane</span> – przeglądarka nie dostała odpowiedzi (' + e.message + ')';
+      }
+      res.push(ok);
+      box.lastChild.outerHTML = '<div>' + line + '</div>';
+    }
+    const s = document.createElement('div'); s.className = 'r sum';
+    s.innerHTML = res[1] && res[2] ? '<span class="ok">Wynik: wariant 1 (bezpośrednio z aplikacji) jest możliwy.</span>'
+      : res[1] && !res[2] ? '<span class="wait">Wynik: dane są dostępne z przeglądarki, ale logowanie (wymiana kodu na token) – nie. Potrzebny pośrednik tylko do logowania.</span>'
+      : '<span class="bad">Wynik: Polar nie przyjmuje zapytań z przeglądarki – potrzebny pośrednik (wariant 2) albo import pliku (wariant 3).</span>';
+    out.appendChild(s);
+  }
+  document.getElementById('go').addEventListener('click', run);
+</script>
+</body>
+</html>
