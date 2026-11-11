@@ -52,7 +52,9 @@
     else if (ln && typeof ln === 'object') Object.keys(ln).forEach((k) => pick(k, typeof ln[k] === 'string' ? ln[k] : (ln[k] && (ln[k].text || ln[k].name))));
     return { pl: pl || '', en: en || base };
   }
-  const sid = (s) => String((s.identifier && s.identifier.id) || s.id || s.sportId || '');
+  // Identyfikator bywa obiektem (np. { id: … }) – bierzemy pierwszą wartość tekstową albo liczbową.
+  const flat = (v) => { if (v == null) return ''; if (typeof v !== 'object') return String(v); for (const k of Object.keys(v)) { const x = flat(v[k]); if (x) return x; } return ''; };
+  const sid = (s) => flat((s.identifier && s.identifier.id) || s.identifier || s.id || s.sportId);
   const listOf = (j) => Array.isArray(j) ? j : (j.sports || j.sportList || j.items || j.data || Object.values(j).find(Array.isArray) || []);
 
   (async function back() {
@@ -75,7 +77,7 @@
         const to = new Date(), from = new Date(Date.now() - 89 * 864e5);
         const r2 = await fetch(w + '/data/training-sessions/list?from=' + encodeURIComponent(dt(from)) + '&to=' + encodeURIComponent(dt(new Date(to.getTime() + 864e5))), { headers: h });
         const j2 = await r2.json();
-        (listOf(j2) || []).forEach((t) => { const id = String((t.sport && (t.sport.id || (t.sport.identifier && t.sport.identifier.id))) || t.sportId || ''); if (id) mine[id] = (mine[id] || 0) + 1; });
+        (listOf(j2) || []).forEach((t) => { if (!window.__t) window.__t = t; const id = flat(t.sport ? (t.sport.identifier || t.sport.id || t.sport) : t.sportId); if (id) mine[id] = (mine[id] || 0) + 1; });
       } catch (e) {}
       const rows = sports.map((s) => ({ id: sid(s), n: names(s), type: s.type || s.sportType || '', cnt: mine[sid(s)] || 0 }))
         .sort((a, b) => (b.cnt - a.cnt) || (a.n.pl || a.n.en).localeCompare(b.n.pl || b.n.en, 'pl'));
@@ -87,7 +89,8 @@
         rows.map((x) => '<tr' + (x.cnt ? ' class="mine"' : '') + '><td>' + esc(x.n.pl || '—') + '</td><td>' + esc(x.n.en) + '</td><td>' + esc(x.type) + '</td><td class="n">' + esc(x.id) + '</td></tr>').join('') +
         '</tbody></table>' +
         '<button class="sec" id="copy">Kopiuj listę jako tekst</button>' +
-        '<h2>Przykładowy wpis z katalogu (surowe dane)</h2><code>' + esc(JSON.stringify(sports[0] || j, null, 2).slice(0, 1500)) + '</code>';
+        '<h2>Przykładowy wpis z katalogu (surowe dane)</h2><code>' + esc(JSON.stringify(sports[0] || j, null, 2).slice(0, 1500)) + '</code>' +
+        '<h2>Pole „sport” z Twojego treningu (surowe dane)</h2><code>' + esc(window.__t ? JSON.stringify(window.__t.sport || window.__t, null, 2).slice(0, 800) : 'brak treningów') + '</code>';
       $('copy').addEventListener('click', () => {
         const txt = rows.map((x) => [x.n.pl, x.n.en, x.type, x.id, x.cnt || ''].join('\t')).join('\n');
         navigator.clipboard.writeText('PL\tEN\tTyp\tID\tMoje treningi (90 dni)\n' + txt).then(() => { $('copy').textContent = 'Skopiowano'; });
