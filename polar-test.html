@@ -128,10 +128,16 @@
     const b = box(out, 'Logowanie przez workera'); b.lastChild.outerHTML = '<div><span class="ok">OK</span> – token dostępu ważny ' + q.get('polar_expires') + ' s, token odświeżania: ' + (q.get('polar_refresh') ? 'jest' : 'brak') + '</div>';
     const h = { Authorization: 'Bearer ' + q.get('polar_access'), Accept: 'application/json' };
     const d1 = await probe(out, 'Worker → GET /v4/data/user/account-data', w + '/data/user/account-data', { headers: h });
-    const d2 = await probe(out, 'Worker → GET /v4/data/training-sessions/list (ostatnie 7 dni)', w + '/data/training-sessions/list?from=' + iso(weekAgo) + '&to=' + iso(today), { headers: h });
+    // Polar odrzucił samą datę („could not be parsed as datetime”) – sprawdzamy formaty daty z godziną.
+    const fmts = [['RRRR-MM-DDT00:00:00', (d) => iso(d) + 'T00:00:00'], ['RRRR-MM-DDT00:00:00Z', (d) => iso(d) + 'T00:00:00Z'], ['RRRR-MM-DDT00:00:00.000Z', (d) => iso(d) + 'T00:00:00.000Z']];
+    let d2 = { ok: false };
+    for (const [label, f] of fmts) {
+      d2 = await probe(out, 'Worker → GET /v4/data/training-sessions/list (7 dni, format ' + label + ')', w + '/data/training-sessions/list?from=' + encodeURIComponent(f(weekAgo)) + '&to=' + encodeURIComponent(f(today)), { headers: h });
+      if (d2.ok && d2.status === 200) { d2.fmt = label; break; }
+    }
     let d3 = { ok: false };
     if (q.get('polar_refresh')) d3 = await probe(out, 'Worker → odświeżenie tokenu (POST /auth/refresh)', w + '/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: q.get('polar_refresh') }) });
-    summary(out, d1.ok && d2.ok && d2.status === 200 ? '<span class="ok">Wynik: pośrednik działa – aplikacja może pobierać dane z Polar.' + (d3.ok && d3.status === 200 ? ' Odświeżanie tokenu też działa.' : '') + '</span>'
+    summary(out, d1.ok && d2.ok && d2.status === 200 ? '<span class="ok">Wynik: pośrednik działa – aplikacja może pobierać dane z Polar (format dat: ' + d2.fmt + ').' + (d3.ok && d3.status === 200 ? ' Odświeżanie tokenu też działa.' : '') + '</span>'
       : '<span class="wait">Wynik: worker odpowiada, ale Polar zwrócił status ' + (d2.status || 'brak') + ' – sprawdź zgody na account.polar.com i zmienne workera.</span>');
   })();
 </script>
