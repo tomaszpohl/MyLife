@@ -1,8 +1,8 @@
-# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 34
+# MyLife – Plan dnia, Dieta, Finanse, Trening i Rozliczenia (aplikacja na Androida, PWA) · wersja 35
 
 Aplikacja zbudowana według makiety **„Planer – makieta”** (ciemny motyw, offline) i dokumentu `claude/design.md`.
 Działa jak zwykła aplikacja z ikoną na ekranie telefonu, bez internetu, a wszystkie dane zostają **tylko na telefonie**.
-Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa moduł **Dieta** – jadłospisy z PDF od dietetyka, a od v8 moduł **Finanse** – majątek, wydatki i wynik finansowy (tylko PLN).
+Zadania mają opcjonalną godzinę (od v35; wcześniej bez godzin), bez przypomnień (decyzja właściciela). Od v35 plan dnia może się synchronizować z **Kalendarzem Google** (opis niżej) – tylko wtedy aplikacja łączy się z internetem. Od v5 działa moduł **Dieta** – jadłospisy z PDF od dietetyka, a od v8 moduł **Finanse** – majątek, wydatki i wynik finansowy (tylko PLN).
 
 ## Co potrafi
 
@@ -12,12 +12,24 @@ Zadania nie mają godzin ani przypomnień (decyzja właściciela). Od v5 działa
 | **Dzień** | Pasek tygodnia (przesunięcie palcem w lewo/prawo zmienia tydzień; pod nim zakres dat tygodnia i – w innym tygodniu – „Wróć do bieżącego tygodnia”), lista zadań z tytułem i powtarzaniem, odhaczanie. **Ukończone zadania trafiają na koniec listy.** **Uchwyt (sześć kropek)** zmienia kolejność przeciąganiem albo strzałkami na klawiaturze, w obrębie grupy nieukończonych lub ukończonych. **Przesunięcie w prawo = usuń**, **w lewo = przełóż** (Jutro / Inna data), „Cofnij” po każdej z tych akcji. Szybkie dodawanie (Enter), dotknięcie tytułu otwiera edycję. **Podzadania (v13):** przy zadaniu licznik „wykonane/wszystkie” i strzałka; po rozwinięciu odhaczanie i usuwanie podzadań (z „Cofnij”). Rozpoczęcie zmiany kolejności zwija rozwinięte podzadania. **Od v32** w rozwiniętym zadaniu przy podzadaniu uchwyt (od v33; przeciągnięcie w górę/dół albo strzałki ↑/↓ na uchwycie – kolejność zapisuje się od razu, stan „wykonane” zostaje; w v32 były przyciski ↑/↓) i ołówek – karta edycji z nazwą (Enter zapisuje, Escape anuluje), „Anuluj”, „Zapisz” oraz koszem „Usuń podzadanie” (z „Cofnij”). Zaległe terminy aktywności cyklicznych bez tych przycisków. **Od v33** dotknięcie aktywności w planie dnia otwiera od razu okno „Edytuj aktywność”; zamknięcie, zapis i usunięcie wracają do planu dnia. **Od v34** przesunięcie podzadania w prawo po jego nazwie (próg 100 px; czerwone tło z koszem, po progu „Puść, aby usunąć”) usuwa je: w zadaniu powtarzalnym tylko z tego dnia („Usuń z tego dnia” – inne dni, Tydzień i Miesiąc w inne dni bez zmian; edycja zadania pokazuje pełną listę), w jednorazowym na stałe („Usuń”), a zaległy termin aktywności cyklicznej („Usuń ten termin”) przestaje być terminem – nie liczy się do zaległych, wykonanych ani statystyk. W nagłówku dnia „Cofnij usunięcie podzadania”. |
 | **Tydzień** | Nawigacja tygodniami, rozwijanie dni pojedynczo lub „Rozwiń wszystko”, dotknięcie daty otwiera dzień. Zadania z podzadaniami mają licznik i strzałkę – po rozwinięciu podgląd podzadań z odhaczonymi wykonanymi. |
 | **Miesiąc** | Siatka miesiąca: jedna kropka, gdy w dniu są zadania do zrobienia (dzień z wszystkim wykonanym – bez kropki); minione dni z niewykonanymi zadaniami podświetlone na czerwono (zaległe), legenda pod kalendarzem. Podgląd wybranego dnia ze znacznikiem wykonania i licznikiem „x z y wykonane”, „Otwórz ten dzień”; podgląd podzadań jak w Tygodniu. |
-| **Nowe zadanie** | Tytuł, data, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), **podzadania** (lista z numerami, pole „Dodaj podzadanie” + plus albo Enter, licznik), notatka. |
+| **Nowe zadanie** | Tytuł, data, **godzina (opcjonalnie, od v35; „Usuń godzinę”)**, powtarzanie (nie / codziennie / co tydzień / co miesiąc / własne), **podzadania** (lista z numerami, pole „Dodaj podzadanie” + plus albo Enter, licznik), notatka. |
 | **Edytuj zadanie** | Jak Nowe zadanie, z wypełnionymi polami. Karta podzadań z polem „wykonane” – zmiany podzadań zapisują się od razu. Na dole przyciski „Usuń zadanie” i „Zapisz zmiany”. |
 | **Własne powtarzanie** | Co N dni / tygodni / miesięcy, wybór dni tygodnia, koniec (nigdy / do dnia / po N powtórzeniach). |
-| **Ustawienia** (zębatka w nagłówku) | Przechowywanie danych (miejsce zapisu, data ostatniej kopii, ostrzeżenie), zapis kopii do pliku JSON, wczytanie kopii z potwierdzeniem. Strzałka wstecz wraca do ekranu, z którego otwarto Ustawienia. |
+| **Ustawienia** (zębatka w nagłówku) | Przechowywanie danych (miejsce zapisu, data ostatniej kopii, ostrzeżenie), zapis kopii do pliku JSON, wczytanie kopii z potwierdzeniem. Strzałka wstecz wraca do ekranu, z którego otwarto Ustawienia. **Od v35** karta „Synchronizacja z kalendarzem” → „Kalendarz Google” (opis niżej); pozycja „Finanse: import danych” usunięta (makieta 11.11). |
+| **Błędy synchronizacji** (od v35) | Lista elementów, których nie udało się zsynchronizować z Kalendarzem Google: tytuł, data i godzina, operacja (wysyłanie do / pobieranie z / usuwanie w Google), przyczyna i wskazówka, „Ponów” przy każdym i „Ponów wszystkie”; bez błędów – „Brak błędów synchronizacji”. Otwiera się sama po synchronizacji zakończonej błędami albo z wiersza „Błędy synchronizacji: n” w Ustawieniach. |
 
 **Usuwanie zadania cyklicznego** (przesunięciem w prawo albo przyciskiem „Usuń zadanie” w edycji) otwiera okno z wyborem: **Tylko ten termin** (pozostałe terminy zostają) albo **Cały cykl** (wszystkie terminy tego zadania). Zadanie jednorazowe usuwa się od razu. W obu przypadkach można użyć „Cofnij”.
+
+**Godzina i Kalendarz Google (od v35, makieta 11.11):** zadanie może mieć godzinę (pole „Godzina (opcjonalnie)” w Nowe/Edytuj zadanie); godzina jest pod tytułem w Dniu, Tygodniu i Miesiącu, a obok niej ikona stanu synchronizacji: zielona chmurka z haczykiem – zsynchronizowane z Kalendarzem Google, bursztynowa przekreślona – nie (błąd, czeka na wysłanie albo kalendarz rozłączony). Zadania z kalendarza mają niebieską ikonę kalendarza przy tytule; działają jak zwykłe zadania (odhaczanie, podzadania, kolejność, usuwanie przesunięciem w prawo, przekładanie w lewo, edycja), a zmiany wracają do Google. Powtarzanie wydarzenia z Google zmienia się w Google.
+
+**Jak połączyć Kalendarz Google:**
+1. W Google Cloud Console utwórz projekt, włącz Google Calendar API, skonfiguruj ekran zgody (Zewnętrzni, tryb „Testowanie”, dodaj siebie jako użytkownika testowego) i utwórz klienta OAuth „Aplikacja internetowa” z autoryzowanym źródłem JavaScript = adres aplikacji (np. `https://twoj-login.github.io`, bez ścieżki i ukośnika).
+2. Ustawienia → „Kalendarz Google” → wpisz **identyfikator klienta** (…apps.googleusercontent.com) → „Połącz z Kalendarzem Google”.
+3. W oknie wybierz **datę początku synchronizacji** i **co synchronizować**: wysłać zadania do Google, pobrać wydarzenia z Google albo jedno i drugie → „Połącz i synchronizuj” → zaloguj się w oknie Google (przy aplikacji w trybie testowym Google pokaże ostrzeżenie „Google nie zweryfikował tej aplikacji” – „Kontynuuj”).
+
+Co się synchronizuje (decyzje właściciela z 11.11.2026): **główny kalendarz** konta Google; do Google trafiają **tylko zadania z godziną** (od daty początku; zadania cykliczne jako wydarzenia cykliczne, pominięte terminy jako wyjątki), wydarzenia z Google – także całodniowe – trafiają do planera (od daty początku do ok. 13 miesięcy naprzód). Dodanie, zmiana i usunięcie działa w obie strony; przy zmianie w obu miejscach wygrywa nowsza. Odhaczenie, podzadania i kolejność zostają w MyLife. Aktywności cykliczne z Treningu nie są synchronizowane.
+
+Kiedy: po połączeniu, przy „Synchronizuj teraz”, a gdy logowanie Google jest ważne (ok. godziny) – także sama po każdej zmianie w planerze, po uruchomieniu i po powrocie do aplikacji. Po wygaśnięciu logowania zmiany czekają (bursztynowa chmurka), a „Synchronizuj teraz” otwiera okno logowania. Aplikacja nie synchronizuje się, gdy jest zamknięta. „Rozłącz Kalendarz Google” zostawia zadania w aplikacji, chowa wydarzenia z Google z planera (wracają po ponownym połączeniu) i niczego nie usuwa w Google.
 
 Przełożenie zadania cyklicznego dotyczy tylko tego jednego terminu. Przełożony termin staje się osobnym zadaniem jednorazowym.
 
@@ -69,7 +81,7 @@ Na ekranach Diety, Finansów i Treningu na dole jest **pasek szybkiej nawigacji*
 
 Moduł startuje pusty – kwoty wpisujesz sam albo importujesz z pliku.
 
-**Import danych finansowych (od v9)** – Ustawienia → „Finanse: import danych” → „Wybierz plik .xlsx…” → „Dalej” → okno podsumowania (każdy rozpoznany arkusz osobno, z zaznaczeniem) → „Importuj dane”. Dane są **dodawane** do istniejących (nic nie jest nadpisywane), ponowny import tego samego pliku doda dane drugi raz. Arkusze rozpoznawane po nagłówkach w pierwszym wierszu:
+**Import danych finansowych (v9–v34; od v35 usunięty z Ustawień zgodnie z makietą 11.11)** – Ustawienia → „Finanse: import danych” → „Wybierz plik .xlsx…” → „Dalej” → okno podsumowania (każdy rozpoznany arkusz osobno, z zaznaczeniem) → „Importuj dane”. Dane są **dodawane** do istniejących (nic nie jest nadpisywane), ponowny import tego samego pliku doda dane drugi raz. Arkusze rozpoznawane po nagłówkach w pierwszym wierszu:
 
 | Arkusz | Kolumny | Co powstaje |
 |---|---|---|
@@ -118,7 +130,7 @@ Rozliczenia są piątym modułem kopii danych (Zadania, Dieta, Finanse, Trening,
 Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby Android pozwolił ją zainstalować. Potem działa bez internetu.
 
 ### Sposób 1 – Netlify (najprościej, bez programowania)
-1. Rozpakuj `mylife-pwa-v34.zip` na komputerze.
+1. Rozpakuj `mylife-pwa-v35.zip` na komputerze.
 2. Załóż darmowe konto na netlify.com (bez konta strona szybko wygasa).
 3. Wejdź na **app.netlify.com/drop** i przeciągnij folder `mylife`.
 4. Dostaniesz adres w stylu `https://twoja-nazwa.netlify.app`. Nazwę możesz zmienić w ustawieniach strony.
@@ -139,7 +151,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v34 · 10.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v35 · 11.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -150,6 +162,8 @@ mylife/
 ├─ index.html            – powłoka aplikacji
 ├─ styles.css            – kolory, typografia i komponenty z makiety
 ├─ core.js               – dane zadań, silnik powtarzania, kolejność dnia, zapis lokalny
+├─ gcal.js               – od v35: synchronizacja z Kalendarzem Google (logowanie Google, Calendar API, konflikty, błędy)
+├─ gcal-ui.js            – od v35: Ustawienia „Kalendarz Google” i ekran „Błędy synchronizacji”
 ├─ app.js                – ekrany planera, nawigacja, gesty, Ustawienia, kopia z wyborem modułów
 ├─ diet-pdf.js           – odczyt jadłospisu z PDF (układ „Indywidualny plan żywieniowy”)
 ├─ diet-core.js          – dane diety: jadłospisy, aktywacje, plan, dziennik, waga, zakupy, eksport .xlsx
@@ -158,8 +172,8 @@ mylife/
 ├─ body-ocr.js           – przygotowanie zdjęcia wydruku i rozpoznanie wartości Tanita BC-418
 ├─ ocr-worker.js         – odczyt tekstu ze zdjęcia w osobnym wątku (modele PaddleOCR w ONNX Runtime Web)
 ├─ fin-core.js           – dane finansów: majątek z historią, wydatki, kategorie, przychody, wynik, poduszka, cele, inwestycje
-├─ fin-import.js         – odczyt pliku .xlsx i rozpoznanie arkuszy do importu finansów
-├─ fin-ui.js             – ekrany modułu Finanse i import w Ustawieniach
+├─ fin-import.js         – odczyt pliku .xlsx (import finansów usunięty w v35; zostaje porównywanie nazw kategorii)
+├─ fin-ui.js             – ekrany modułu Finanse
 ├─ train-core.js         – dane treningów, postępy (największy ciężar), kopia
 ├─ settle-core.js       – dane Rozliczeń: należności, zobowiązania (z pozycjami w Majątku), rozliczenia grupowe, wyliczenie
 ├─ settle-ui.js         – ekrany modułu Rozliczenia
@@ -172,7 +186,7 @@ mylife/
 ├─ manifest.webmanifest  – instalacja jako aplikacja
 └─ icons/                – ikony aplikacji
 ```
-Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu).
+Bez kompilacji: zmiany w plikach widać od razu po odświeżeniu. Biblioteki w `lib/` są dołączone do paczki (nic nie jest pobierane z internetu; wyjątek od v35: skrypt logowania Google przy połączonym Kalendarzu Google).
 Po zmianie plików podbij `VERSION` w `sw.js` i `APP_VERSION` w `app.js` (np. `mylife-v19`), żeby telefon pobrał nową wersję.
 
 ## Kolory z makiety
@@ -180,6 +194,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v35 (11.11.2026)**: Planer dnia – opcjonalna godzina zadania (formularze, Dzień, Tydzień, Miesiąc); synchronizacja z Kalendarzem Google w obie strony (Ustawienia → „Kalendarz Google”, identyfikator klienta, data początku i kierunek; zadania z godziną ↔ główny kalendarz; wydarzenia z Google z ikoną kalendarza; ikona stanu synchronizacji; ekran „Błędy synchronizacji”); usunięty import finansów z Ustawień.
 - **v34 (10.11.2026)**: Planer dnia – usuwanie podzadania przesunięciem w prawo (powtarzalne – tylko z tego dnia, jednorazowe – na stałe, zaległy termin aktywności – pominięcie terminu) z „Cofnij”; Lista zakupów – karta „Lista z posiłków” (dni i dania, zwijana) i „Cofnij (n)” dla odhaczeń.
 - **v33 (09.11.2026)**: Planer dnia – kolejność podzadań uchwytem (przeciąganie za palcem albo strzałki ↑/↓ na uchwycie) zamiast przycisków ↑/↓ z v32; dotknięcie aktywności w planie dnia otwiera okno „Edytuj aktywność”, a „Anuluj”, ✕, „Zapisz”, „Usuń” i „wstecz” wracają do planu dnia.
 - **v32 (09.11.2026)**: Dziennik diety – edycja odstępstw i wpisów aktywności (ołówek wczytuje wpis do formularza, „Anuluj edycję”, ptaszek zapisuje w tym samym miejscu); Planer dnia – kolejność podzadań strzałkami ↑/↓ i edycja nazwy podzadania w karcie (Enter / Escape), usuwanie podzadania w karcie edycji.

@@ -1027,3 +1027,40 @@ a.dcard { color: var(--text); }
 .shopsrcday .dl { font-size: 13px; font-weight: 600; color: var(--text); }
 .shopsrcday .ml { font-size: 13px; color: var(--text-2); line-height: 1.35; }
 .shopsrcday .sl { color: var(--muted); }
+
+/* ---------- v35: godzina zadania, zadania z Kalendarza Google, synchronizacja (makieta 11.11) ---------- */
+.tirow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tirow .title, .tirow .ti { min-width: 0; }
+.calic { flex: none; display: flex; color: #8AB4F8; }
+.tline { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #C9D3DF; }
+.syic { display: flex; }
+.syic.ok { color: var(--ok); }
+.syic.bad { color: #FFB454; }
+.row.done .tline { color: var(--muted); }
+.tmcard { gap: 8px; }
+.tmhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+.tmhead .opt { letter-spacing: 0; text-transform: none; font-weight: 400; }
+.tmclr { height: 44px; margin: -10px -8px -10px 0; padding: 0 8px; background: none; border: none; color: var(--accent); font-size: 13px; }
+.tminput { flex: none; height: 48px; min-height: 48px; box-sizing: border-box; border-radius: 12px; padding: 0 14px; color-scheme: dark; }
+.tmhint { font-size: 12px; line-height: 1.4; }
+.sgico.gblue { background: #16233A; color: #8AB4F8; }
+.gkv { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+.gkv .kv:first-child { border-top: none; }
+.sgbody .primary, .gerrlink, .gdisc { flex: none; }
+.gkv .kv span:last-child { font-weight: 600; text-align: right; }
+.gdisc { width: 100%; min-height: 48px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); color: #FF9C8A; font-size: 14px; font-weight: 600; }
+.gerrlink { min-height: 48px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border-radius: 12px; background: #2A1A12; border: 1px solid #6A3F22; color: #FFB454; font-size: 14px; font-weight: 600; }
+.gerrlink span { flex: 1; }
+.okbox.warn { background: #2A1A12; color: #FFB454; }
+.gerrsum { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #2A1A12; border: 1px solid #6A3F22; color: #FFB454; font-size: 14px; font-weight: 600; }
+.gerr { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.gerrh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gerrh .t { font-size: 15px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.gerrh .w { flex: none; font-size: 12px; color: #C9D3DF; }
+.gerr .o { font-size: 12px; color: var(--muted); }
+.gerr .r { font-size: 13px; line-height: 1.45; color: #FFB454; }
+.gerr .h { font-size: 12px; line-height: 1.45; color: var(--muted); }
+.gretry { margin-top: 4px; min-height: 44px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--accent); font-size: 14px; font-weight: 600; }
+.gnoerr { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; text-align: center; }
+.gnoerr .ic { width: 48px; height: 48px; border-radius: 24px; background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.gnoerr .t { font-size: 16px; font-weight: 600; }

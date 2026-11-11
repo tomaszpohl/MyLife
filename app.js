@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v34 · 10.11.2026';
+  const APP_VERSION = 'v35 · 11.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -47,7 +47,11 @@
     warn: svg(18, 2, '<path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v5M12 18h0"></path>', ' style="flex:none;margin-top:1px;color:var(--gold)"'),
     grip: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"></circle><circle cx="15" cy="6" r="1.8"></circle><circle cx="9" cy="12" r="1.8"></circle><circle cx="15" cy="12" r="1.8"></circle><circle cx="9" cy="18" r="1.8"></circle><circle cx="15" cy="18" r="1.8"></circle></svg>',
     trashS: svg(18, 2, '<path d="M4 7h16"></path><path d="M10 11v6M14 11v6"></path><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path><path d="M9 7V4h6v3"></path>'),
-    ok: svg(18, 2.4, '<path d="m5 12 5 5 9-10"></path>', ' style="flex:none;color:var(--accent)"')
+    ok: svg(18, 2.4, '<path d="m5 12 5 5 9-10"></path>', ' style="flex:none;color:var(--accent)"'),
+    // v35: zadanie z Kalendarza Google i stan synchronizacji (makieta 11.11)
+    calS: svg(14, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>'),
+    cloudOk: svg(14, 2, '<path d="M17.5 19H7a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.8 9a5 5 0 0 1-.3 10z"></path><path d="m9.5 14 2 2 3.5-4"></path>'),
+    cloudOff: svg(14, 2, '<path d="M17.5 19H7a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.8 9a5 5 0 0 1-.3 10z"></path><path d="M4 4l16 16"></path>')
   };
   // Strzałka wstecz (poprzedni widok) i przycisk „Pulpit główny” – na wszystkich ekranach poza głównym (v7).
   const backBtn = (label, act, icon) => `<button class="iconbtn" data-a="${act || 'navback'}" aria-label="${label || 'Wróć'}">${icon || I.back}</button>`;
@@ -123,6 +127,15 @@
     return C.DAY_SHORT[d.getDay()].charAt(0) + C.DAY_SHORT[d.getDay()].slice(1).toLowerCase() + ', ' + base;
   }
   const repLine = (t) => { const r = C.repeatLabel(t); return r ? `<div class="rep">${I.repeat}<span>${esc(r)}</span></div>` : ''; };
+  // v35 (makieta 11.11): ikona „Z Kalendarza Google” przy tytule; pod tytułem godzina i stan synchronizacji z Google.
+  const GC = () => window.GCal;
+  const calMark = (t) => (GC() && GC().fromCal(t) ? `<span class="calic" role="img" aria-label="Z Kalendarza Google" title="Z Kalendarza Google">${I.calS}</span>` : '');
+  function tLine(t) {
+    if (!t.time) return '';
+    const s = GC() ? GC().status(t) : null;
+    const ic = !s ? '' : `<span class="syic ${s.ok ? 'ok' : 'bad'}" role="img" aria-label="${esc(s.label)}" title="${esc(s.label)}">${s.ok ? I.cloudOk : I.cloudOff}</span>`;
+    return `<div class="tline"><span>${esc(t.time)}</span>${ic}</div>`;
+  }
 
   // ---------- Wybór daty z kalendarza (v22, makieta 01.11: okno z kalendarzem, „Dziś”, dni spoza zakresu wyszarzone) ----------
   // A.datePick({ value, min, max, onPick(k) }) – okno nad bieżącym ekranem; A.dateBtn(...) – przycisk z datą.
@@ -245,6 +258,7 @@
     const r = h.replace(/^#\/?/, '').split('/').filter(Boolean);
     if (r[0] === 'task') return '#/plan/' + S.lastPlan;
     if (r[0] === 'settings' || r[0] === 'data') return '#/plan/day';
+    if (r[0] === 'syncerr') return '#/settings';
     if (r[0] === 'diet' && r[1] === 'menu') return '#/diet/menus';
     if (r[0] === 'diet' && r[1]) return '#/diet';
     if (r[0] === 'fin' && r[1]) return '#/fin';
@@ -284,6 +298,7 @@
       if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (navMode = 'replace', location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
+    else if (r.name === 'syncerr' && window.GCalUI) html = window.GCalUI.viewErrors();
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
     else if (r.name === 'train' && window.TrainUI) { const k = window.TrainUI.navKey(r); html = k ? withNavbar(window.TrainUI.view(r), 'train', k) : window.TrainUI.view(r); }
@@ -381,7 +396,7 @@
         <div class="row-move" aria-hidden="true"><span class="lbl">Przełóż</span>${I.moveCal}</div>
         <div class="row${x.done ? ' done' : ''}" data-swipe>
           <button class="grip" data-grip="${t.id}" aria-label="Zmień kolejność: ${esc(t.title)}" aria-describedby="grip-help">${I.grip}</button>
-          <button class="body" data-a="edit" data-id="${t.id}" data-k="${x.k}" aria-label="Edytuj zadanie: ${esc(t.title)}"><span class="title">${esc(t.title)}</span>${repLine(t)}</button>
+          <button class="body" data-a="edit" data-id="${t.id}" data-k="${x.k}" aria-label="Edytuj zadanie: ${esc(t.title)}${t.time ? ', ' + t.time : ''}"><span class="tirow">${calMark(t)}<span class="title">${esc(t.title)}</span></span>${tLine(t)}${repLine(t)}</button>
           ${subToggle(t, x.k, 'd')}
           <button class="check" data-a="done" data-id="${t.id}" data-k="${x.k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(t.title)}"><span class="box">${x.done ? I.check : ''}</span></button>
         </div>${subOpenFor(t, x.k, 'd') ? subPanel(t, x.k) : ''}</div>`;
@@ -518,7 +533,7 @@
         if (nAll > 2) lines += `<div class="more">+${nAll - 2} więcej</div>`;
       }
       const actItems = ac.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}"><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
-      const items = open ? `<div class="items">${nAll ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') + actItems : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
+      const items = open ? `<div class="items">${nAll ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') + actItems : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
       return `<div class="wday"><div class="top">
           <button class="open" data-a="openday" data-k="${k}" aria-label="Otwórz dzień: ${esc(dayTitle(k))}">${badge}</button>
           <button class="tog" data-a="wtoggle" data-k="${k}" aria-expanded="${open}" aria-label="${open ? 'Zwiń zadania' : 'Rozwiń wszystkie zadania'}: ${esc(dayTitle(k))}">
@@ -568,7 +583,7 @@
     const actList = macts.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}" aria-label="${esc(x.a.name)}, aktywność${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
     const nAll = items.length + macts.length, nDone = items.filter((x) => x.done).length + macts.filter((x) => x.done).length;
     const list = nAll
-      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.task.title)}</div>${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
+      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
       <div class="head-pad tight">${seg('month')}
@@ -603,7 +618,7 @@
   }
   function viewForm(arg) {
     if (!ensureDraft(arg)) return `<main class="screen"><div class="topbar">${navBtns()}<h1>Nie ma takiego zadania</h1></div></main>`;
-    const d = S.draft, editing = !!d.id;
+    const d = S.draft, editing = !!d.id, fromCalD = !!(window.GCal && window.GCal.fromCal(d));
     const rt = d.repeat.type;
     const repLabel = rt === 'custom' ? C.customShort(d.repeat, d.date) : { none: 'Nie powtarzaj', daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc' }[rt];
     const repOpen = !!S.ui.rep;
@@ -617,7 +632,12 @@
           <button type="button" class="datecard dcbtn" data-a="fdate" aria-haspopup="dialog" aria-label="${esc('Data zadania: ' + calFmt(d.date) + '. Zmień dzień')}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div></div>
             <span class="dcchg">Zmień dzień${svg(16, 2, '<path d="m9 6 6 6-6 6"></path>')}</span></button>
         </div>
-        <div class="panel">
+        <div class="panel tmcard">
+          <div class="tmhead"><label class="eyebrow" for="godzina">Godzina <span class="opt">(opcjonalnie)</span></label>${d.time ? '<button type="button" class="tmclr" data-a="ftimeclr">Usuń godzinę</button>' : ''}</div>
+          <input id="godzina" class="finput tminput" type="time" value="${esc(d.time || '')}" data-in="time" aria-label="Godzina zadania, opcjonalnie">
+          <div class="para tmhint">${fromCalD ? 'Wydarzenie z Kalendarza Google – zmiany wrócą do Google przy synchronizacji. Bez godziny wydarzenie trwa cały dzień.' : 'Bez godziny zadanie trwa cały dzień. Zadanie z godziną trafia do Kalendarza Google, gdy synchronizacja jest włączona.'}</div>
+        </div>
+        ${fromCalD ? `<div class="panel"><div class="eyebrow">Powtarzanie</div><div class="hint">${I.calS}<span>Wydarzenie z Kalendarza Google – powtarzanie zmienisz w Google.</span></div></div>` : `<div class="panel">
           <div class="eyebrow">Powtarzanie</div>
           <div style="display:flex;flex-direction:column;gap:6px">
             <button class="select" data-a="replist" aria-haspopup="listbox" aria-expanded="${repOpen}"><span>${esc(repLabel)}</span><span style="color:var(--muted);display:flex">${repOpen ? I.up : I.down}</span></button>
@@ -627,7 +647,7 @@
             </div>` : ''}
           </div>
           <div class="hint">${I.repeatM}<span>${esc(C.repeatSummary(d))}</span></div>
-        </div>
+        </div>`}
         ${subCard(d, editing)}
         <div class="field"><label class="eyebrow" for="notatka">Notatka</label>
           <textarea id="notatka" class="note-input" placeholder="Opcjonalnie" data-in="note">${esc(d.note)}</textarea></div>
@@ -712,7 +732,7 @@
             <div class="sico">${I.lockL}</div>
             <div style="display:flex;flex-direction:column;gap:4px">
               <div style="font-family:var(--display);font-size:17px;font-weight:600">Dane tylko na tym telefonie</div>
-              <div class="para" style="line-height:1.45">Zadania i ustawienia są zapisywane w pamięci aplikacji. Aplikacja działa bez internetu i niczego nie wysyła na żadne serwery.</div>
+              <div class="para" style="line-height:1.45">Zadania i ustawienia są zapisywane w pamięci aplikacji. Aplikacja działa bez internetu i niczego nie wysyła na żadne serwery${window.GCal && window.GCal.state().on ? ' – poza zadaniami z godziną i wydarzeniami synchronizowanymi z połączonym Kalendarzem Google' : ''}.</div>
             </div>
           </div>
           <div style="display:flex;flex-direction:column">
@@ -731,7 +751,7 @@
           ${st.msg ? `<div class="okbox" role="status">${st.err ? I.warn : I.ok}<span>${esc(st.msg)}</span></div>` : ''}
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
-        ${window.FinUI ? window.FinUI.settingsSection() : ''}
+        ${window.GCalUI ? window.GCalUI.settingsSection() : ''}
       </div>
     </main>`;
   }
@@ -777,6 +797,7 @@
     dptoday: () => { const P = S.dp; S.dp = null; if (P && P.cb) P.cb(C.todayKey()); render(); },
     dpclose: () => { S.dp = null; render(); },
     // Nowe / Edytuj zadanie: data z kalendarza („Zmień dzień”, od dziś wzwyż); Własne powtarzanie: koniec „Do dnia” od daty początku.
+    ftimeclr: () => { if (S.draft) { S.draft.time = ''; render(); } },
     fdate: () => { const d = S.draft, T = C.todayKey(); datePick({ value: d.date, min: d.date < T ? d.date : T, onPick: (k) => { d.date = k; } }); },
     renddate: () => { const r = S.rdraft; datePick({ value: r.repeat.endDate || r.date, min: r.date, onPick: (k) => { r.repeat.endDate = k; } }); },
     subtog: (el) => { const key = el.dataset.s; S.subOpen[key] = !S.subOpen[key]; render(); },
@@ -859,7 +880,7 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); back(); },
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); back(); },
     export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
@@ -927,6 +948,8 @@
     d.title = d.title.trim();
     if (!d.title) { toast('Wpisz tytuł zadania'); const t = document.getElementById('tytul'); if (t) t.focus(); return; }
     if (!d.date) d.date = S.sel;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(d.time || '')) d.time = '';
+    if (d.g && d.g.src === 'g') d.repeat = C.blankTask().repeat;   // v35: wydarzenie z Google – bez powtarzania w MyLife
     const saved = C.upsert(d);
     S.sel = saved.date >= C.todayKey() || !C.isRecurring(saved) ? saved.date : S.sel;
     if (!C.occursOn(saved, S.sel)) { const n = nextDates(saved, 1)[0]; if (n) S.sel = n; }
@@ -953,6 +976,7 @@
     switch (k) {
       case 'title': d.title = el.value; break;
       case 'note': d.note = el.value; break;
+      case 'time': d.time = /^([01]\d|2[0-3]):[0-5]\d$/.test(el.value) ? el.value : ''; break;
       case 'subdraft': { S.ui.subDraft = el.value.slice(0, 60); const b = document.getElementById('subaddbtn'); if (b) b.classList.toggle('on', !!S.ui.subDraft.trim()); break; }
       case 'count': el.value = digits(el.value, 3); break;
       default:
@@ -961,6 +985,7 @@
         else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onInput(el, k);
         else if (k.indexOf('settle-') === 0 && window.SettleUI) window.SettleUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
+        else if (k.indexOf('gcal-') === 0 && window.GCalUI) window.GCalUI.onInput(el, k);
     }
   });
   app.addEventListener('change', (e) => {
@@ -968,6 +993,7 @@
     const d = S.draft, r = S.rdraft;
     switch (k) {
       case 'date': if (el.value) { d.date = el.value; render(); } break;
+      case 'time': d.time = /^([01]\d|2[0-3]):[0-5]\d$/.test(el.value) ? el.value : ''; render(); break;
       case 'enddate': r.repeat.endDate = el.value || null; render(); break;
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
@@ -1009,6 +1035,7 @@
     if (e.target.id === 'subedit' && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); if (e.key === 'Enter') actions.subedok(); else actions.subedno(); return; }
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
+    if (e.key === 'Escape' && window.GCalUI && route().name === 'settings' && window.GCalUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
@@ -1339,6 +1366,11 @@
   if (window.TrainUI) { window.TrainUI.init(window.App); }
   if (window.Settle) { window.Settle.load(); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
+  // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
+  if (window.GCal) { window.GCal.load(); }
+  if (window.GCalUI) { window.GCalUI.init(window.App); }
+  if (window.GCal && window.GCal.state().on) { window.GCal.preload(); window.GCal.schedule(1500); }
+  window.addEventListener('online', () => { if (window.GCal) window.GCal.schedule(1000); });
   window.addEventListener('hashchange', () => {
     navSync();
     const r = route();
@@ -1355,6 +1387,8 @@
     // v15: tylko gdy zmienił się dzień. Na Androidzie wybór pliku (PDF, .xlsx, kopia) chowa aplikację; przerysowanie
     // po powrocie podmieniało pole pliku, zanim telefon przekazał wybrany plik – plik „znikał” i importu nie dało się zacząć.
     if (document.visibilityState === 'visible' && renderedDay !== C.todayKey()) render();
+    // v35: po powrocie do aplikacji pobierz zmiany z Kalendarza Google (gdy logowanie jest jeszcze ważne).
+    if (document.visibilityState === 'visible' && window.GCal) window.GCal.schedule(800);
   });
   render();
 

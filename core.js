@@ -48,6 +48,7 @@
       title: '',
       note: '',
       date: dateK || todayKey(),
+      time: '',   // v35: opcjonalna godzina 'GG:MM' (makieta 11.11)
       repeat: { type: 'none', interval: 1, unit: 'week', weekdays: [], endMode: 'never', endDate: null, count: 10 },
       done: {},
       skip: {},
@@ -153,16 +154,18 @@
   // ---------- Zapis ----------
   // Klucz zostaje „mylive.v1”, żeby zachować dane z wcześniejszych wersji (MyLive v1–v3).
   const STORE_KEY = 'mylive.v1';
-  let db = { version: 2, tasks: [], order: {} };
-  // Migracja: godziny i przypomnienia nie są już używane (decyzja właściciela).
-  // Dawna godzina zostaje tylko jako zapasowe sortowanie (legacyTime).
+  let db = { version: 3, tasks: [], order: {} };
+  // Migracja: v4 usunęła godziny i przypomnienia (dawna godzina została jako legacyTime – tylko sortowanie).
+  // v35 (makieta 11.11): godzina wraca jako opcjonalne pole `time`; dane w wersji < 3 nie mają już godzin z v1–v3.
   function migrate(d) {
     if (!d.order || typeof d.order !== 'object') d.order = {};
+    const old = !(d.version >= 3);
     d.tasks.forEach((t) => {
-      if (t.time && !t.legacyTime) t.legacyTime = t.time;
-      delete t.time; delete t.reminder;
+      if (old) { if (t.time && !t.legacyTime) t.legacyTime = t.time; delete t.time; }
+      delete t.reminder;
+      if (typeof t.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(t.time)) t.time = '';
     });
-    d.version = 2;
+    d.version = 3;
     return d;
   }
   const listeners = [];
@@ -213,7 +216,7 @@
   function skipOccurrence(id, k) {
     const t = get(id); if (!t) return;
     if (!isRecurring(t)) { remove(id); return; }
-    t.skip = t.skip || {}; t.skip[k] = true; save();
+    t.skip = t.skip || {}; t.skip[k] = true; t.updated = Date.now(); save();
   }
 
   // Przełożenie terminu: zadanie jednorazowe zmienia datę, w cyklicznym
@@ -221,16 +224,16 @@
   function moveOccurrence(id, fromK, toK) {
     const t = get(id); if (!t) return null;
     if (!isRecurring(t)) {
-      t.date = toK;
+      t.date = toK; t.updated = Date.now();
       if (t.done) delete t.done[fromK];
       if (t.subDone && t.subDone[fromK]) { t.subDone[toK] = t.subDone[fromK]; delete t.subDone[fromK]; }
       save();
       return t;
     }
-    t.skip = t.skip || {}; t.skip[fromK] = true;
+    t.skip = t.skip || {}; t.skip[fromK] = true; t.updated = Date.now();
     const copy = JSON.parse(JSON.stringify(t));
-    copy.id = newId(); copy.created = Date.now(); copy.date = toK;
-    delete copy.legacyTime;
+    copy.id = newId(); copy.created = Date.now(); copy.updated = Date.now(); copy.date = toK;
+    delete copy.legacyTime; delete copy.g;   // v35: kopia to nowe zadanie – bez powiązania z wydarzeniem Google
     copy.repeat = { type: 'none', interval: 1, unit: 'week', weekdays: [], endMode: 'never', endDate: null, count: 10 };
     copy.done = {}; copy.skip = {}; copy.movedFrom = { id: t.id, k: fromK };
     copy.subDone = {};   // v13: kopia ma własną listę podzadań; postęp z przełożonego terminu idzie razem z nią
@@ -242,16 +245,20 @@
 
   // Lista zadań dnia: kolejność ustawiona uchwytem (db.order[k]); zadania spoza niej
   // dalej wg dawnej godziny i daty utworzenia. Ukończone zawsze na końcu.
+  // v35: zadania z Kalendarza Google (t.g.src === 'g') są ukryte, gdy kalendarz jest rozłączony (makieta 11.11).
+  let calHidden = false;
+  const setCalHidden = (v) => { calHidden = !!v; };
+  const visible = (t) => !(calHidden && t.g && t.g.src === 'g');
   function forDay(k) {
     const ord = db.order[k] || [];
     const pos = (t) => { const i = ord.indexOf(t.id); return i < 0 ? Infinity : i; };
     const list = db.tasks
-      .filter((t) => occursOn(t, k))
+      .filter((t) => visible(t) && occursOn(t, k))
       .map((t) => ({ task: t, k, done: !!(t.done && t.done[k]) }))
       .sort((a, b) => {
         const pa = pos(a.task), pb = pos(b.task);
         if (pa !== pb) return pa - pb;
-        const ta = a.task.legacyTime || '~', tb = b.task.legacyTime || '~';
+        const ta = a.task.time || a.task.legacyTime || '~', tb = b.task.time || b.task.legacyTime || '~';
         if (ta !== tb) return ta < tb ? -1 : 1;
         return (a.task.created || 0) - (b.task.created || 0);
       });
@@ -335,7 +342,7 @@
   function importJSON(text) {
     const parsed = JSON.parse(text);
     if (!parsed || !Array.isArray(parsed.tasks)) throw new Error('To nie jest kopia zapasowa MyLife.');
-    db = migrate({ tasks: parsed.tasks, order: parsed.order || {} });
+    db = migrate({ tasks: parsed.tasks, order: parsed.order || {}, version: parsed.version });
     save();
     return db.tasks.length;
   }
@@ -343,16 +350,17 @@
   function exportData() { return snapshot(); }
   function importData(d) {
     if (!d || !Array.isArray(d.tasks)) throw new Error('Plik nie zawiera zadań.');
-    db = migrate({ tasks: d.tasks, order: d.order || {} });
+    db = migrate({ tasks: d.tasks, order: d.order || {}, version: d.version });
     save();
     return db.tasks.length;
   }
-  function wipe() { db = { version: 2, tasks: [], order: {} }; save(); }
+  function wipe() { db = { version: 3, tasks: [], order: {} }; save(); }
 
   window.Core = {
     DAY_SHORT, DAY_NAME, DAY_ABBR, MONTH_GEN, MONTH_NOM, MONTH_SHORT, dmy,
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
+    setCalHidden, visible,
     load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
     newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub, renameSub, moveSub, hideSub, reorderSubs,
     exportJSON, importJSON, exportData, importData, wipe, lastBackup
