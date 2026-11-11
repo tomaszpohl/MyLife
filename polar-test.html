@@ -35,6 +35,12 @@
 <button id="goB" class="sec">Zaloguj w Polar i sprawdź</button>
 <div id="outB"></div>
 
+<h2>Część C – test pośrednika (Cloudflare Worker)</h2>
+<p>Logowanie przez workera i odczyt danych przez workera – dokładnie tak, jak będzie działać aplikacja.</p>
+<label for="wurl">Adres workera</label><input id="wurl" placeholder="https://mylife-polar.…workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+<button id="goC">Zaloguj przez workera i sprawdź</button>
+<div id="outC"></div>
+
 <script>
   const $ = (id) => document.getElementById(id);
   const REDIR = location.origin + location.pathname;
@@ -101,6 +107,32 @@
     const d2 = await probe(out, 'GET /v4/data/training-sessions/list (ostatnie 7 dni)', API + '/training-sessions/list?from=' + iso(weekAgo) + '&to=' + iso(today), { headers: h });
     summary(out, d1.ok && d2.ok && d2.status === 200 ? '<span class="ok">Wynik: pełna droga działa z przeglądarki – wariant 1 jest możliwy.</span>'
       : '<span class="wait">Wynik: logowanie działa, ale odczyt danych zwrócił status ' + (d2.status || 'brak') + ' – sprawdź zgody na account.polar.com.</span>');
+  })();
+
+  // Część C – pośrednik: /auth/start → Polar → /auth/callback → powrót tutaj z #polar_access=… → /data/… przez workera
+  try { $('wurl').value = localStorage.getItem('pt.worker') || ''; } catch (e) {}
+  $('goC').addEventListener('click', () => {
+    const w = $('wurl').value.trim().replace(/\/+$/, '');
+    if (!/^https:\/\//.test(w)) { $('outC').innerHTML = '<div class="r"><span class="bad">Wpisz adres workera (https://…).</span></div>'; return; }
+    const nonce = Math.random().toString(36).slice(2);
+    try { localStorage.setItem('pt.worker', w); sessionStorage.setItem('pt.nonce', nonce); } catch (e) {}
+    location.assign(w + '/auth/start?return=' + encodeURIComponent(REDIR) + '&nonce=' + nonce + '&scope=' + encodeURIComponent('training_sessions:read profile:read'));
+  });
+  (async function backC() {
+    if (!/polar_(access|error)=/.test(location.hash)) return;
+    const q = new URLSearchParams(location.hash.slice(1)); history.replaceState(null, '', location.pathname);
+    const out = $('outC'); out.innerHTML = '';
+    let w = '', n = ''; try { w = localStorage.getItem('pt.worker') || ''; n = sessionStorage.getItem('pt.nonce') || ''; } catch (e) {}
+    if (q.get('polar_error')) { summary(out, '<span class="bad">Błąd logowania przez workera: ' + q.get('polar_error') + '</span>'); return; }
+    if (!n || q.get('polar_nonce') !== n) { summary(out, '<span class="bad">Nie zgadza się nonce – uruchom część C jeszcze raz.</span>'); return; }
+    const b = box(out, 'Logowanie przez workera'); b.lastChild.outerHTML = '<div><span class="ok">OK</span> – token dostępu ważny ' + q.get('polar_expires') + ' s, token odświeżania: ' + (q.get('polar_refresh') ? 'jest' : 'brak') + '</div>';
+    const h = { Authorization: 'Bearer ' + q.get('polar_access'), Accept: 'application/json' };
+    const d1 = await probe(out, 'Worker → GET /v4/data/user/account-data', w + '/data/user/account-data', { headers: h });
+    const d2 = await probe(out, 'Worker → GET /v4/data/training-sessions/list (ostatnie 7 dni)', w + '/data/training-sessions/list?from=' + iso(weekAgo) + '&to=' + iso(today), { headers: h });
+    let d3 = { ok: false };
+    if (q.get('polar_refresh')) d3 = await probe(out, 'Worker → odświeżenie tokenu (POST /auth/refresh)', w + '/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: q.get('polar_refresh') }) });
+    summary(out, d1.ok && d2.ok && d2.status === 200 ? '<span class="ok">Wynik: pośrednik działa – aplikacja może pobierać dane z Polar.' + (d3.ok && d3.status === 200 ? ' Odświeżanie tokenu też działa.' : '') + '</span>'
+      : '<span class="wait">Wynik: worker odpowiada, ale Polar zwrócił status ' + (d2.status || 'brak') + ' – sprawdź zgody na account.polar.com i zmienne workera.</span>');
   })();
 </script>
 </body>
