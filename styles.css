@@ -1166,3 +1166,23 @@ a.dcard { color: var(--text); }
 .tcfield { min-height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; color: var(--text); text-align: left; font-family: inherit; }
 .tcsync { min-height: 56px; background: var(--bg); }
 .tcsync .sw.on { background: var(--polar); }
+
+/* ---------- v39 (makieta v194): Polar Flow wzbogaca ręczne treningi ---------- */
+.tqcard { border-color: var(--polar-line); padding: 0; gap: 0; }
+.tqhead { min-height: 56px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; background: none; border: none; color: var(--text); font-family: inherit; text-align: left; width: 100%; }
+.tqbody { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px 14px; }
+.tqauto { height: 44px; border-radius: 12px; background: var(--polar-bg); border: 1px solid var(--polar-line); color: var(--polar); font-size: 14px; font-weight: 600; font-family: inherit; }
+.tqitem { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.tqeb { font-size: 11px; letter-spacing: .1em; color: var(--dim); font-weight: 500; }
+.tqcand { min-height: 48px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); color: var(--text); font-family: inherit; text-align: left; }
+.tqcand.same, .tqses.same { border-color: #2B5A3C; background: #10241A; }
+.tqsame { flex: none; font-size: 11px; font-weight: 600; color: var(--ok); }
+.tqskip { align-self: flex-start; height: 36px; padding: 0 12px; border-radius: 10px; background: transparent; border: 1px solid var(--line-2); color: var(--muted); font-size: 13px; font-family: inherit; }
+.tqunl { height: 44px; border-radius: 12px; background: transparent; border: 1px solid var(--polar-line); color: var(--polar); font-size: 14px; font-weight: 600; font-family: inherit; }
+.tpollink { border-style: dashed; gap: 8px; }
+.tqlist { display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); overflow: hidden; }
+.tqses { min-height: 56px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; border: none; border-top: 1px solid var(--line); background: var(--bg); color: var(--text); font-family: inherit; text-align: left; }
+.tqses:first-child { border-top: none; }
+.tmseg { margin: 0; }
+.tmseg button { font-size: 13px; }
+.pfauto { min-height: 56px; background: var(--bg); }

@@ -13,7 +13,7 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.train.v1';
-  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], tagCol: {}, pol: { seen: {} } });   // v20: rec – aktywności cykliczne
+  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], tagCol: {}, pol: { seen: {}, q: [], sq: {} } });   // v20: rec – aktywności cykliczne
   let db = empty();
 
   // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
@@ -23,6 +23,8 @@
     if (!d.tagCol || typeof d.tagCol !== 'object') d.tagCol = {};   // v38: kolory kategorii z palety (nazwa → #kolor)
     if (!d.pol || typeof d.pol !== 'object') d.pol = { seen: {} };
     if (!d.pol.seen || typeof d.pol.seen !== 'object') d.pol.seen = {};
+    if (!Array.isArray(d.pol.q)) d.pol.q = [];                                  // v39: sesje siłowe z Polar do przypisania
+    if (!d.pol.sq || typeof d.pol.sq !== 'object') d.pol.sq = {};               // v39: sesje siłowe już obsłużone (w kolejce, połączone, pominięte)
     (d.list || []).forEach((w) => {
       w.tags = Array.isArray(w.tags) ? w.tags : [];
       w.tags.forEach((t) => { if (d.tags.indexOf(t) < 0) d.tags.push(t); });   // rejestr = wpisane + użyte w treningach
@@ -68,8 +70,9 @@
     else { e.id = db.next++; db.list.push(e); }
     save(); return e;
   }
-  function remove(id) { const w = get(id); if (!w) return null; db.list = db.list.filter((x) => x.id !== w.id); save(); return w; }
-  function restore(w) { if (!w) return; db.list = db.list.filter((x) => x.id !== w.id).concat([w]); if (db.next <= w.id) db.next = w.id + 1; save(); }
+  // v39: usunięcie treningu połączonego z Polar oddaje sesję do kolejki „Z Polar do przypisania” (Cofnij ją zabiera).
+  function remove(id) { const w = get(id); if (!w) return null; db.list = db.list.filter((x) => x.id !== w.id); if (linked(w)) qBack(w); save(); return w; }
+  function restore(w) { if (!w) return; db.list = db.list.filter((x) => x.id !== w.id).concat([w]); if (linked(w)) db.pol.q = db.pol.q.filter((z) => z.pid !== w.pol.pid); if (db.next <= w.id) db.next = w.id + 1; save(); }
 
   // Podsumowanie treningu: liczba ćwiczeń, serii i minut kondycji.
   // Podsumowanie treningu: liczba ćwiczeń, serii, minut kondycji i suma ciężaru (Σ serie × powt. × kg, tylko siłowe).
@@ -156,5 +159,42 @@
   }
   const polSeen = (pid) => !!db.pol.seen[pid];
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf };
+  // ---------- v39 (makieta v194, decyzje właściciela 12.11.2026): Polar Flow wzbogaca ręczne treningi ----------
+  // Sesja siłowa z Polar nie tworzy treningu – czeka w kolejce db.pol.q = [{ pid, d, start, name, min, kcal, hrAvg, hrMax, load }],
+  // aż zostanie połączona z ręcznym treningiem (w.pol = { kcal, hrAvg, hrMax, load, min, start, pid, d, name, auto }, bez src).
+  const linked = (w) => !!(w && w.src !== 'polar' && w.pol && w.pol.pid);
+  const free = (w) => w.src !== 'polar' && !w.pol;
+  const QF = ['pid', 'd', 'start', 'name', 'min', 'kcal', 'hrAvg', 'hrMax', 'load'];
+  const qItem = (o) => { const r = {}; QF.forEach((k) => { r[k] = o[k] != null ? o[k] : null; }); return r; };
+  function qBack(w) { const p = w.pol; if (!db.pol.q.some((z) => z.pid === p.pid)) db.pol.q.push(qItem(Object.assign({}, p, { d: p.d || w.d }))); }
+  const polQ = () => db.pol.q.slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : String(b.start || '').localeCompare(String(a.start || ''))));
+  const polFree = () => list().filter(free);
+  // Dodaje sesję do kolejki (raz na identyfikator; pomija sesje już połączone i treningi z Polar z v36 o tym identyfikatorze).
+  function polQAdd(o) {
+    if (!o || !o.pid || db.pol.sq[o.pid]) return false;
+    db.pol.sq[o.pid] = 1;
+    if (db.list.some((w) => (w.src === 'polar' && w.pid === o.pid) || (w.pol && w.pol.pid === o.pid))) { save(); return false; }
+    db.pol.q.push(qItem(o)); save(); return true;
+  }
+  function polLink(wid, pid, auto) {
+    const w = get(wid), q = db.pol.q.find((z) => z.pid === pid);
+    if (!w || !q || !free(w)) return false;
+    w.pol = { kcal: q.kcal, hrAvg: q.hrAvg, hrMax: q.hrMax, load: q.load, min: q.min, start: q.start, pid: q.pid, d: q.d, name: q.name, auto: !!auto };
+    db.pol.q = db.pol.q.filter((z) => z.pid !== pid); save(); return true;
+  }
+  function polUnlink(wid) { const w = get(wid); if (!linked(w)) return false; qBack(w); delete w.pol; save(); return true; }
+  function polSkip(pid) { const n = db.pol.q.length; db.pol.q = db.pol.q.filter((z) => z.pid !== pid); if (db.pol.q.length !== n) save(); return db.pol.q.length !== n; }
+  // Automatycznie: tylko gdy tego dnia jest dokładnie jeden ręczny trening bez danych z Polar i dokładnie jedna sesja w kolejce.
+  function polAuto() {
+    let n = 0;
+    db.pol.q.slice().forEach((q) => {
+      if (db.pol.q.filter((z) => z.d === q.d).length !== 1) return;
+      const cs = db.list.filter((w) => free(w) && w.d === q.d);
+      if (cs.length === 1 && polLink(cs[0].id, q.pid, true)) n++;
+    });
+    return n;
+  }
+
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf,
+    linked, polQ, polFree, polQAdd, polLink, polUnlink, polSkip, polAuto };
 })();

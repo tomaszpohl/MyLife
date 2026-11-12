@@ -27,7 +27,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, qOpen: false, qMsg: '', pk: false, tm: 'main' };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -52,9 +52,16 @@
   const frozen = () => { const reg = TR.tags(), c = TR.tagColors(); reg.forEach((t) => { if (!c[t]) c[t] = tagCol(reg, t); }); return c; };   // utrwala bieżące kolory przed zmianą
   const POLI = ic(13, 2.2, '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"></path><path d="M4 4v5h5"></path><path d="M4 13a8 8 0 0 0 14 4.5l2-2.5"></path><path d="M20 20v-5h-5"></path>');
   const polBadge = () => `<span class="tpolb" title="Zsynchronizowany z Polar Flow">${POLI}Polar</span>`;
-  const metaRow = (w, reg) => (w.src === 'polar' || (w.tags || []).length
-    ? `<div class="tmeta">${w.src === 'polar' ? polBadge() : ''}${(w.tags || []).map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : '');
+  // v39 (makieta v194/v195): trening ręczny wzbogacony danymi z Polar – plakietka „Polar” z ikoną splecionych ogniw łańcucha
+  const LINKI = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Połączony z Polar"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+  const linkBadge = () => `<span class="tpolb tlinkb" title="Wzbogacony danymi z Polar Flow">${POLI}Polar${LINKI}</span>`;
+  const metaRow = (w, reg) => (w.src === 'polar' || TR.linked(w) || (w.tags || []).length
+    ? `<div class="tmeta">${w.src === 'polar' ? polBadge() : ''}${TR.linked(w) ? linkBadge() : ''}${(w.tags || []).map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : '');
   const polRows = (p) => [['Kalorie', p.kcal != null ? p.kcal + ' kcal' : '—'], ['Tętno średnie / maks.', (p.hrAvg != null ? p.hrAvg : '—') + ' / ' + (p.hrMax != null ? p.hrMax : '—') + ' bpm'], ['Obciążenie treningowe', p.load != null ? String(p.load) : '—']];
+  const polRowsL = (p) => polRows(p).concat(p.min ? [['Czas z zegarka', fmt(p.min) + ' min']] : [], p.start ? [['Start', p.start]] : []);
+  const nv = (v) => (v != null ? v : '—');
+  const qSub = (q) => (q.start ? 'start ' + q.start + ' · ' : '') + fmt(q.min || 0) + ' min · ' + nv(q.kcal) + ' kcal · tętno ' + nv(q.hrAvg) + '/' + nv(q.hrMax);
+  const pairTxt = (q) => 'Polar ' + dl(q.d) + (q.start ? ', ' + q.start : '');
   const chipsOf = (s) => [pl(s.ex, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')].concat(s.sets ? [pl(s.sets, 'seria', 'serie', 'serii')] : []).concat(s.mins ? [fmt(s.mins) + ' min kondycji'] : []);
   const topbar = (title, back) => `<div class="topbar">${A.navBtns(back)}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
   const flashBar = () => (T.flash ? `<div class="bmsg tmsg" role="status"><span style="flex:1;min-width:0">${esc(T.flash.text)}</span>${T.flash.undo ? '<button data-a="trundo">Cofnij</button>' : ''}</div>` : '');
@@ -93,10 +100,29 @@
           <div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div></a>`;
     }).join('');
   }
+  // v39 (makieta v194): karta „Z Polar do przypisania: N” – dopasowanie automatyczne, do 3 najbliższych datą ręcznych treningów, pominięcie.
+  function queueCard() {
+    const PQ = TR.polQ(); if (!PQ.length) return '';
+    const dd = (a, b) => Math.abs(C.diffDays(a, b)), free = TR.polFree();
+    const items = PQ.map((q) => {
+      const cs = free.slice().sort((a, b) => dd(a.d, q.d) - dd(b.d, q.d) || b.id - a.id).slice(0, 3);
+      return `<div class="tqitem"><div style="font-size:14px;font-weight:600">${esc(q.name + ' · ' + dl(q.d) + (q.start ? ', start ' + q.start : ''))}</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(fmt(q.min || 0) + ' min · ' + nv(q.kcal) + ' kcal · tętno śr./maks. ' + nv(q.hrAvg) + '/' + nv(q.hrMax) + ' · obciążenie ' + nv(q.load))}</div>
+          <div class="tqeb">POŁĄCZ Z TRENINGIEM</div>
+          ${cs.length ? cs.map((w) => `<button class="tqcand${w.d === q.d ? ' same' : ''}" data-a="trqpick" data-p="${esc(q.pid)}" data-id="${w.id}" aria-label="${esc('Połącz z treningiem ' + (w.name || 'Trening') + ' ' + dl(w.d))}"><span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px">${esc(w.name || 'Trening')}</span><span style="font-size:12px;color:var(--muted)">${esc(dl(w.d))}</span></span>${w.d === q.d ? '<span class="tqsame">ten sam dzień</span>' : ''}</button>`).join('')
+            : '<div style="font-size:13px;color:var(--muted)">Brak ręcznych treningów bez danych z Polar.</div>'}
+          <button class="tqskip" data-a="trqskip" data-p="${esc(q.pid)}">Pomiń tę sesję</button></div>`;
+    }).join('');
+    return `<div class="dcard tqcard"><button class="tqhead" data-a="trqtog" aria-expanded="${T.qOpen}"><span style="color:var(--polar);display:flex">${POLI}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Z Polar do przypisania: ${PQ.length}</span><span style="font-size:12px;color:var(--muted)">Sesje z zegarka, które nie trafiły do żadnego treningu</span></span><span class="frot${T.qOpen ? ' up' : ''}" style="display:flex;color:var(--muted)">${K.down}</span></button>
+        ${T.qOpen ? `<div class="tqbody"><button class="tqauto" data-a="trqauto">Dopasuj automatycznie (po dacie)</button>
+          ${T.qMsg ? `<div role="status" style="font-size:13px;line-height:1.4;color:var(--ok)">${esc(T.qMsg)}</div>` : ''}
+          ${items}
+          <div style="font-size:12px;line-height:1.4;color:var(--dim)">Automat łączy tylko wtedy, gdy tego dnia jest dokładnie jeden ręczny trening bez danych z Polar (i jedna sesja z zegarka). W pozostałych przypadkach wybierasz sam.</div></div>` : ''}</div>`;
+  }
   function viewHistory() {
     const all = TR.list(), reg = TR.tags();
     return `<main class="screen">${topbar('Historia treningów')}
-      <div class="dscroll" data-scroll="train-hist">${flashBar()}
+      <div class="dscroll" data-scroll="train-hist">${flashBar()}${queueCard()}
         ${all.length ? `<div class="thfind"><div class="thsearch"><span aria-hidden="true">${K.search}</span><input id="th-q" type="search" autocomplete="off" maxlength="40" placeholder="Szukaj po nazwie treningu" aria-label="Szukaj treningu po nazwie" value="${esc(T.q)}" data-in="train-q"></div>
             <input id="th-tq" class="thsel" type="search" autocomplete="off" maxlength="20" placeholder="Szukaj po kategorii (wpisz frazę)" aria-label="Szukaj po kategorii" value="${esc(T.tq)}" data-in="train-tq">
             <button class="thsw thcfg" data-a="trcatopen" data-m="hist" aria-haspopup="dialog">${CATI}<span style="flex:1">Konfiguracja kategorii</span><span style="font-size:12px;color:var(--muted)">${reg.length}</span></button>
@@ -158,10 +184,29 @@
           ${metaRow(w, TR.tags())}
           <div class="tchips">${chipsOf(s).map((c) => `<span>${esc(c)}</span>`).join('')}</div></div>
         ${w.src === 'polar' && w.pol ? `<div class="dcard tpolcard"><div class="h">Dane z Polar Flow (tylko do odczytu)</div>${polRows(w.pol).map((r) => `<div class="r"><span>${esc(r[0])}</span><span class="b">${esc(r[1])}</span></div>`).join('')}</div>` : ''}
+        ${dayPolar(w)}
         <div class="eyebrow" style="margin-top:2px">Wykonane ćwiczenia</div>
         ${exs}
         <a class="taddex" style="height:48px" href="#/train/edit/${w.id}">${K.pencil}<span>Edytuj trening</span></a>
       </div></main>`;
+  }
+
+  // v39 (makieta v194): „Trening z dnia” – dane z Polar dołączone (Odłącz) albo wybór sesji z kolejki (te z tego samego dnia na górze).
+  function dayPolar(w) {
+    if (w.src === 'polar') return '';
+    if (TR.linked(w)) {
+      return `<div class="dcard tpolcard"><div class="h" style="display:flex;align-items:center;gap:6px">${POLI}Dane z Polar Flow dołączone do treningu</div>${polRowsL(w.pol).map((r) => `<div class="r"><span>${esc(r[0])}</span><span class="b">${esc(r[1])}</span></div>`).join('')}
+          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${w.pol.auto ? 'Dopasowano automatycznie po dacie treningu.' : 'Połączono ręcznie.'} Ćwiczenia, serie i ciężary zostają Twoje – dane z Polar są tylko do odczytu.</div>
+          <button class="tqunl" data-a="trqunlink" data-id="${w.id}">Odłącz od Polar</button></div>`;
+    }
+    const PQ = TR.polQ();
+    if (!PQ.length && !(window.Polar && window.Polar.state().on)) return '';
+    const pq = PQ.slice().sort((a, b) => ((b.d === w.d) - (a.d === w.d)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+    return `<div class="dcard tpolcard tpollink"><div class="h" style="display:flex;align-items:center;gap:6px">${POLI}Polar Flow</div>
+        <div style="font-size:13px;line-height:1.4;color:var(--muted)">Ten trening nie ma danych z zegarka. Połącz go z sesją z Polar Flow (kalorie, tętno, obciążenie), a ćwiczenia zostaną bez zmian.</div>
+        <button class="tqauto" data-a="trqpk" aria-expanded="${T.pk}">${T.pk ? 'Zwiń listę sesji' : 'Połącz z treningiem z Polar'}</button>
+        ${T.pk ? `<div class="tqlist">${pq.length ? pq.map((q) => `<button class="tqses${q.d === w.d ? ' same' : ''}" data-a="trqpick" data-p="${esc(q.pid)}" data-id="${w.id}" aria-label="${esc('Połącz z sesją ' + q.name + ' ' + dl(q.d))}"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">${esc(q.name + ' · ' + dl(q.d))}</span><span style="font-size:12px;color:var(--muted)">${esc(qSub(q))}</span></span>${q.d === w.d ? '<span class="tqsame">ten sam dzień</span>' : ''}</button>`).join('')
+          : '<div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.4">Brak sesji z Polar do przypisania. Pobierzesz je w Ustawieniach → Polar Flow („Synchronizuj teraz”).</div>'}</div>` : ''}</div>`;
   }
 
   // ---------- Postępy ----------
@@ -181,9 +226,17 @@
     if (!used.length) return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg kategorii</div><div class="para" style="font-size:13px;line-height:1.45">Brak kategorii. Dodaj kategorię przy treningu (np. „siłowy”), a tu zobaczysz postępy treningów z tą kategorią.</div></div>`;
     const sel = used.indexOf(T.ptag) >= 0 ? T.ptag : used[0], col = tagCol(reg, sel);
     const cnt = (t) => own.filter((w) => (w.tags || []).indexOf(t) >= 0).length;
-    const ws = own.filter((w) => (w.tags || []).indexOf(sel) >= 0).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.id - b.id));
+    const ws0 = own.filter((w) => (w.tags || []).indexOf(sel) >= 0).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.id - b.id));
+    // v39 (makieta v194): miara Ciężar / czas · Kalorie · Śr. tętno (dwie ostatnie – tylko treningi z danymi z Polar)
+    const tm = T.tm || 'main', pk = tm === 'kcal' ? 'kcal' : 'hrAvg';
+    const ws = tm === 'main' ? ws0 : ws0.filter((w) => TR.linked(w) && w.pol[pk] != null);
     const vol = (w) => TR.stats(w).vol, mins = (w) => Math.round(TR.stats(w).mins * 10) / 10;
-    const hasVol = ws.some((w) => vol(w) > 0), val = (w) => (hasVol ? vol(w) : mins(w)), unit = hasVol ? ' kg' : ' min';
+    const hasVol = ws.some((w) => vol(w) > 0);
+    const val = (w) => (tm !== 'main' ? w.pol[pk] : hasVol ? vol(w) : mins(w)), unit = tm === 'kcal' ? ' kcal' : tm === 'hr' ? ' bpm' : hasVol ? ' kg' : ' min';
+    const lbl = tm === 'kcal' ? ['OSTATNI (KALORIE)', 'Kalorie z Polar', 'kcal (Polar)', 'KALORIE'] : tm === 'hr' ? ['OSTATNI (ŚR. TĘTNO)', 'Średnie tętno z Polar', 'bpm (Polar)', 'ŚR. TĘTNO']
+      : hasVol ? ['OSTATNI (SUMA CIĘŻARU)', 'Suma ciężaru', 'kg (suma ciężaru)', 'SUMA CIĘŻARU'] : ['OSTATNI (CZAS)', 'Czas kondycji', 'min (czas)', 'CZAS'];
+    const tmSeg = `<div class="seg tv tmseg" role="radiogroup" aria-label="Miara">${[['main', 'Ciężar / czas'], ['kcal', 'Kalorie'], ['hr', 'Śr. tętno']].map(([v, l]) => `<button role="radio" aria-checked="${tm === v}" class="${tm === v ? 'on' : ''}" data-a="trtm" data-v="${v}">${l}</button>`).join('')}</div>`
+      + (tm !== 'main' ? `<div style="font-size:12px;line-height:1.4;color:var(--polar)">Liczone tylko treningi z danymi z Polar: ${ws.length} z ${ws0.length}. Dane z zegarka dołączasz w „Trening z dnia” albo automatycznie po synchronizacji.</div>` : '');
     const n = ws.length, first = n ? val(ws[0]) : 0, last = n ? val(ws[n - 1]) : 0, g = Math.round((last - first) * 100) / 100;
     const si = T.tday != null && ws.some((w) => w.id === T.tday) ? ws.findIndex((w) => w.id === T.tday) : n - 1;
     const gc = (v) => (v > 0 ? 'g' : v < 0 ? 'b' : 'n'), sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + grp(Math.abs(v));
@@ -192,7 +245,7 @@
       const vs = ws.map(val), hi = Math.max(...vs, 1), lo = Math.min(...vs, hi), rg = Math.max(hi - lo, 1);
       const H = 176, W = Math.max(300, 56 + (n - 1) * 72), px = (i) => 28 + (W - 56) * i / (n - 1), py = (v) => 146 - 106 * (v - lo) / rg;
       const grid = [hi, (hi + lo) / 2, lo], sw = ws[si];
-      chart = `<div style="display:flex;flex-direction:column;gap:4px"><div class="dhead"><div class="eyebrow">${hasVol ? 'Suma ciężaru' : 'Czas kondycji'}</div><div style="font-size:12px;color:var(--muted)">${hasVol ? 'kg (suma ciężaru)' : 'min (czas)'}</div></div>
+      chart = `<div style="display:flex;flex-direction:column;gap:4px"><div class="dhead"><div class="eyebrow">${lbl[1]}</div><div style="font-size:12px;color:var(--muted)">${lbl[2]}</div></div>
           <div class="wchart tchart">
           <div class="wy" aria-hidden="true">${grid.map((v) => `<div style="top:${py(v) - 8}px">${grp(Math.round(v * 10) / 10)}</div>`).join('')}</div>
           <div class="wscroll" tabindex="0" aria-label="${esc('Wykres treningów z kategorią ' + sel + ', przewijany w poziomie')}" data-scroll="train-tchart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
@@ -212,10 +265,11 @@
     return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg kategorii</div>
         <div class="ddrop"><button class="select${T.tdd ? ' open tv' : ''}" data-a="trtdd" aria-haspopup="listbox" aria-expanded="${T.tdd}" aria-label="${esc('Kategoria: ' + sel)}"><span style="min-width:0;display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${col}"></span>${esc(sel)}</span><span class="frot${T.tdd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
           ${T.tdd ? `<div class="bdlist" role="listbox" aria-label="Kategorie">${used.map((t) => `<button role="option" class="bdopt tv${t === sel ? ' on' : ''}" aria-selected="${t === sel}" data-a="trptag" data-t="${esc(t)}"><span style="display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${tagCol(reg, t)}"></span>${esc(t)}</span><span class="sub">${pl(cnt(t), 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
-        <div class="tstats in tg3"><div><div class="l">TRENINGI</div><div class="v">${n}</div></div><div><div class="l">${hasVol ? 'OSTATNI (SUMA CIĘŻARU)' : 'OSTATNI (CZAS)'}</div><div class="v">${n ? grp(last) + unit : '—'}</div></div><div><div class="l">ZMIANA</div><div class="v ${n > 1 ? gc(g) : ''}">${n > 1 ? sgn(g) + unit : '—'}</div></div></div>
+        ${tmSeg}
+        <div class="tstats in tg3"><div><div class="l">TRENINGI</div><div class="v">${n}</div></div><div><div class="l">${lbl[0]}</div><div class="v">${n ? grp(last) + unit : '—'}</div></div><div><div class="l">ZMIANA</div><div class="v ${n > 1 ? gc(g) : ''}">${n > 1 ? sgn(g) + unit : '—'}</div></div></div>
         ${chart}
         <div style="font-size:12px;color:var(--muted)">Dotknij punktu, aby zobaczyć wynik. Dotknij wiersza, aby przejść do treningu.</div>
-        <div style="display:flex;flex-direction:column"><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:84px;text-align:right">${hasVol ? 'SUMA CIĘŻARU' : 'CZAS'}</span><span style="width:62px;text-align:right">ZMIANA</span></div>${rows}</div>
+        <div style="display:flex;flex-direction:column"><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:84px;text-align:right">${lbl[3]}</span><span style="width:62px;text-align:right">ZMIANA</span></div>${rows}</div>
         ${note}</div>`;
   }
   function progEx() {
@@ -371,7 +425,10 @@
           ${tagBlock(D)}
           ${D.src === 'polar' ? `<div class="tpolinfo"><div class="h">${polBadge()}<span>Zsynchronizowany z Polar Flow</span></div>
             ${D.pol ? `<div class="s">Dane tylko do odczytu: ${esc((D.pol.kcal != null ? D.pol.kcal : '—') + ' kcal · tętno śr./maks. ' + (D.pol.hrAvg != null ? D.pol.hrAvg : '—') + '/' + (D.pol.hrMax != null ? D.pol.hrMax : '—') + ' · obciążenie treningowe ' + (D.pol.load != null ? D.pol.load : '—'))}</div>` : ''}
-            <div class="s">Możesz zmienić nazwę, ćwiczenia i kategorie – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}</div>
+            <div class="s">Możesz zmienić nazwę, ćwiczenia i kategorie – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}
+          ${D.src !== 'polar' && D.pol && D.pol.pid ? `<div class="tpolinfo"><div class="h" style="display:flex;align-items:center;gap:6px;color:var(--polar)">${POLI}<span>Dane z Polar Flow dołączone</span></div>
+            <div class="s">${esc('Dane tylko do odczytu: ' + nv(D.pol.kcal) + ' kcal · tętno śr./maks. ' + nv(D.pol.hrAvg) + '/' + nv(D.pol.hrMax) + ' · obciążenie treningowe ' + nv(D.pol.load))}</div>
+            <div class="s">Dane z zegarka są tylko do odczytu. Odłączysz je w „Trening z dnia”.</div></div>` : ''}</div>
         <div class="eyebrow" style="margin-top:2px">Ćwiczenia</div>
         ${exs}
         <button class="taddex" data-a="trexadd">${K.plus}<span>Dodaj ćwiczenie</span></button>
@@ -470,7 +527,9 @@
       const D = T.draft; if (!D) return;
       const ck = check(D);
       if (!ck.ok) { T.tried = true; R(); const f = document.querySelector('.terr:not([hidden])'); if (f) f.scrollIntoView({ block: 'center' }); return; }
-      const extra = D.src === 'polar' ? { src: 'polar', pid: D.pid, pol: D.pol, sport: D.sport || '' } : {};   // v36: trening z Polar zostaje oznaczony
+      const cur = D.id ? TR.get(D.id) : null;
+      const extra = D.src === 'polar' ? { src: 'polar', pid: D.pid, pol: D.pol, sport: D.sport || '' }   // v36: trening z Polar zostaje oznaczony
+        : (cur && TR.linked(cur) ? { pol: cur.pol } : {});   // v39: zapis zachowuje dołączone dane z Polar
       TR.upsert(Object.assign({ id: D.id, d: D.d, name: D.name.trim(), tags: D.tags.slice(), ex: D.ex.map((x) => (x.kind === 'str'
         ? { name: x.name.trim(), kind: 'str', bw: !!x.bw, sets: x.sets.map((s) => ({ n: num(s.n), kg: x.bw ? 0 : num(s.kg), reps: num(s.reps) })) }
         : (() => { const iv = !!x.iv, list = iv ? x.ivs.map((v) => ({ work: num(v.work), rest: num(v.rest), rounds: num(v.rounds) })) : [];
@@ -495,6 +554,20 @@
     trptag: (el) => { T.ptag = el.dataset.t; T.tday = null; T.tdd = false; R(); },
     trtdd: () => { T.tdd = !T.tdd; R(); },
     trtday: (el) => { T.tday = +el.dataset.id; R(); },
+    trtm: (el) => { T.tm = el.dataset.v; T.tday = null; R(); },
+    // v39 (makieta v194): kolejka „Z Polar do przypisania”
+    trqtog: () => { T.qOpen = !T.qOpen; T.qMsg = ''; R(); },
+    trqauto: () => { const n = TR.polAuto(), left = TR.polQ().length; T.qMsg = n ? 'Dopasowano automatycznie: ' + n + '. Do przypisania zostało: ' + left + '.' : 'Nie znaleziono jednoznacznego dopasowania – wybierz trening ręcznie.'; R(); },
+    trqpick: (el) => {
+      const w = TR.get(el.dataset.id), q = TR.polQ().find((z) => z.pid === el.dataset.p);
+      if (!w || !q || !TR.polLink(w.id, q.pid, false)) return;
+      T.qMsg = 'Połączono z treningiem „' + (w.name || 'Trening') + '” (' + dl(w.d) + ').'; T.pk = false;
+      if (A.route().arg === 'day') T.flash = { text: 'Połączono z sesją z Polar Flow (' + pairTxt(q).replace(/^Polar /, '') + ').' };
+      R();
+    },
+    trqskip: (el) => { const q = TR.polQ().find((z) => z.pid === el.dataset.p); if (q && TR.polSkip(q.pid)) T.qMsg = 'Pominięto sesję z ' + dl(q.d) + '.'; R(); },
+    trqpk: () => { T.pk = !T.pk; R(); },
+    trqunlink: (el) => { if (TR.polUnlink(el.dataset.id)) T.flash = { text: 'Odłączono dane z Polar Flow. Sesja wróciła do listy „Z Polar do przypisania”.' }; T.pk = false; R(); },
     trhidep: () => { T.hideP = !T.hideP; R(); },
     // v38: konfiguracja kategorii (Historia i formularz treningu)
     trcatopen: (el) => { T.cat = { m: el.dataset.m === 'edit' ? 'edit' : 'hist', name: '', col: null, err: '' }; R(); },
@@ -579,7 +652,9 @@
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
       T.cat = null; T.tdd = false;
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tq = ''; T.hideP = false; }   // filtr Historii do wyjścia z niej
-      if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; }   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
+      if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; T.tm = 'main'; }
+      if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.qOpen = false; }
+      T.qMsg = ''; T.pk = false;   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
     }
   };
 })();

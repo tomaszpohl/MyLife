@@ -1,4 +1,4 @@
-/* MyLife – Ustawienia „Synchronizacja z Polar Flow” → „Polar Flow” (v36, makieta v181 – Settings). */
+/* MyLife – Ustawienia „Synchronizacja z Polar Flow” → „Polar Flow” (v36, makieta v181 – Settings; v39 – przełącznik „Łącz z ręcznymi treningami”, makieta v194). */
 (function () {
   'use strict';
   const C = window.Core, P = window.Polar;
@@ -17,9 +17,10 @@
         ${on ? `<div class="gkv"><div class="kv"><span>Pośrednik</span><span style="word-break:break-all;font-size:13px">${esc(s.url)}</span></div>
             <div class="kv"><span>Synchronizacja od</span><span>${esc(s.since ? C.dmy(s.since) : '—')}</span></div>
             <div class="kv"><span>Ostatnia synchronizacja</span><span>${esc(s.last || '—')}</span></div></div>
+          <button class="thsw pfauto" role="switch" aria-checked="${s.auto !== false}" data-a="pfauto"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Łącz z ręcznymi treningami</span><span style="font-size:12px;color:var(--muted);line-height:1.35">${s.auto !== false ? 'Sesję z zegarka dołączam do ręcznego treningu z tego samego dnia, gdy jest jeden' : 'Wyłączone: sesje czekają w Historii na ręczne przypisanie'}</span></span><span class="sw${s.auto !== false ? ' on' : ''}" aria-hidden="true"><span></span></span></button>
           <button class="primary pfbtn" data-a="pfsync"${busy ? ' disabled' : ''}>${busy ? 'Synchronizuję…' : 'Synchronizuj teraz'}</button>
-          <div class="para" style="font-size:12px;line-height:1.45">Pobiera treningi z Polar Flow od daty początku (${esc(s.since ? C.dmy(s.since) : '—')}) i odhacza aktywności cykliczne z przypisanymi sportami. Dane tylko do odczytu – nic nie jest wysyłane do Polar. Treningi siłowe (sport „Trening siłowy”) nie są pobierane – takie treningi dodajesz w aplikacji ręcznie.</div>`
-        : `<div class="para" style="line-height:1.45">Podaj adres pośrednika (Cloudflare Worker) i datę, od której mają być pobrane treningi. Client ID i klucz klienta Polar są w workerze – aplikacja ich nie przechowuje. Treningi siłowe (sport „Trening siłowy”) nie są pobierane – dodajesz je w aplikacji ręcznie.</div>
+          <div class="para" style="font-size:12px;line-height:1.45">Pobiera treningi z Polar Flow od daty początku (${esc(s.since ? C.dmy(s.since) : '—')}) i odhacza aktywności cykliczne z przypisanymi sportami. Dane tylko do odczytu – nic nie jest wysyłane do Polar. Sesje siłowe z zegarka nie tworzą osobnych treningów – służą tylko do wzbogacania Twoich ręcznych treningów (kalorie, tętno, obciążenie).</div>`
+        : `<div class="para" style="line-height:1.45">Podaj adres pośrednika (Cloudflare Worker) i datę, od której mają być pobrane treningi. Client ID i klucz klienta Polar są w workerze – aplikacja ich nie przechowuje. Sesje siłowe z zegarka nie tworzą osobnych treningów – służą tylko do wzbogacania Twoich ręcznych treningów (kalorie, tętno, obciążenie).</div>
           <div class="ffield"><label class="eyebrow" for="pfurl">Adres pośrednika (workera) *</label>
             <input id="pfurl" class="finput${urlBad ? ' bad' : ''}" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://nazwa.konto.workers.dev" value="${esc(url)}" data-in="polar-url">
             ${urlBad ? '<div class="terr" role="alert">Podaj pełny adres zaczynający się od https://.</div>' : ''}</div>
@@ -57,6 +58,7 @@
       run(P.connect(url, since));
     },
     pfsync: () => run(P.sync(true, false)),
+    pfauto: () => { P.setAuto(P.state().auto === false); U.msg = ''; A.render(); },
     pfask: () => { U.ask = true; U.msg = ''; A.render(); },
     pfaskno: () => { U.ask = false; A.render(); },
     pfdisc: () => { P.disconnect(); U.ask = false; U.url = null; U.since = null; U.msg = 'Rozłączono Polar Flow.'; U.err = false; A.render(); }

@@ -7,18 +7,21 @@
    Trening z Polar → trening MyLife { d, name, src: 'polar', pid, pol: { kcal, hrAvg, hrMax, load }, tags: [], ex: [kondycyjne z czasem i dystansem] }.
    Identyfikatory pobranych treningów są w bazie Treningu (pol.seen) – zmiany w aplikacji nie są nadpisywane, usunięty trening nie wraca.
    Decyzje właściciela (11.11.2026): odhaczają tylko nowe treningi (pobrane po ustawieniu sportów w aktywności), trening krótszy niż
-   czas trwania aktywności nie odhacza. */
+   czas trwania aktywności nie odhacza.
+   v39 (makieta v194, decyzje 12.11.2026): sesje „Trening siłowy” nie tworzą treningów – trafiają do kolejki „Z Polar do przypisania”
+   (Train.polQAdd) i przy włączonym „Łącz z ręcznymi treningami” (st.auto, domyślnie tak) są dołączane do ręcznego treningu z tego
+   samego dnia, gdy jest dokładnie jeden. Pierwsza synchronizacja po aktualizacji pobiera cały okres od daty początku (st.f39). */
 (function () {
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.polar.v1', TOK = 'mylife.polar.tok', PEND = 'mylife.polar.pend';
   const DEF_URL = 'https://mylife-polar.tomekpohl.workers.dev';
   const SCOPE = 'training_sessions:read sports:read';
-  const SKIP = 'STRENGTH_TRAINING';   // v37 (makieta v183): trening siłowy nie jest synchronizowany – dodaje się go ręcznie
+  const SKIP = 'STRENGTH_TRAINING';   // v37: trening siłowy nie tworzy treningu; v39: sesja trafia do kolejki do przypisania
   const CHUNK = 90;          // dni na zapytanie (limit API)
   const BACK = 30;           // kolejne synchronizacje pobierają też ostatnie 30 dni (treningi przesłane z zegarka później)
   const AUTO = 15 * 60000;   // samoczynna synchronizacja przy otwarciu aplikacji – nie częściej niż co 15 min
-  let st = { on: false, url: DEF_URL, since: '', last: '', lastD: '', at: 0 };
+  let st = { on: false, url: DEF_URL, since: '', last: '', lastD: '', at: 0, auto: true, f39: 0 };
   let busy = null;
   const listeners = [];
 
@@ -122,7 +125,7 @@
     const codes = {}; listOf(sp).forEach((s) => { const id = flat((s.identifier && s.identifier.id) || s.identifier || s.id || s.sportId); if (id) codes[id] = String(s.name || s.code || s.sportName || '').toUpperCase(); });
     const today = C.todayKey(), end = C.addDays(today, 1);
     let from = st.since || today;
-    if (st.lastD) { const f2 = C.addDays(st.lastD, -BACK); if (f2 > from) from = f2; }
+    if (st.lastD && st.f39) { const f2 = C.addDays(st.lastD, -BACK); if (f2 > from) from = f2; }
     const all = [];
     for (let a = from; a < end;) {
       let b = C.addDays(a, CHUNK); if (b > end) b = end;
@@ -133,19 +136,29 @@
     const seen = {}, items = [];
     all.forEach((t) => { const x = toWorkout(t, codes[sportId(t)] || ''); if (!x.w.pid || seen[x.w.pid] || !/^\d{4}-\d{2}-\d{2}$/.test(x.d) || x.d < st.since || x.d > today) return; seen[x.w.pid] = 1; items.push({ t, x, code: codes[sportId(t)] || '' }); });
     items.sort((p, q) => String(p.t.startTime || '').localeCompare(String(q.t.startTime || '')));
-    let added = 0, had = 0, skip = 0; const ticks = {};
-    items.forEach(({ x, code }) => {
-      if (code === SKIP) { skip++; return; }
+    let added = 0, had = 0, skip = 0, queued = 0; const ticks = {};
+    items.forEach(({ t, x, code }) => {
+      if (code === SKIP) {
+        skip++;
+        const p = x.w.pol, tm = String(t.startTime || t.start_time || t.startDateTime || '').slice(11, 16);
+        if (TR.polQAdd({ pid: x.w.pid, d: x.d, start: /^\d\d:\d\d$/.test(tm) ? tm : '', name: String(t.name || '').trim().slice(0, 40) || x.w.ex[0].name, min: x.min, kcal: p.kcal, hrAvg: p.hrAvg, hrMax: p.hrMax, load: p.load })) queued++;
+        return;
+      }
       if (TR.polSeen(x.w.pid)) { had++; return; }
       TR.upsert(x.w); added++;
       if (RC && code) RC.polarTick(code, x.d, x.min).forEach((k) => { ticks[k.name] = (ticks[k.name] || 0) + k.n; });
     });
-    st.last = stamp(); st.lastD = today; st.at = Date.now(); save();
-    return { total: items.length - skip, added, had, ticks, from, skip };
+    const matched = st.auto !== false ? TR.polAuto() : 0;
+    st.last = stamp(); st.lastD = today; st.at = Date.now(); st.f39 = 1; save();
+    return { total: items.length - skip, added, had, ticks, from, skip, queued, matched, left: TR.polQ().length };
   }
   function message(r, first) {
     const tk = Object.keys(r.ticks), nt = tk.reduce((s, k) => s + r.ticks[k], 0);
-    const skTxt = r.skip ? ' Pominięto ' + r.skip + ' ' + C.plural(r.skip, 'trening siłowy', 'treningi siłowe', 'treningów siłowych') + ' (nie ' + (r.skip === 1 ? 'jest synchronizowany' : 'są synchronizowane') + ').' : '';
+    // v39: sesje siłowe – ile pobrano do kolejki, ile dopasowano, ile czeka
+    const auto = st.auto !== false;
+    const skTxt = (r.queued || r.matched || r.left) ? ' Sesje siłowe: ' + (r.queued ? 'pobrano ' + r.queued + ' ' + C.plural(r.queued, 'nową', 'nowe', 'nowych') + '. ' : 'brak nowych. ')
+      + (auto ? 'Dopasowano do ręcznych treningów: ' + r.matched + '. Do przypisania: ' + r.left + (r.left ? ' (zobaczysz je w Historii treningów).' : '.')
+        : 'Do przypisania: ' + r.left + ' (automatyczne łączenie jest wyłączone – przypisz je w Historii treningów).') : '';
     const tickTxt = nt ? ' Odhaczono ' + nt + ' ' + C.plural(nt, 'termin', 'terminy', 'terminów') + ' ' + (tk.length === 1 ? 'aktywności „' + tk[0] + '”' : 'aktywności: ' + tk.map((k) => k + ' (' + r.ticks[k] + ')').join(', ')) + '.' : '';
     if (first) return 'Połączono z Polar Flow. Pobrano ' + r.total + ' ' + C.plural(r.total, 'trening', 'treningi', 'treningów') + ' od ' + C.dmy(st.since) + (r.had ? ' (' + r.added + ' ' + C.plural(r.added, 'nowy', 'nowe', 'nowych') + ', ' + r.had + ' już ' + C.plural(r.had, 'był', 'były', 'było') + ' w historii)' : '') + '.' + tickTxt + skTxt;
     if (!r.added) return 'Synchronizacja zakończona. Brak nowych treningów od ostatniej synchronizacji. Zmiany zrobione w aplikacji nie są nadpisywane.' + tickTxt + skTxt;
@@ -175,5 +188,6 @@
   const onChange = (f) => listeners.push(f);
 
   load();
-  window.Polar = { SKIP, load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
+  function setAuto(v) { st.auto = !!v; save(); }
+  window.Polar = { setAuto, SKIP, load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
 })();
