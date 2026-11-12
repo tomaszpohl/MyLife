@@ -202,7 +202,8 @@
   // v31 (makieta 08.11.2026): wpis z aktywności cyklicznych odhaczonych w dniu k (czytany na bieżąco z Treningu, bez kopii w Diecie).
   const recEntry = (k) => (window.TrainRec ? window.TrainRec.journalEntry(k) : null);
   // Wszystkie wpisy aktywności dnia: najpierw wpis z aktywności cyklicznych, potem wpisy ręczne.
-  const dayActs = (k) => { const r = recEntry(k); return (r ? [r] : []).concat(jday(k).acts); };
+  // v38: plus wpisy z treningów Polar (aktywności z „Synchronizuj z Polar”), po jednym na trening, bez edycji i usuwania.
+  const dayActs = (k) => { const r = recEntry(k), pe = window.TrainRec && window.TrainRec.polarEntries ? window.TrainRec.polarEntries(k) : []; return (r ? [r] : []).concat(pe, jday(k).acts); };
   // Pierwszy wpis w Dzienniku: oznaczenie posiłku, odstępstwo, aktywność ręczna albo wykonana aktywność cykliczna.
   function firstEntryDay() {
     const ks = Object.keys(db.journal).concat(window.TrainRec ? window.TrainRec.doneDays() : []).sort();

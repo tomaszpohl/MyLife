@@ -27,7 +27,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -46,7 +46,10 @@
   }
   // v36: znaczniki – kolor wg miejsca w rejestrze (obrót odcienia o 137,508° z pominięciem 322°–22°, zarezerwowanych dla plakietki Polar).
   function hue(idx) { let k = -1; for (let i = 0; i < 4000; i++) { const h = (i * 137.508) % 360; if (h >= 322 || h <= 22) continue; k++; if (k === idx) return Math.round(h); } return 200; }
-  const tagCol = (reg, t) => 'hsl(' + hue(Math.max(0, reg.indexOf(t))) + ', 70%, 68%)';
+  // v38 (makieta v187): kolor kategorii z konfiguracji (paleta 32 kolorów), a bez niego – jak dotąd z obrotu odcienia.
+  const tagCol = (reg, t) => TR.tagColors()[t] || 'hsl(' + hue(Math.max(0, reg.indexOf(t))) + ', 70%, 68%)';
+  const PAL = ['#7BE0A0', '#5BD0E8', '#F2B94B', '#B79CFF', '#FF8F73', '#93A1B2', '#8FD14F', '#4FC3B8', '#6FA8FF', '#E58BE8', '#FFC27A', '#C8E26B', '#9AD1F0', '#D2B48C', '#3FD6A8', '#A5E86B', '#E8D44D', '#FFA24D', '#FF7B5C', '#C792EA', '#8E9BFF', '#4DA3FF', '#4DD0E1', '#80CBC4', '#B5C99A', '#E6B8A2', '#BCAAA4', '#CFD8DC', '#9FA8DA', '#D4E157', '#FFB74D', '#7986CB'];
+  const frozen = () => { const reg = TR.tags(), c = TR.tagColors(); reg.forEach((t) => { if (!c[t]) c[t] = tagCol(reg, t); }); return c; };   // utrwala bieżące kolory przed zmianą
   const POLI = ic(13, 2.2, '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"></path><path d="M4 4v5h5"></path><path d="M4 13a8 8 0 0 0 14 4.5l2-2.5"></path><path d="M20 20v-5h-5"></path>');
   const polBadge = () => `<span class="tpolb" title="Zsynchronizowany z Polar Flow">${POLI}Polar</span>`;
   const metaRow = (w, reg) => (w.src === 'polar' || (w.tags || []).length
@@ -90,18 +93,43 @@
           <div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div></a>`;
     }).join('');
   }
-  const tagChips = (reg) => reg.map((t) => { const on = T.tq.trim().toLowerCase() === t; return `<button class="ttagold thchip${on ? ' on' : ''}" style="--tc:${tagCol(reg, t)}" aria-pressed="${on}" data-a="trtq" data-t="${esc(t)}">${esc(t)}</button>`; }).join('');
   function viewHistory() {
     const all = TR.list(), reg = TR.tags();
     return `<main class="screen">${topbar('Historia treningów')}
       <div class="dscroll" data-scroll="train-hist">${flashBar()}
         ${all.length ? `<div class="thfind"><div class="thsearch"><span aria-hidden="true">${K.search}</span><input id="th-q" type="search" autocomplete="off" maxlength="40" placeholder="Szukaj po nazwie treningu" aria-label="Szukaj treningu po nazwie" value="${esc(T.q)}" data-in="train-q"></div>
-            <input id="th-tq" class="thsel" type="search" autocomplete="off" maxlength="20" placeholder="Szukaj po znaczniku (wpisz frazę)" aria-label="Szukaj po znaczniku" value="${esc(T.tq)}" data-in="train-tq">
-            ${reg.length ? `<div class="ttagrow" data-thchips>${tagChips(reg)}</div>` : ''}
+            <input id="th-tq" class="thsel" type="search" autocomplete="off" maxlength="20" placeholder="Szukaj po kategorii (wpisz frazę)" aria-label="Szukaj po kategorii" value="${esc(T.tq)}" data-in="train-tq">
+            <button class="thsw thcfg" data-a="trcatopen" data-m="hist" aria-haspopup="dialog">${CATI}<span style="flex:1">Konfiguracja kategorii</span><span style="font-size:12px;color:var(--muted)">${reg.length}</span></button>
             <button class="thsw" role="switch" aria-checked="${T.hideP}" data-a="trhidep"><span class="sw${T.hideP ? ' on' : ''}" aria-hidden="true"><span></span></span><span style="flex:1">Ukryj treningi z synchronizacji (Polar)</span></button></div>
           <div class="thlist" data-thlist>${histCards()}</div>`
         : `<div class="dcard tempty"><div style="color:var(--violet)">${K.big(P.dumbbell)}</div><div style="font-size:16px;font-weight:600">Brak treningów</div><div class="para" style="text-align:center">Dodaj pierwszy trening: wybierz datę i zapisz wykonane ćwiczenia.</div></div>`}
-      </div></main>`;
+      </div>${catOverlay()}</main>`;
+  }
+  // v38 (makieta v187/v190): „Konfiguracja kategorii” – wspólny ekran dla Historii (lista, usuwanie, dodawanie) i formularza
+  // treningu (to samo + pola wyboru kategorii treningu; nowa kategoria od razu zaznaczona). Usunięcie znika też z treningów.
+  const CATI = ic(18, 2, '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle>');
+  function catOverlay() {
+    const c = T.cat; if (!c) return '';
+    const reg = TR.tags(), all = TR.list(), D = c.m === 'edit' ? T.draft : null;
+    const usedC = reg.map((t) => tagCol(reg, t)), cur = c.col && PAL.indexOf(c.col) >= 0 ? c.col : (PAL.find((x) => usedC.indexOf(x) < 0) || PAL[0]);
+    const rows = reg.map((t) => {
+      const col = tagCol(reg, t), cnt = pl(all.filter((w) => (w.tags || []).indexOf(t) >= 0).length, 'trening', 'treningi', 'treningów');
+      const del = `<button class="iconbtn soft tcdel" data-a="trcatdel" data-t="${esc(t)}" aria-label="${esc('Usuń kategorię ' + t)}">${K.x || '×'}</button>`;
+      if (D) { const on = D.tags.indexOf(t) >= 0; return `<div class="tcrow"><button class="tccheck" role="checkbox" aria-checked="${on}" data-a="trcattog" data-t="${esc(t)}"><span class="box" style="border-color:${col};background:${on ? col : 'transparent'}">${on ? '✓' : ''}</span><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(t)}</span><span style="flex:none;font-size:12px;color:var(--muted)">${cnt}</span></button>${del}</div>`; }
+      return `<div class="tcrow"><span style="flex:none;width:10px;height:10px;border-radius:5px;background:${col}"></span><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(t)}</span><span style="flex:none;font-size:12px;color:var(--muted)">${cnt}</span>${del}</div>`;
+    }).join('');
+    return `<div class="tcover" role="dialog" aria-modal="true" aria-label="Konfiguracja kategorii">
+        <div class="topbar" style="padding:16px 8px 0 8px"><button class="iconbtn" data-a="trcatclose" aria-label="Zamknij">${K.x || '×'}</button><h1 style="font-size:22px">Konfiguracja kategorii</h1></div>
+        <div class="tcbody">
+          <div style="font-size:13px;color:var(--muted);line-height:1.4">${D ? 'Zaznacz kategorie tego treningu. Własne kategorie dodajesz i usuwasz tutaj, a kolor wybierasz z palety.' : 'Własne kategorie treningów. Sam dodajesz je i usuwasz, a kolor wybierasz z palety.'}</div>
+          ${reg.length ? rows : '<div style="font-size:13px;color:var(--muted);line-height:1.4">Brak kategorii. Wpisz nazwę poniżej i dodaj pierwszą.</div>'}
+          <div class="eyebrow" style="padding-top:6px">Kolor nowej kategorii</div>
+          <div class="tcpal" role="radiogroup" aria-label="Kolor nowej kategorii">${PAL.map((x, i) => `<button role="radio" aria-checked="${x === cur}" aria-label="Kolor ${i + 1}" data-a="trcatcol" data-c="${x}"><span style="background:${x};box-shadow:0 0 0 2px ${x === cur ? 'var(--text)' : 'transparent'}"></span></button>`).join('')}</div>
+          <div style="display:flex;gap:8px;padding-top:4px"><input id="tc-catname" class="tin txt" style="flex:1;min-width:0" type="text" maxlength="20" autocomplete="off" enterkeyhint="done" placeholder="Nazwa kategorii" aria-label="Nazwa nowej kategorii" value="${esc(c.name)}" data-in="train-catname"><button class="tcadd" data-a="trcatadd">Dodaj</button></div>
+          ${c.err ? `<div role="alert" style="font-size:13px;color:var(--danger)">${esc(c.err)}</div>` : ''}
+          <div style="font-size:12px;color:var(--dim);line-height:1.4">Po usunięciu kategorii znika ona z treningów, które ją miały. Kolory kategorii z palety nie obejmują różu synchronizacji z Polar.</div>
+        </div>
+        <div class="tcfoot"><button class="primary" style="background:#5BD0E8;color:#06222A" data-a="trcatclose">Gotowe</button></div></div>`;
   }
 
   // ---------- Trening z dnia (v18, makieta TrainDay) ----------
@@ -139,47 +167,54 @@
   // ---------- Postępy ----------
   // v37 (makieta v185/v186): przełącznik Ćwiczenie · Wg znacznika (stan nie jest pamiętany po wyjściu z ekranu)
   function viewProgress() {
-    const tabs = `<div class="seg tv" role="radiogroup" aria-label="Widok postępów">${[['ex', 'Ćwiczenie'], ['tag', 'Wg znacznika']].map(([v, l]) => `<button role="radio" aria-checked="${T.pview === v}" class="${T.pview === v ? 'on' : ''}" data-a="trpview" data-v="${v}">${l}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg tv" role="radiogroup" aria-label="Widok postępów">${[['ex', 'Ćwiczenie'], ['tag', 'Wg kategorii']].map(([v, l]) => `<button role="radio" aria-checked="${T.pview === v}" class="${T.pview === v ? 'on' : ''}" data-a="trpview" data-v="${v}">${l}</button>`).join('')}</div>`;
     return `<main class="screen">${topbar('Postępy')}
       <div class="dscroll" data-scroll="train-prog">${tabs}${T.pview === 'tag' ? progTag() : progEx()}</div></main>`;
   }
-  // Postępy wg znacznika: tylko treningi wpisane w aplikacji (bez Polar); miara – suma ciężaru, a gdy żaden trening ze znacznikiem
-  // nie ma ćwiczeń siłowych – czas kondycji. Punkt wykresu i wiersz listy otwierają „Trening z dnia”.
+  // Postępy wg kategorii (v37, v38 – makieta v187): wybór z listy rozwijanej (kropka koloru, liczba treningów); tylko treningi
+  // wpisane w aplikacji (bez Polar); miara – suma ciężaru, a gdy żaden trening kategorii nie ma ćwiczeń siłowych – czas kondycji.
+  // Wykres jak w „Ćwiczenie”: przewijany poziomo, punkt wybiera wynik (dymek); wiersz tabeli otwiera „Trening z dnia”.
   function progTag() {
     const reg = TR.tags(), own = TR.list().filter((w) => w.src !== 'polar');
     const used = reg.filter((t) => own.some((w) => (w.tags || []).indexOf(t) >= 0));
     const note = '<div style="font-size:12px;line-height:1.4;color:var(--dim);padding-top:6px;border-top:1px solid var(--line)">Liczone są tylko treningi wpisane w aplikacji. Treningi zsynchronizowane z Polar Flow nie są brane pod uwagę. Dla treningów z ćwiczeniami siłowymi miarą jest suma ciężaru (serie × powtórzenia × kg, bez ciężaru własnego), dla samej kondycji – czas (min).</div>';
-    if (!used.length) return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg znacznika</div><div class="para" style="font-size:13px;line-height:1.45">Brak znaczników. Dodaj znacznik przy treningu (np. „siłowy”), a tu zobaczysz postępy treningów z tym znacznikiem.</div></div>`;
+    if (!used.length) return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg kategorii</div><div class="para" style="font-size:13px;line-height:1.45">Brak kategorii. Dodaj kategorię przy treningu (np. „siłowy”), a tu zobaczysz postępy treningów z tą kategorią.</div></div>`;
     const sel = used.indexOf(T.ptag) >= 0 ? T.ptag : used[0], col = tagCol(reg, sel);
+    const cnt = (t) => own.filter((w) => (w.tags || []).indexOf(t) >= 0).length;
     const ws = own.filter((w) => (w.tags || []).indexOf(sel) >= 0).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.id - b.id));
     const vol = (w) => TR.stats(w).vol, mins = (w) => Math.round(TR.stats(w).mins * 10) / 10;
     const hasVol = ws.some((w) => vol(w) > 0), val = (w) => (hasVol ? vol(w) : mins(w)), unit = hasVol ? ' kg' : ' min';
     const n = ws.length, first = n ? val(ws[0]) : 0, last = n ? val(ws[n - 1]) : 0, g = Math.round((last - first) * 100) / 100;
+    const si = T.tday != null && ws.some((w) => w.id === T.tday) ? ws.findIndex((w) => w.id === T.tday) : n - 1;
     const gc = (v) => (v > 0 ? 'g' : v < 0 ? 'b' : 'n'), sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + grp(Math.abs(v));
     let chart = '';
     if (n >= 2) {
       const vs = ws.map(val), hi = Math.max(...vs, 1), lo = Math.min(...vs, hi), rg = Math.max(hi - lo, 1);
-      const px = (i) => 4 + 92 * i / (n - 1), py = (v) => 140 - 130 * (v - lo) / rg;
+      const H = 176, W = Math.max(300, 56 + (n - 1) * 72), px = (i) => 28 + (W - 56) * i / (n - 1), py = (v) => 146 - 106 * (v - lo) / rg;
+      const grid = [hi, (hi + lo) / 2, lo], sw = ws[si];
       chart = `<div style="display:flex;flex-direction:column;gap:4px"><div class="dhead"><div class="eyebrow">${hasVol ? 'Suma ciężaru' : 'Czas kondycji'}</div><div style="font-size:12px;color:var(--muted)">${hasVol ? 'kg (suma ciężaru)' : 'min (czas)'}</div></div>
-          <div class="tgchart" role="group" aria-label="${esc('Wykres treningów ze znacznikiem ' + sel + ', od ' + grp(first) + unit + ' do ' + grp(last) + unit)}">
-            <div class="gl" style="top:10px"></div><div class="gl" style="top:75px"></div><div class="gl" style="top:140px"></div>
-            <div class="yl" style="top:-2px">${grp(hi)}</div><div class="yl" style="top:123px">${grp(lo)}</div>
-            <svg viewBox="0 0 100 150" preserveAspectRatio="none" aria-hidden="true"><polyline points="${ws.map((w, i) => px(i).toFixed(2) + ',' + py(val(w)).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
-            ${ws.map((w, i) => `<a class="tgdot" href="#/train/day/${w.id}" style="left:${px(i).toFixed(2)}%;top:${py(val(w)).toFixed(1)}px" aria-label="${esc(dl(w.d) + ': ' + grp(val(w)) + unit)}"><span style="background:${col}"></span></a>`).join('')}
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim)"><span>${esc(dl(ws[0].d))}</span><span>${esc(dl(ws[n - 1].d))}</span></div></div>`;
+          <div class="wchart tchart">
+          <div class="wy" aria-hidden="true">${grid.map((v) => `<div style="top:${py(v) - 8}px">${grp(Math.round(v * 10) / 10)}</div>`).join('')}</div>
+          <div class="wscroll" tabindex="0" aria-label="${esc('Wykres treningów z kategorią ' + sel + ', przewijany w poziomie')}" data-scroll="train-tchart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
+            ${grid.map((v) => `<div class="wgrid" style="top:${py(v)}px"></div>`).join('')}
+            <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${ws.map((w, i) => px(i).toFixed(1) + ',' + py(val(w)).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+            ${ws.map((w, i) => `<button class="wdot tgd${i === si ? ' on' : ''}" style="left:${(px(i) - 14).toFixed(1)}px;top:${(py(val(w)) - 14).toFixed(1)}px;--tc:${col}" data-a="trtday" data-id="${w.id}" aria-label="${esc(dl(w.d) + ': ' + grp(val(w)) + unit)}"><span></span></button>`).join('')}
+          </div></div>
+          <div class="wtip" role="status"><div>${esc(dl(sw.d))}</div><div style="font-family:var(--display);font-weight:600;color:${col}">${esc(grp(val(sw)) + unit)}</div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(dl(ws[0].d).replace(/^[^,]+, /, ''))}</span><span>${esc(dl(ws[n - 1].d).replace(/^[^,]+, /, ''))}</span></div></div></div>`;
     }
     const mx = Math.max(1, ...ws.map(val));
     const rows = ws.map((w, i) => {
       const v = val(w), d = i ? Math.round((v - val(ws[i - 1])) * 100) / 100 : null;
-      return `<a class="tgrow" href="#/train/day/${w.id}" aria-label="${esc('Otwórz trening z dnia ' + dl(w.d))}"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1;min-width:0;font-size:13px;color:var(--text-2)">${esc(dl(w.d))}<span style="display:block;font-size:12px;color:var(--muted)">${esc(w.name || 'Trening')}</span></span><span class="v">${grp(v) + unit}</span><span class="d ${d == null ? '' : gc(d)}">${d == null ? 'pierwszy' : sgn(d)}</span></div>
+      return `<a class="tgrow${i === si ? ' on' : ''}" href="#/train/day/${w.id}" aria-label="${esc('Otwórz trening z dnia ' + dl(w.d))}"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1;min-width:0;font-size:13px;color:var(--text-2)">${esc(dl(w.d))}<span style="display:block;font-size:12px;color:var(--muted)">${esc(w.name || 'Trening')}</span></span><span class="v">${grp(v) + unit}</span><span class="d ${d == null ? '' : gc(d)}">${d == null ? 'pierwszy' : sgn(d)}</span></div>
           <div class="bar"><div style="width:${Math.round(100 * v / mx)}%;background:${col}"></div></div></a>`;
     }).reverse().join('');
-    return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg znacznika</div>
-        <div role="radiogroup" aria-label="Znacznik" class="ttagrow">${used.map((t) => `<button role="radio" aria-checked="${t === sel}" class="ttagold thchip big${t === sel ? ' on' : ''}" style="--tc:${tagCol(reg, t)}" data-a="trptag" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+    return `<div class="dcard" style="gap:10px"><div class="eyebrow">Postępy wg kategorii</div>
+        <div class="ddrop"><button class="select${T.tdd ? ' open tv' : ''}" data-a="trtdd" aria-haspopup="listbox" aria-expanded="${T.tdd}" aria-label="${esc('Kategoria: ' + sel)}"><span style="min-width:0;display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${col}"></span>${esc(sel)}</span><span class="frot${T.tdd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
+          ${T.tdd ? `<div class="bdlist" role="listbox" aria-label="Kategorie">${used.map((t) => `<button role="option" class="bdopt tv${t === sel ? ' on' : ''}" aria-selected="${t === sel}" data-a="trptag" data-t="${esc(t)}"><span style="display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${tagCol(reg, t)}"></span>${esc(t)}</span><span class="sub">${pl(cnt(t), 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
         <div class="tstats in tg3"><div><div class="l">TRENINGI</div><div class="v">${n}</div></div><div><div class="l">${hasVol ? 'OSTATNI (SUMA CIĘŻARU)' : 'OSTATNI (CZAS)'}</div><div class="v">${n ? grp(last) + unit : '—'}</div></div><div><div class="l">ZMIANA</div><div class="v ${n > 1 ? gc(g) : ''}">${n > 1 ? sgn(g) + unit : '—'}</div></div></div>
         ${chart}
-        <div style="font-size:12px;color:var(--muted)">Dotknij punktu lub wiersza, aby przejść do treningu.</div>
+        <div style="font-size:12px;color:var(--muted)">Dotknij punktu, aby zobaczyć wynik. Dotknij wiersza, aby przejść do treningu.</div>
         <div style="display:flex;flex-direction:column"><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:84px;text-align:right">${hasVol ? 'SUMA CIĘŻARU' : 'CZAS'}</span><span style="width:62px;text-align:right">ZMIANA</span></div>${rows}</div>
         ${note}</div>`;
   }
@@ -215,7 +250,7 @@
     }
     const tab = rows.map((r, i) => {
       const d = i === 0 ? null : Math.round((r.kg - rows[i - 1].kg) * 100) / 100;
-      return `<button class="bhrow trow${i === si ? ' on' : ''}" data-a="trday" data-id="${r.id}" aria-label="Pokaż wynik z dnia ${esc(dl(r.d))}"><span class="dt">${esc(dl(r.d))}</span><span class="v">${fmt(r.kg)}</span><span class="r">${esc(rt(r))}</span><span class="d ${d == null ? '' : dc(d)}">${d == null ? 'pierwszy' : d === 0 ? '0' : sg(d)}</span></button>`;
+      return `<a class="bhrow trow${i === si ? ' on' : ''}" href="#/train/day/${r.id}" aria-label="Otwórz trening z dnia ${esc(dl(r.d))}"><span class="dt">${esc(dl(r.d))}</span><span class="v">${fmt(r.kg)}</span><span class="r">${esc(rt(r))}</span><span class="d ${d == null ? '' : dc(d)}">${d == null ? 'pierwszy' : d === 0 ? '0' : sg(d)}</span></a>`;   // v38: wiersz otwiera „Trening z dnia”
     }).reverse().join('');
     return `
         <div class="dcard" style="gap:8px"><div class="eyebrow">Ćwiczenie</div>
@@ -225,7 +260,7 @@
             <div><div class="l">OD PIERWSZEGO</div><div class="v ${gain == null ? '' : dc(gain)}">${gain == null ? '—' : sg(gain)}</div></div></div></div>
         <div class="dcard" style="gap:4px"><div class="dhead"><div class="eyebrow">${card ? 'Średnia moc' : 'Największy ciężar'}</div><div style="font-size:12px;color:var(--muted)">${unit}</div></div>${chart}</div>
         <div class="dcard tight"><button class="bhhead" data-a="trtab" aria-expanded="${T.tabOpen}"><span class="eyebrow" style="text-align:left">Tabela wyników</span><span class="cnt">${pl(n, 'trening', 'treningi', 'treningów')}<span class="frot${T.tabOpen ? ' up' : ''}" style="display:flex">${K.down}</span></span></button>
-          ${T.tabOpen ? `<div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">${card ? 'ŚR. MOC' : 'MAX CIĘŻAR'}</span><span style="width:54px;text-align:right">${card ? 'CZAS' : 'POWT.'}</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
+          ${T.tabOpen ? `<div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Dotknij punktu, aby zobaczyć wynik. Dotknij wiersza, aby przejść do treningu.</div><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">${card ? 'ŚR. MOC' : 'MAX CIĘŻAR'}</span><span style="width:54px;text-align:right">${card ? 'CZAS' : 'POWT.'}</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
             <div style="font-size:12px;line-height:1.4;color:var(--dim);padding:8px 0 4px;border-top:1px solid var(--line)">${card ? 'Dla każdego treningu bierzemy średnią moc podaną przy tym ćwiczeniu kondycyjnym. Ćwiczenia bez podanej mocy nie pojawiają się na liście.' : 'Dla każdego treningu bierzemy największy ciężar z serii tego ćwiczenia; „Powt.” to powtórzenia w tej serii. Ćwiczenia z zaznaczonym „Ciężarem własnym” nie pojawiają się na liście.'}</div>` : ''}</div>`;
   }
 
@@ -336,7 +371,7 @@
           ${tagBlock(D)}
           ${D.src === 'polar' ? `<div class="tpolinfo"><div class="h">${polBadge()}<span>Zsynchronizowany z Polar Flow</span></div>
             ${D.pol ? `<div class="s">Dane tylko do odczytu: ${esc((D.pol.kcal != null ? D.pol.kcal : '—') + ' kcal · tętno śr./maks. ' + (D.pol.hrAvg != null ? D.pol.hrAvg : '—') + '/' + (D.pol.hrMax != null ? D.pol.hrMax : '—') + ' · obciążenie treningowe ' + (D.pol.load != null ? D.pol.load : '—'))}</div>` : ''}
-            <div class="s">Możesz zmienić nazwę, ćwiczenia i znaczniki – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}</div>
+            <div class="s">Możesz zmienić nazwę, ćwiczenia i kategorie – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}</div>
         <div class="eyebrow" style="margin-top:2px">Ćwiczenia</div>
         ${exs}
         <button class="taddex" data-a="trexadd">${K.plus}<span>Dodaj ćwiczenie</span></button>
@@ -348,22 +383,13 @@
       </div>
       <div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 18px" data-a="navback">Anuluj</button>
         <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>
-    </main>`;
+      ${catOverlay()}</main>`;
   }
-  // v36: znaczniki w formularzu – wpisane + „Dodaj”/Enter, × usuwa; „Wpisane wcześniej” tylko z rejestru (bez własnych propozycji).
+  // v38 (makieta v190): pole „Kategorie” – przycisk z wybranymi kategoriami otwiera „Konfigurację kategorii” z polami wyboru.
   function tagBlock(D) {
-    const reg = TR.tags().concat(D.tags.filter((t) => TR.tags().indexOf(t) < 0)), old = reg.filter((t) => D.tags.indexOf(t) < 0);
-    return `<div class="ttags"><label for="t-tag" style="font-size:14px">Znaczniki <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></label>
-        ${D.tags.length ? `<div class="ttagrow">${D.tags.map((t) => `<span class="ttag big" style="--tc:${tagCol(reg, t)}">${esc(t)}<button data-a="trtagdel" data-t="${esc(t)}" aria-label="Usuń znacznik ${esc(t)}">×</button></span>`).join('')}</div>` : ''}
-        ${D.tags.length < 6 ? `<div style="display:flex;gap:8px"><input id="t-tag" class="tin txt" type="text" maxlength="20" autocomplete="off" enterkeyhint="done" placeholder="Wpisz znacznik, np. siłowy" value="${esc(D.tagIn)}" data-in="train-tagin"><button class="ttagadd" data-a="trtagadd">Dodaj</button></div>`
-          : '<div style="font-size:12px;color:var(--muted)">Najwyżej 6 znaczników w treningu.</div>'}
-        ${old.length && D.tags.length < 6 ? `<div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:12px;color:var(--muted)">Wpisane wcześniej:</div>
-          <div class="ttagrow">${old.map((t) => `<button class="ttagold" style="--tc:${tagCol(reg, t)}" data-a="trtagpick" data-t="${esc(t)}" aria-label="Dodaj znacznik ${esc(t)}">+ ${esc(t)}</button>`).join('')}</div></div>` : ''}</div>`;
-  }
-  function addTag(D, raw) {
-    const t = String(raw || '').trim().replace(/\s+/g, ' ').toLowerCase().slice(0, 20);
-    D.tagIn = '';
-    if (t && D.tags.indexOf(t) < 0 && D.tags.length < 6) D.tags.push(t);
+    const reg = TR.tags();
+    return `<div class="ttags"><div style="font-size:14px">Kategorie <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></div>
+        <button class="tcfield" data-a="trcatopen" data-m="edit" aria-haspopup="dialog" aria-label="Wybierz kategorie treningu"><span class="ttagrow" style="flex:1;min-width:0">${D.tags.length ? D.tags.map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('') : '<span style="font-size:14px;color:var(--muted)">Wybierz kategorie</span>'}</span><span style="flex:none;color:var(--muted);display:flex">${K.chev}</span></button></div>`;
   }
 
   // v30 (makieta 05.11.2026, v165): podpowiedzi nazwy ćwiczenia (do 5) z nazw z tego formularza i z zapisanych treningów;
@@ -466,12 +492,31 @@
     trdate: () => { const D = T.draft; if (D) A.datePick({ value: D.d, min: '2020-01-01', max: C.todayKey(), onPick: (k) => { D.d = k; } }); },
     trtab: () => { T.tabOpen = !T.tabOpen; R(); },
     trpview: (el) => { T.pview = el.dataset.v === 'tag' ? 'tag' : 'ex'; R(); },
-    trptag: (el) => { T.ptag = el.dataset.t; R(); },
-    trtq: (el) => { T.tq = T.tq.trim().toLowerCase() === el.dataset.t ? '' : el.dataset.t; R(); },
+    trptag: (el) => { T.ptag = el.dataset.t; T.tday = null; T.tdd = false; R(); },
+    trtdd: () => { T.tdd = !T.tdd; R(); },
+    trtday: (el) => { T.tday = +el.dataset.id; R(); },
     trhidep: () => { T.hideP = !T.hideP; R(); },
-    trtagadd: () => { const D = T.draft; if (!D) return; const f = document.getElementById('t-tag'); addTag(D, f ? f.value : D.tagIn); R(); const g = document.getElementById('t-tag'); if (g) g.focus(); },
-    trtagdel: (el) => ed((D) => { D.tags = D.tags.filter((t) => t !== el.dataset.t); }),
-    trtagpick: (el) => ed((D) => { if (D.tags.indexOf(el.dataset.t) < 0 && D.tags.length < 6) D.tags.push(el.dataset.t); })
+    // v38: konfiguracja kategorii (Historia i formularz treningu)
+    trcatopen: (el) => { T.cat = { m: el.dataset.m === 'edit' ? 'edit' : 'hist', name: '', col: null, err: '' }; R(); },
+    trcatclose: () => { T.cat = null; R(); },
+    trcatcol: (el) => { if (T.cat) { T.cat.col = el.dataset.c; R(); } },
+    trcattog: (el) => { const D = T.draft, t = el.dataset.t; if (!D) return; D.tags = D.tags.indexOf(t) >= 0 ? D.tags.filter((x) => x !== t) : D.tags.concat([t]); R(); },
+    trcatdel: (el) => {
+      const t = el.dataset.t; TR.tagRemove(t, frozen());
+      if (T.draft) T.draft.tags = T.draft.tags.filter((x) => x !== t);
+      if (T.ptag === t) T.ptag = null;
+      if (T.cat) T.cat.err = ''; R();
+    },
+    trcatadd: () => {
+      const c = T.cat; if (!c) return; const f = document.getElementById('tc-catname'); if (f) c.name = f.value.slice(0, 20);
+      const nm = c.name.trim().replace(/\s+/g, ' ').toLowerCase(), reg = TR.tags();
+      if (!nm) { c.err = 'Wpisz nazwę kategorii.'; R(); return; }
+      if (reg.some((r) => r.toLowerCase() === nm)) { c.err = 'Taka kategoria już istnieje.'; R(); return; }
+      const usedC = reg.map((t) => tagCol(reg, t)), col = c.col && PAL.indexOf(c.col) >= 0 ? c.col : (PAL.find((x) => usedC.indexOf(x) < 0) || PAL[0]);
+      TR.tagAdd(nm, col, frozen());
+      if (c.m === 'edit' && T.draft && T.draft.tags.indexOf(nm) < 0) T.draft.tags.push(nm);   // nowa kategoria od razu zaznaczona
+      c.name = ''; c.col = null; c.err = ''; R();
+    }
   };
   // v36: odświeżenie samej listy Historii podczas pisania (pole zachowuje fokus i klawiaturę).
   function liveHist() { const l = document.querySelector('[data-thlist]'); if (l) l.innerHTML = histCards(); }
@@ -481,7 +526,7 @@
       A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions);
       // v30: podpowiedzi przy fokusie pola nazwy; znikają po opuszczeniu pola (z opóźnieniem, żeby zdążył zadziałać wybór)
       document.addEventListener('focusin', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name' && T.draft) { T.sg = +t.dataset.i; showSugg(T.sg); } });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.id === 't-tag' && T.draft) { e.preventDefault(); A.actions.trtagadd(); } });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.id === 'tc-catname' && T.cat) { e.preventDefault(); A.actions.trcatadd(); } });
       document.addEventListener('focusout', (e) => { const t = e.target; if (t && t.dataset && t.dataset.in === 'train-name') { const i = +t.dataset.i; setTimeout(() => { if (T.sg === i && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.in === 'train-name' && +document.activeElement.dataset.i === i)) { T.sg = null; showSugg(-1); } }, 200); } }); if (window.TrainRecUI) window.TrainRecUI.init(app); },
     view(r) {
       if (r.arg === 'recur' && window.TrainRecUI) return window.TrainRecUI.view();
@@ -498,9 +543,9 @@
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
       if (k === 'train-q') { T.q = el.value.slice(0, 40); liveHist(); return; }
-      if (k === 'train-tq') { T.tq = el.value.slice(0, 20); liveHist(); const c = document.querySelector('[data-thchips]'); if (c) c.innerHTML = tagChips(TR.tags()); return; }
+      if (k === 'train-tq') { T.tq = el.value.slice(0, 20); liveHist(); return; }
+      if (k === 'train-catname') { if (T.cat) T.cat.name = el.value.slice(0, 20); return; }
       const D = T.draft; if (!D) return;
-      if (k === 'train-tagin') { D.tagIn = el.value.slice(0, 20); return; }
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
@@ -519,6 +564,8 @@
     onChange(el, k) { if (k === 'train-cuntil' && window.TrainRecUI) { window.TrainRecUI.onInput(el, k); return; } if (k === 'train-date' && T.draft) { T.draft.d = el.value; live(); } },
     onEscape() {
       if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
+      if (T.cat) { T.cat = null; return true; }
+      if (T.tdd) { T.tdd = false; return true; }
       if (T.sg != null) { T.sg = null; T.sugg = []; return true; }
       if (T.confirm) { T.confirm = false; return true; }
       if (T.dd) { T.dd = false; return true; }
@@ -530,8 +577,9 @@
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
+      T.cat = null; T.tdd = false;
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tq = ''; T.hideP = false; }   // filtr Historii do wyjścia z niej
-      if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; }   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
+      if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; }   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
     }
   };
 })();

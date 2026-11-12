@@ -102,15 +102,25 @@
   // v31 (makieta 08.11.2026): tekst czasu trwania i wpis do Dziennika diety z aktywności odhaczonych w dniu k
   // (dzień odhaczenia = wartość w done). Jeden wpis na dzień; kilka terminów tej samej aktywności – „×n”, czas mnożony.
   const durText = (a) => (a.dur ? ' · ' + a.dur + ' min' : '');
+  // v38 (makieta v187): „Synchronizuj z Polar” (a.sync); aktywności z v36–v37 z wybranymi sportami mają ją włączoną.
+  const syncOf = (a) => Array.isArray(a.polar) && a.polar.length > 0 && a.sync !== false;
+  const syncCodes = () => { const c = []; list().forEach((a) => { if (syncOf(a)) a.polar.forEach((x) => { if (c.indexOf(x) < 0) c.push(x); }); }); return c; };
+  // Wpisy Dziennika z treningów Polar (po jednym na trening) dla sportów aktywności z synchronizacją – zamiast wpisu z odhaczeń.
+  function polarEntries(k) {
+    const codes = syncCodes(); if (!codes.length) return [];
+    return TR.list().filter((w) => w.src === 'polar' && w.d === k && codes.indexOf(TR.sportOf(w)) >= 0).reverse()
+      .map((w) => ({ name: w.name || 'Trening Polar', min: Math.round(w.ex.reduce((t, x) => t + (x.kind === 'car' ? +x.min || 0 : 0), 0)), km: Math.round(w.ex.reduce((t, x) => t + (+x.km || 0), 0) * 10) / 10, auto: true, polar: true, wid: w.id }));
+  }
+  function polarDays() { const codes = syncCodes(); return codes.length ? TR.list().filter((w) => w.src === 'polar' && codes.indexOf(TR.sportOf(w)) >= 0).map((w) => w.d) : []; }
   function journalEntry(k) {
-    const items = list().map((a) => ({ name: a.name, n: Object.keys(a.done || {}).filter((x) => a.done[x] === k).length, dur: parseInt(a.dur, 10) || 0 }))
+    const items = list().filter((a) => !syncOf(a)).map((a) => ({ name: a.name, n: Object.keys(a.done || {}).filter((x) => a.done[x] === k).length, dur: parseInt(a.dur, 10) || 0 }))
       .filter((x) => x.n > 0).map((x) => ({ name: x.name + (x.n > 1 ? ' ×' + x.n : ''), min: x.n * x.dur }));
     if (!items.length) return null;
     const min = items.reduce((t, x) => t + x.min, 0);
     return { name: items.length === 1 ? items[0].name : 'Aktywności cykliczne (' + items.length + '): ' + items.map((x) => x.name).join(', '), min, km: 0, auto: true };
   }
   // Dni, w których odhaczono jakąkolwiek aktywność (do „pierwszego wpisu” Dziennika i eksportu).
-  function doneDays() { const s = {}; list().forEach((a) => Object.keys(a.done || {}).forEach((x) => { s[a.done[x]] = 1; })); return Object.keys(s).sort(); }
+  function doneDays() { const s = {}; list().filter((a) => !syncOf(a)).forEach((a) => Object.keys(a.done || {}).forEach((x) => { s[a.done[x]] = 1; })); polarDays().forEach((d) => { s[d] = 1; }); return Object.keys(s).sort(); }
 
   // v34 (makieta 10.11.2026): usunięcie jednego terminu aktywności (zaległe podzadanie z datą) – a.skip = { 'RRRR-MM-DD': true }.
   function skipTerm(id, k) { const a = get(id); if (!a) return; a.skip = a.skip || {}; a.skip[k] = true; if (a.done) delete a.done[k]; TR.save(); }
@@ -130,7 +140,7 @@
   function polarTick(code, d, min) {
     const out = [];
     list().forEach((a) => {
-      if (!Array.isArray(a.polar) || a.polar.indexOf(code) < 0) return;
+      if (!syncOf(a) || a.polar.indexOf(code) < 0) return;   // v38: tylko aktywności z włączoną synchronizacją z Polar
       const dur = parseInt(a.dur, 10) || 0, n = dur ? Math.floor((Math.round((min || 0) * 10) / 10) / dur) : 1;
       if (n <= 0) return;
       const lo = C.addDays(d, -LOOK), ks = [];
@@ -174,5 +184,5 @@
     return { planned, done, late, missed, streak, best, over, dots };
   }
 
-  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick };
+  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };
 })();

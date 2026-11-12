@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v37';
+const VERSION = 'mylife-v38';
 // Odczyt zdjęć w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji (v16: Tesseract w „mylife-ocr-1”;
 // v26: PaddleOCR PP-OCRv4 + ONNX Runtime Web, ok. 27 MB, w „mylife-ocr-2” – stara pamięć jest usuwana przy aktywacji).
 const OCR_CACHE = 'mylife-ocr-2';

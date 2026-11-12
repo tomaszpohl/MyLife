@@ -23,7 +23,7 @@
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
   // v36 (makieta v181): sporty Polar Flow powiązane z aktywnością.
   const PS = () => window.PolarSports;
-  const polTxt = (a) => ((a.polar || []).length ? ' · Polar: ' + (a.polar.length === 1 ? PS().name(a.polar[0]) : pl(a.polar.length, 'sport', 'sporty', 'sportów')) : '');
+  const polTxt = (a) => (RC.syncOf(a) ? ' · Polar: ' + (a.polar.length === 1 ? PS().name(a.polar[0]) : pl(a.polar.length, 'sport', 'sporty', 'sportów')) : '');
   function polOpts(d) {
     const l = PS().list().filter((q) => PS().match(q, d.polQ));
     return l.length ? l.map((q) => {
@@ -33,9 +33,12 @@
       : `<div class="tcpnone">Brak sportów pasujących do „${esc(d.polQ.trim())}”.</div>`;
   }
   const polInfo = (d) => (d.pol.length ? 'Zaznaczono: ' + d.pol.length + ' z ' + PS().list().length + ' sportów Polar Flow.' : 'Do wyboru: ' + PS().list().length + ' sportów Polar Flow.');
+  // v38 (makieta v187): przełącznik „Synchronizuj z Polar” – włączony pokazuje wybór sportów, a wpisy do Dziennika diety idą z treningów Polar.
   function polSection(d) {
     if (!PS()) return '';
-    return `<div class="ffield tcpol"><span class="eyebrow">Sporty Polar Flow <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span>
+    const sw = `<button class="thsw tcsync" role="switch" aria-checked="${d.sync}" data-a="tcsync"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Synchronizuj z Polar</span><span style="font-size:12px;color:var(--muted)">${d.sync ? 'Odhacza terminy z treningów Polar i dopisuje je do dziennika diety' : 'Wyłączona: wykonana aktywność wpisuje się do dziennika diety jak zwykle'}</span></span><span class="sw${d.sync ? ' on' : ''}" aria-hidden="true"><span></span></span></button>`;
+    if (!d.sync) return `<div class="ffield tcpol">${sw}</div>`;
+    return `<div class="ffield tcpol">${sw}<span class="eyebrow">Sporty Polar Flow <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span>
         <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow (trening siłowy nie jest synchronizowany). Trening z zaznaczonego sportu odhacza terminy od najstarszego zaległego; przy podanym czasie trwania – tyle terminów, ile pełnych czasów trwania się w nim mieści.</div>
         ${d.pol.length ? `<div class="tcpchips">${d.pol.map((c) => `<span class="tcpchip">${esc(PS().name(c))}<button data-a="tcpol" data-c="${c}" aria-label="Usuń sport ${esc(PS().name(c))}">×</button></span>`).join('')}</div>` : ''}
         <input id="tc-polq" class="finput" type="search" autocomplete="off" placeholder="Szukaj sportu, np. spacer, bieg, rower" aria-label="Szukaj sportu Polar Flow" value="${esc(d.polQ)}" data-in="train-cpolq">
@@ -44,8 +47,8 @@
   }
 
   function openDlg(a) {
-    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', pol: (a.polar || []).slice(), polQ: '', rep: false, confirm: false }
-      : { id: 0, name: '', dur: '', pol: [], polQ: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
+    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', sync: a.sync === true || RC.syncOf(a), pol: (a.polar || []).slice(), polQ: '', rep: false, confirm: false }
+      : { id: 0, name: '', dur: '', sync: false, pol: [], polQ: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
   }
   function check(d) {
     const ex = d.id ? RC.get(d.id) : null, start = ex ? ex.start : C.todayKey(), custom = d.type === 'custom';
@@ -164,10 +167,11 @@
     tcend: (el) => { U.dlg.end = el.dataset.v; R(); },
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;
-      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep, polar: d.pol.slice() });
+      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep, sync: !!d.sync, polar: d.sync ? d.pol.slice() : [] });
       U.dlg = null; if (!retDay()) R();
     },
     // v36: zaznaczenie / odznaczenie sportu Polar (lista i chip ×) – przewinięcie okna i listy zostaje
+    tcsync: () => { const d = U.dlg; if (!d) return; const m = document.querySelector('.tcmodal'), ms = m ? m.scrollTop : 0; d.sync = !d.sync; R(); const m2 = document.querySelector('.tcmodal'); if (m2) m2.scrollTop = ms; },
     tcpol: (el) => {
       const d = U.dlg, c = el.dataset.c; if (!d || !c || (c === 'STRENGTH_TRAINING' && d.pol.indexOf(c) < 0)) return;
       const q = (s2) => document.querySelector(s2), m = q('.tcmodal'), l = q('[data-pollist]'), ms = m ? m.scrollTop : 0, ls = l ? l.scrollTop : 0;

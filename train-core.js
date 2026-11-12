@@ -13,13 +13,14 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.train.v1';
-  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], pol: { seen: {} } });   // v20: rec – aktywności cykliczne
+  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], tagCol: {}, pol: { seen: {} } });   // v20: rec – aktywności cykliczne
   let db = empty();
 
   // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
   function norm(d) {
     if (!d.rec || !Array.isArray(d.rec.list)) d.rec = { next: 1, list: [] };
     if (!Array.isArray(d.tags)) d.tags = [];
+    if (!d.tagCol || typeof d.tagCol !== 'object') d.tagCol = {};   // v38: kolory kategorii z palety (nazwa → #kolor)
     if (!d.pol || typeof d.pol !== 'object') d.pol = { seen: {} };
     if (!d.pol.seen || typeof d.pol.seen !== 'object') d.pol.seen = {};
     (d.list || []).forEach((w) => {
@@ -137,7 +138,23 @@
   const recDb = () => db.rec;
   // v36: rejestr znaczników (kolejność wpisania – od niej zależy kolor) i treningi z Polar Flow.
   const tags = () => db.tags.slice();
+  // v38 (makieta v187/v190): kategorie treningów – kolory z palety 32 kolorów, dodawanie i usuwanie (także z treningów).
+  const tagColors = () => Object.assign({}, db.tagCol);
+  function tagAdd(t, col, colors) { if (colors) db.tagCol = Object.assign({}, colors); if (db.tags.indexOf(t) < 0) db.tags.push(t); if (col) db.tagCol[t] = col; save(); }
+  function tagRemove(t, colors) {
+    if (colors) db.tagCol = Object.assign({}, colors);
+    db.tags = db.tags.filter((x) => x !== t); delete db.tagCol[t];
+    db.list.forEach((w) => { if ((w.tags || []).indexOf(t) >= 0) w.tags = w.tags.filter((x) => x !== t); });
+    save();
+  }
+  // Kod sportu treningu z Polar (od v37 zapisany; dla treningów z v36 – z polskiej nazwy sportu w ćwiczeniu).
+  function sportOf(w) {
+    if (w.sport) return w.sport;
+    const PS = window.PolarSports, n = w.ex && w.ex[0] && w.ex[0].name;
+    if (!PS || !n) return '';
+    const s = PS.list().find((x) => x.name === n); return s ? s.code : '';
+  }
   const polSeen = (pid) => !!db.pol.seen[pid];
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen };
+  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf };
 })();
