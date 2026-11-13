@@ -188,6 +188,9 @@
   const onChange = (f) => listeners.push(f);
 
   load();
+  // v40: zmiana daty początku po połączeniu – następna synchronizacja pobiera cały okres od nowej daty (f39 = 0);
+  // treningi i sesje już pobrane (po identyfikatorze Polar: pol.seen, pol.sq) nie są dodawane drugi raz.
+  function setSince(k) { if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return; st.since = k; st.f39 = 0; save(); }
   function setAuto(v) { st.auto = !!v; save(); }
-  window.Polar = { setAuto, SKIP, load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
+  window.Polar = { setSince, setAuto, SKIP, load, state, sync, auto, connect, disconnect, takeResume, isBusy, onChange, urlOk, DEF_URL, toWorkout, flat };
 })();

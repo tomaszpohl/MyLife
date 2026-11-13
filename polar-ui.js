@@ -15,8 +15,9 @@
     if (U.open) {
       body = `<div class="sgbody">
         ${on ? `<div class="gkv"><div class="kv"><span>Pośrednik</span><span style="word-break:break-all;font-size:13px">${esc(s.url)}</span></div>
-            <div class="kv"><span>Synchronizacja od</span><span>${esc(s.since ? C.dmy(s.since) : '—')}</span></div>
+            <div class="kv"><span>Synchronizacja od</span><span>${A.dateBtn(s.since, 'pfsince2', '', 'Zmień datę początku synchronizacji')}</span></div>
             <div class="kv"><span>Ostatnia synchronizacja</span><span>${esc(s.last || '—')}</span></div></div>
+          <div class="para" style="font-size:12px;line-height:1.45">Zmiana daty „Synchronizacja od” od razu pobiera treningi z nowego okresu. Treningi już pobrane (także usunięte w aplikacji) nie są dodawane drugi raz.</div>
           <button class="thsw pfauto" role="switch" aria-checked="${s.auto !== false}" data-a="pfauto"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Łącz z ręcznymi treningami</span><span style="font-size:12px;color:var(--muted);line-height:1.35">${s.auto !== false ? 'Sesję z zegarka dołączam do ręcznego treningu z tego samego dnia, gdy jest jeden' : 'Wyłączone: sesje czekają w Historii na ręczne przypisanie'}</span></span><span class="sw${s.auto !== false ? ' on' : ''}" aria-hidden="true"><span></span></span></button>
           <button class="primary pfbtn" data-a="pfsync"${busy ? ' disabled' : ''}>${busy ? 'Synchronizuję…' : 'Synchronizuj teraz'}</button>
           <div class="para" style="font-size:12px;line-height:1.45">Pobiera treningi z Polar Flow od daty początku (${esc(s.since ? C.dmy(s.since) : '—')}) i odhacza aktywności cykliczne z przypisanymi sportami. Dane tylko do odczytu – nic nie jest wysyłane do Polar. Sesje siłowe z zegarka nie tworzą osobnych treningów – służą tylko do wzbogacania Twoich ręcznych treningów (kalorie, tętno, obciążenie).</div>`
@@ -58,6 +59,12 @@
       run(P.connect(url, since));
     },
     pfsync: () => run(P.sync(true, false)),
+    // v40: zmiana daty początku po połączeniu
+    pfsince2: () => A.datePick({ value: P.state().since, max: C.todayKey(), onPick: (k) => {
+      if (!k || k === P.state().since) return;
+      P.setSince(k);
+      run(P.sync(true, false).then((r) => (r ? Object.assign({}, r, { msg: 'Synchronizacja od ' + C.dmy(k) + '. ' + r.msg }) : r)));
+    } }),
     pfauto: () => { P.setAuto(P.state().auto === false); U.msg = ''; A.render(); },
     pfask: () => { U.ask = true; U.msg = ''; A.render(); },
     pfaskno: () => { U.ask = false; A.render(); },

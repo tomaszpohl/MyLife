@@ -120,6 +120,8 @@ Treningi są czwartym modułem kopii danych (Zadania, Dieta, Finanse, Trening); 
 2. Ustawienia → „Synchronizacja z Polar Flow” → „Polar Flow” → adres pośrednika (domyślnie `https://mylife-polar.tomekpohl.workers.dev`) i **„Synchronizuj od daty (włącznie)”** → „Połącz z Polar Flow”.
 3. Aplikacja przejdzie do logowania Polar i po zgodzie wróci do Ustawień, od razu pobierając treningi od wybranej daty (porcjami po 90 dni).
 
+**Zmiana daty początku (od v40):** po połączeniu dotknij daty w wierszu „Synchronizacja od” (Ustawienia → Polar Flow) i wybierz nową – aplikacja od razu pobierze treningi z całego okresu od tej daty. Treningi już pobrane (także zmienione lub usunięte w aplikacji) nie są dodawane drugi raz.
+
 Kiedy: po połączeniu, „Synchronizuj teraz” i samoczynnie przy otwarciu albo powrocie do aplikacji (najwyżej co 15 minut). Logowanie odnawia się samo (token odświeżania); ponowne logowanie Polar tylko, gdy odnowienie się nie uda. „Rozłącz Polar Flow” usuwa logowanie z telefonu – pobrane treningi zostają.
 
 ## Moduł Rozliczenia (od v21)
@@ -162,7 +164,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v39 · 12.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v40 · 13.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -208,6 +210,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v40 (13.11.2026)**: naprawiony napis „undefined” przy „Cofnij” na liście zakupów; zmiana daty „Synchronizacja od” w Polar Flow po połączeniu (bez dublowania treningów).
 - **v39 (12.11.2026)**: sesje siłowe z Polar Flow wzbogacają ręczne treningi (kalorie, tętno, obciążenie, czas, start) – automatycznie po dacie (przełącznik „Łącz z ręcznymi treningami”) albo ręcznie z karty „Z Polar do przypisania” w Historii i z „Trening z dnia” (z odłączaniem); plakietka „Polar” z ogniwami; miara Kalorie / Śr. tętno w Postępach wg kategorii.
 - **v38 (12.11.2026)**: kategorie treningów zamiast znaczników („Konfiguracja kategorii” w Historii i w formularzu, kolory z palety 32 kolorów, usuwanie także z treningów); Postępy „Wg kategorii” z listą rozwijaną i przewijanym wykresem, wiersze tabel otwierają „Trening z dnia”; aktywności cykliczne z przełącznikiem „Synchronizuj z Polar” i wpisami z treningów Polar w Dzienniku diety.
 - **v37 (11.11.2026)**: Wydatki – edycja pozycji listy „Do zapisania” przed zapisem; Inwestycje w trzech widokach: Statystyki, **ROI** (zwrot z inwestycji: aktywo z Majątku powiązane z celami, zysk/strata, zmiana wartości zapisuje się w Majątku) i Historia wpłat (Miesiąc / Rok / Od daty); Historia treningów – szukanie po znaczniku (fraza i chipy) i suwak „Ukryj treningi z synchronizacji (Polar)”; Postępy – widok „Wg znacznika” (kafle, wykres, lista; dotknięcie otwiera trening); Polar Flow nie pobiera treningów siłowych (pobrane wcześniej i niezmienione są usuwane przy aktualizacji).
