@@ -131,6 +131,20 @@
     R();
   }
   const pickPhoto = () => { const f = document.getElementById('bodyPhoto'); if (f) f.click(); };
+  // v42 (wariant 2, decyzja właściciela 15.11.2026): własny podgląd aparatu z ramką; bez kamery – aparat systemowy
+  const sysCamera = () => { const f = document.getElementById('bodyCamSys'); if (f) f.click(); };
+  function openCamera() {
+    B.src = 'cam';
+    if (!window.BodyCam || !window.BodyCam.supported()) { sysCamera(); return; }
+    window.BodyCam.open({
+      onPhoto: (blob) => readPhoto(blob),
+      onGallery: () => { B.src = 'gal'; pickPhoto(); },
+      onFail: (why) => {
+        B.msg = why === 'denied' ? 'Aplikacja nie ma dostępu do aparatu. Zezwól na aparat w ustawieniach przeglądarki (ikona kłódki przy adresie) – teraz otwieram aparat telefonu.' : 'Nie udało się uruchomić podglądu aparatu – otwieram aparat telefonu.';
+        R(); sysCamera();
+      }
+    });
+  }
 
   // ---------- Ekran ----------
   function chart(sel, all, selD) {
@@ -208,10 +222,12 @@
 
     return `<main class="screen" style="position:relative"><div class="topbar">${A.navBtns()}<h1>Skład ciała</h1>${A.gearLink('margin-left:auto')}</div>
       <input id="bodyPhoto" class="sr-only" type="file" accept="image/*" data-in="body-photo" tabindex="-1" aria-hidden="true">
+      <input id="bodyCamSys" class="sr-only" type="file" accept="image/*" capture="environment" data-in="body-photo" tabindex="-1" aria-hidden="true">
       <div class="dscroll" data-scroll="body">
         <div class="dcard accent"><div class="eyebrow">Nowy pomiar</div>
-          <div style="font-size:14px;line-height:1.45;color:var(--text-2)">Dodaj z galerii zdjęcie wydruku z analizatora składu ciała – aplikacja odczyta wartości, a Ty sprawdzisz je przed zapisem. Możesz też wpisać wyniki ręcznie.</div>
-          <button class="primary" style="flex:none" data-a="bdphoto">${K.img}<span>Dodaj zdjęcie z galerii</span></button>
+          <div style="font-size:14px;line-height:1.45;color:var(--text-2)">Zrób zdjęcie wydruku z analizatora składu ciała albo dodaj je z galerii – aplikacja odczyta wartości, a Ty sprawdzisz je przed zapisem. Możesz też wpisać wyniki ręcznie.</div>
+          <button class="primary" style="flex:none" data-a="bdcam">${K.cam}<span>Zrób zdjęcie wydruku</span></button>
+          <button class="btn2 accent" style="height:48px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px" data-a="bdphoto">${K.img}<span>Dodaj zdjęcie z galerii</span></button>
           <button class="btn2 accent" style="height:48px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px" data-a="bdmanual">${K.plus}<span>Dodaj wyniki ręcznie</span></button>
           ${B.msg ? `<div class="bmsg" role="status"><span style="flex:1;min-width:0">${esc(B.msg)}</span>${B.undo ? '<button data-a="bdundo">Cofnij</button>' : ''}</div>` : ''}</div>
         <div class="dcard"><div class="eyebrow">Pomiar z dnia</div>${dayCard}</div>
@@ -228,8 +244,10 @@
   // ---------- Akcje ----------
   const actions = {
     bddate: () => { if (B.rev) A.datePick({ value: B.rev.date, min: '2020-01-01', max: today(), onPick: (k) => { B.rev.date = k; } }); },
-    bdphoto: () => { B.msg = ''; B.undo = null; pickPhoto(); },
-    bdagain: () => { B.rev = null; R(); pickPhoto(); },
+    bdphoto: () => { B.msg = ''; B.undo = null; B.src = 'gal'; pickPhoto(); },
+    bdcam: () => { B.msg = ''; B.undo = null; openCamera(); },
+    bdagain: () => { B.rev = null; R(); if (B.src === 'cam') openCamera(); else pickPhoto(); },   // v42: „Zrób ponownie” tym samym sposobem
+
     bdcancel: () => { B.job++; B.busy = ''; R(); },
     bdmanual: () => { openRev('manual', null); R(); },
     bdedit: () => { const e = D.bodyList().find((x) => x.d === B.day); if (e) { openRev('edit', e); R(); } },
@@ -272,6 +290,6 @@
       if (B.dayDd) { B.dayDd = false; return true; }
       return false;
     },
-    onRoute() { B.msg = ''; B.undo = null; B.rev = null; B.dayDd = false; B.tip = false; B.day = null; if (B.busy) { B.job++; B.busy = ''; } }
+    onRoute() { if (window.BodyCam) window.BodyCam.close(); B.msg = ''; B.undo = null; B.rev = null; B.dayDd = false; B.tip = false; B.day = null; if (B.busy) { B.job++; B.busy = ''; } }
   };
 })();
