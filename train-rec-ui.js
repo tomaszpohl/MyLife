@@ -102,9 +102,9 @@
           <div class="fprog small" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}" aria-label="Wykonanie: ${esc(a.name)}"><span style="width:${pc}%;background:var(--violet)"></span></div>
           <div style="font-size:13px;color:var(--text-2)">Wykonano ${s.done} z ${s.planned}${s.late ? ' · z opóźnieniem: ' + s.late : ''}${s.missed ? ' · pominięte: ' + s.missed : ''}</div>
           <div class="tckpi"><div><b>${s.streak}</b><span>seria teraz</span></div><div><b>${s.best}</b><span>najdłuższa seria</span></div><div><b style="color:${s.over ? 'var(--gold)' : 'var(--text)'}">${s.over}</b><span>zaległe</span></div></div>
-          <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:11px;color:var(--muted)">Ostatnie terminy</div>
+          ${s.dots.length ? `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:11px;color:var(--muted)">${s.dotsLabel}</div>
             <div class="tcdots">${s.dots.map((d) => `<span class="${d.c}" title="${esc(d.tip)}" role="img" aria-label="${esc(d.tip)}"></span>`).join('')}</div>
-            <div class="tcleg"><span><i class="ok"></i>w terminie</span><span><i class="late"></i>z opóźnieniem</span><span><i class="miss"></i>pominięta</span><span><i class="today"></i>dziś</span></div></div>
+            <div class="tcleg"><span><i class="ok"></i>w terminie</span><span><i class="late"></i>z opóźnieniem</span><span><i class="miss"></i>pominięta</span><span><i class="today"></i>dziś</span></div></div>` : ''}
         </div>`;
       }).join('') : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak danych. Dodaj aktywność, aby zobaczyć statystyki.</div></div>'}`;
   }

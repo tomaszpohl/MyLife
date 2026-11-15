@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v40 · 13.11.2026';
+  const APP_VERSION = 'v41 · 15.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -109,6 +109,7 @@
     undo: null,
     sheet: null,        // panel „Przełóż zadanie”
     del: null,          // panel „Usuń zadanie cykliczne”
+    sdel: null,         // v41: okno „Usuń podzadanie” (zakres: dzień / cały cykl)
     editK: null,        // termin, z którego otwarto edycję
     set: { loadStep: 0, msg: '' },
     toast: null
@@ -206,10 +207,10 @@
         const off = !E.text.trim();
         return `<div class="subedit" role="group" aria-label="Edycja podzadania">
         <input id="subedit" class="finput" type="text" maxlength="60" aria-label="Nazwa podzadania" value="${esc(E.text)}" autocomplete="off">
-        <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
+        <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
           <button class="btn-cancel small" data-a="subedno">Anuluj</button><button class="subedok${off ? ' off' : ''}" data-a="subedok" aria-disabled="${off}">Zapisz</button></div></div>`;
       }
-      return `<div class="subsw" data-subsw="${u.id}" data-id="${t.id}" data-k="${k}" data-kind="${C.isRecurring(t) ? 'rec' : 'one'}">${swBg(C.isRecurring(t) ? 'Usuń z tego dnia' : 'Usuń')}<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
+      return `<div class="subsw" data-subsw="${u.id}" data-id="${t.id}" data-k="${k}" data-kind="${C.isRecurring(t) ? 'rec' : 'one'}">${swBg('Usuń')}<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
         <button class="subgrip" data-sgrip="${u.id}" data-id="${t.id}" aria-label="Zmień kolejność: ${esc(u.title)} (${i + 1} z ${n})" aria-describedby="subgrip-hint">${I.grip}</button>
         <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
         <div class="st">${esc(u.title)}</div>
@@ -229,6 +230,7 @@
     S.draft.subs = JSON.parse(JSON.stringify(t.subs || []));
     S.draft.subDone = JSON.parse(JSON.stringify(t.subDone || {}));
     S.draft.done = JSON.parse(JSON.stringify(t.done || {}));
+    S.draft.subHide = JSON.parse(JSON.stringify(t.subHide || {}));   // v41: ukrycie w dniu widoczne od razu w formularzu
   }
 
   // ---------- Router ----------
@@ -419,7 +421,7 @@
         <button class="plus" data-a="new" aria-label="Dodaj zadanie ze szczegółami">${I.plus}</button>
       </div>
       ${S.sheet ? viewSheet() : ''}
-      ${S.del ? viewDelSheet() : ''}
+      ${S.del ? viewDelSheet() : ''}${S.sdel ? viewSubDelSheet() : ''}
     </main>`;
   }
 
@@ -446,6 +448,34 @@
         <div style="display:flex;gap:10px;margin-top:2px">
           <button class="btn-cancel" data-a="dclose">Anuluj</button>
           <button class="primary danger" data-a="dok">${one ? 'Usuń ten termin' : 'Usuń cały cykl'}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ---------- v41 (makieta v199): okno „Usuń podzadanie” (zadanie cykliczne) ----------
+  function askSubDel(id, sid, k, from) { S.sdel = { anim: true, id, sid: String(sid), k, from, mode: 'day' }; render(); }
+  function viewSubDelSheet() {
+    const q = S.sdel, t = q && C.get(q.id), u = t && (t.subs || []).find((x) => x.id === q.sid);
+    if (!u) { S.sdel = null; return ''; }
+    const opt = (mode, title, sub) => `<button class="sheet-opt${q.mode === mode ? ' on' : ''}${mode === 'all' ? ' danger' : ''}" role="radio" aria-checked="${q.mode === mode}" data-a="subdlgmode" data-v="${mode}">
+        <span class="dot"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${title}</span><span style="font-size:13px;color:var(--muted)">${esc(sub)}</span></span></button>`;
+    const anim = q.anim ? ' anim' : ''; q.anim = false;
+    return `<div class="sheet-wrap${anim}">
+      <button class="sheet-scrim" data-a="subdlgclose" aria-label="Zamknij okno usuwania podzadania"></button>
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Usuń podzadanie">
+        <div class="grab" aria-hidden="true"></div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <h2>Usuń podzadanie</h2>
+          <div style="font-size:13px;color:var(--muted)">${esc(u.title + ' · ' + t.title + ' · ' + C.repeatLabel(t))}</div>
+        </div>
+        <div role="radiogroup" aria-label="Zakres usuwania" style="display:flex;flex-direction:column;gap:12px">
+          ${opt('day', 'Tylko z tego dnia', C.dmy(q.k) + ' – w pozostałych terminach zostaje')}
+          ${opt('all', 'Z całego cyklu', 'Znika ze wszystkich terminów zadania')}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:2px">
+          <button class="btn-cancel" data-a="subdlgclose">Anuluj</button>
+          <button class="primary danger" data-a="subdlgok">${q.mode === 'all' ? 'Usuń z całego cyklu' : 'Usuń z tego dnia'}</button>
         </div>
       </div>
     </div>`;
@@ -657,7 +687,7 @@
             <button class="btn-del" data-a="delete">${I.trashS}<span>Usuń zadanie</span></button>
             <button class="primary" style="flex:none" data-a="save">Zapisz zmiany</button></div>`
         : `<button class="primary" data-a="save">Zapisz zadanie</button>`}</div>
-      ${S.del ? viewDelSheet() : ''}
+      ${S.del ? viewDelSheet() : ''}${S.sdel ? viewSubDelSheet() : ''}
     </main>`;
   }
 
@@ -665,17 +695,21 @@
   // Edytuj zadanie – dodatkowo „wykonane”, a każda zmiana zapisuje się od razu.
   function subCard(d, editing) {
     const fk = editing ? occKey(d) : null;
-    const list = editing ? C.subsFor(d, fk, true) : (d.subs || []).map((x) => ({ id: x.id, title: x.title, done: false }));
+    // v41 (makieta v199): bez podzadań ukrytych w edytowanym dniu; kolejność uchwytem (wspólna dla całego zadania)
+    const list = editing ? C.subsFor(d, fk) : (d.subs || []).map((x) => ({ id: x.id, title: x.title, done: false }));
+    const fid = editing ? d.id : 'draft';
     const n = list.length, dn = list.filter((x) => x.done).length;
     const head = !n ? '' : editing ? 'wykonane ' + dn + ' z ' + n + (C.isRecurring(d) ? ' · ' + relDate(fk) : '') : n + ' ' + C.plural(n, 'podzadanie', 'podzadania', 'podzadań');
     const draft = S.ui.subDraft || '';
     return `<div class="panel subcard">
         <div class="subhead"><div class="eyebrow">Podzadania</div><div class="cnt">${esc(head)}</div></div>
         ${n ? '' : '<div class="empty-s">Brak podzadań. Dodaj pierwsze poniżej.</div>'}
-        ${list.map((u, i) => `<div class="subrow${u.done ? ' done' : ''}">
+        <div class="subflist">${list.map((u, i) => `<div class="subsw" data-subsw="${u.id}" data-id="${fid}"><div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
+          <button class="subgrip" data-sgrip="${u.id}" data-id="${fid}" aria-label="Zmień kolejność: ${esc(u.title)} (${i + 1} z ${n})" aria-describedby="subgrip-hint">${I.grip}</button>
           ${editing ? `<button class="subchk" data-a="fsubdone" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>` : `<span class="num" aria-hidden="true">${i + 1}</span>`}
           <div class="st">${esc(u.title)}</div>
-          <button class="subdel" data-a="fsubdel" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button></div>`).join('')}
+          <button class="subdel" data-a="fsubdel" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button></div></div>`).join('')}</div>
+        ${n > 1 ? '<span id="subgrip-hint" hidden>Przeciągnij albo użyj strzałek w górę i w dół, aby zmienić kolejność podzadań.</span>' : ''}
         <div class="subadd"><input id="subnew" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Nowe podzadanie" placeholder="Dodaj podzadanie" value="${esc(draft)}" data-in="subdraft">
           <button id="subaddbtn" class="subplus${draft.trim() ? ' on' : ''}" data-a="fsubadd" aria-label="Dodaj podzadanie do listy">${I.plus}</button></div>
       </div>`;
@@ -807,7 +841,23 @@
     actsub: (el) => { const a = RCx().get(el.dataset.id); if (a) RCx().setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); render(); },
     actopen: (el) => go('#/train/recur/' + el.dataset.id),
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
-    subdel: (el) => { const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); S.subEdit = null; setUndo(snap, 'sub', ''); render(); },
+    subdel: (el) => {
+      const t = C.get(el.dataset.id); if (!t) return;
+      S.subEdit = null;
+      if (C.isRecurring(t)) { askSubDel(t.id, el.dataset.sid, el.dataset.k || S.sel, 'day'); return; }   // v41: zakres usunięcia
+      const snap = C.snapshot(); C.removeSub(el.dataset.id, el.dataset.sid); setUndo(snap, 'sub', ''); render();
+    },
+    // v41 (makieta v199): okno „Usuń podzadanie” – Tylko z tego dnia / Z całego cyklu
+    subdlgmode: (el) => { if (S.sdel) { S.sdel.mode = el.dataset.v; render(); } },
+    subdlgclose: () => { S.sdel = null; render(); },
+    subdlgok: () => {
+      const q = S.sdel; if (!q) return; S.sdel = null;
+      const t = C.get(q.id); if (!t) { render(); return; }
+      const snap = C.snapshot();
+      if (q.mode === 'all') C.removeSub(q.id, q.sid); else C.hideSub(q.id, q.k, q.sid);
+      if (q.from === 'form') syncDraftSubs(); else setUndo(snap, 'sub', '');
+      render();
+    },
     // v32: kolejność i edycja podzadania w widoku Dzień
     subed: (el) => { const t = C.get(el.dataset.id), s = t && (t.subs || []).find((x) => x.id === el.dataset.sid); if (!s) return; S.subEdit = { id: t.id, sid: s.id, text: s.title }; render(); const f = document.getElementById('subedit'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } },
     subedno: () => { S.subEdit = null; render(); },
@@ -822,7 +872,9 @@
     fsubdone: (el) => { const d = S.draft; if (!d || !d.id) return; C.toggleSub(d.id, occKey(C.get(d.id) || d), el.dataset.sid); syncDraftSubs(); render(); },
     fsubdel: (el) => {
       const d = S.draft; if (!d) return;
-      if (d.id && C.get(d.id)) { C.removeSub(d.id, el.dataset.sid); syncDraftSubs(); }
+      const saved = d.id && C.get(d.id);
+      if (saved && C.isRecurring(saved)) { askSubDel(saved.id, el.dataset.sid, occKey(saved), 'form'); return; }   // v41
+      if (saved) { C.removeSub(d.id, el.dataset.sid); syncDraftSubs(); }
       else d.subs = (d.subs || []).filter((x) => x.id !== el.dataset.sid);
       render();
     },
@@ -1036,7 +1088,7 @@
     // v32: karta edycji podzadania – Enter zapisuje, Escape anuluje
     if (e.target.id === 'subedit' && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); if (e.key === 'Enter') actions.subedok(); else actions.subedno(); return; }
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
-    if (e.key === 'Escape' && (S.sheet || S.del || S.bk)) { S.sheet = null; S.del = null; S.bk = null; render(); return; }
+    if (e.key === 'Escape' && (S.sheet || S.del || S.bk || S.sdel)) { S.sheet = null; S.del = null; S.bk = null; S.sdel = null; render(); return; }
     if (e.key === 'Escape' && window.GCalUI && route().name === 'settings' && window.GCalUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.PolarUI && route().name === 'settings' && window.PolarUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.DietUI && window.DietUI.onEscape()) { render(); return; }
@@ -1185,7 +1237,7 @@
     e.preventDefault(); e.stopPropagation();
     const sid = g.dataset.sgrip;
     if (S.subEdit) { S.subEdit = null; render(); g = app.querySelector('[data-sgrip="' + sid + '"]'); if (!g) return; }   // rozpoczęcie przeciągania zamyka edycję
-    const panel = g.closest('.subpanel'), rows = [...panel.querySelectorAll('.subsw')], row = g.closest('.subsw'), from = rows.indexOf(row);
+    const panel = g.closest('.subpanel, .subflist'), rows = [...panel.querySelectorAll('.subsw')], row = g.closest('.subsw'), from = rows.indexOf(row);
     const pitch = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight;
     sd = { id: g.dataset.id, sid, row, rows, from, to: from, y0: e.clientY, pitch };
     try { g.setPointerCapture(e.pointerId); } catch (err) {}
@@ -1206,11 +1258,16 @@
       r.style.transform = ty ? 'translateY(' + ty + 'px)' : '';
     });
   }, true);
+  // v41: kolejność w formularzu zadania – zapisane zadanie od razu (jak w Dniu), nowe – w szkicu
+  function reorderAny(id, ids) {
+    if (id === 'draft') { const d = S.draft; if (!d) return false; const by = {}; (d.subs || []).forEach((x) => { by[x.id] = x; }); if (ids.some((x) => !by[x]) || ids.length !== (d.subs || []).length) return false; d.subs = ids.map((x) => by[x]); return true; }
+    const ok = C.reorderSubs(id, ids); if (ok && S.draft && String(S.draft.id) === String(id)) syncDraftSubs(); return ok;
+  }
   function endSubDrag(cancel) {
     if (!sd) return;
     const r = sd; sd = null;
     suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
-    if (!cancel && r.to !== r.from) { const ids = r.rows.map((x) => x.dataset.subsw); const [m] = ids.splice(r.from, 1); ids.splice(r.to, 0, m); C.reorderSubs(r.id, ids); }
+    if (!cancel && r.to !== r.from) { const ids = r.rows.map((x) => x.dataset.subsw); const [m] = ids.splice(r.from, 1); ids.splice(r.to, 0, m); reorderAny(r.id, ids); }
     render();
   }
   app.addEventListener('pointerup', (e) => { if (sd) { e.stopPropagation(); endSubDrag(false); } }, true);
@@ -1220,9 +1277,9 @@
     if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
     e.preventDefault();
     const sid = g.dataset.sgrip;
-    const ids = [...g.closest('.subpanel').querySelectorAll('.subsw')].map((x) => x.dataset.subsw), i = ids.indexOf(sid), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+    const ids = [...g.closest('.subpanel, .subflist').querySelectorAll('.subsw')].map((x) => x.dataset.subsw), i = ids.indexOf(sid), j = i + (e.key === 'ArrowUp' ? -1 : 1);
     if (j >= 0 && j < ids.length) { ids.splice(i, 1); ids.splice(j, 0, sid); }
-    if (j >= 0 && j < ids.length && C.reorderSubs(g.dataset.id, ids)) { S.subEdit = null; render(); const ng = app.querySelector('[data-sgrip="' + sid + '"]'); if (ng) ng.focus(); }
+    if (j >= 0 && j < ids.length && reorderAny(g.dataset.id, ids)) { S.subEdit = null; render(); const ng = app.querySelector('[data-sgrip="' + sid + '"]'); if (ng) ng.focus(); }
   });
 
   // ---------- v34 (makieta 10.11.2026): podzadanie przeciągnięte w prawo za tytuł (≥ 100 px) – usunięcie z „Cofnij” ----------
@@ -1266,7 +1323,8 @@
       setUndo(null, 'sub', ''); S.undo.fn = () => R.restoreAct(snap);
     } else {
       const snap = C.snapshot();
-      if (d.kind === 'rec') C.hideSub(d.id, d.k, d.subsw); else C.removeSub(d.id, d.subsw);
+      if (d.kind === 'rec') { askSubDel(d.id, d.subsw, d.k, 'day'); return; }   // v41: zakres w oknie
+      C.removeSub(d.id, d.subsw);
       setUndo(snap, 'sub', '');
     }
     render();
@@ -1380,7 +1438,7 @@
     navSync();
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
-    S.del = null; S.bk = null; S.dp = null;
+    S.del = null; S.bk = null; S.dp = null; S.sdel = null;
     if (window.DietUI) window.DietUI.onRoute(r);
     if (window.FinUI) window.FinUI.onRoute(r);
     if (window.TrainUI) window.TrainUI.onRoute(r);

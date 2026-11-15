@@ -168,20 +168,24 @@
     }
     const all = [];
     for (let x = a.start; x <= T; x = C.addDays(x, 1)) if (occ(a, x)) all.push(x);
+    // v41 (makieta v202): serie tylko z terminów wykonanych w dniu terminu (opóźnienie przerywa serię jak pominięcie);
+    // „seria teraz” od ostatniego terminu wstecz (dzisiejszy niewykonany jeszcze nie przerywa), „najdłuższa” – w oglądanym okresie.
+    const ok = (x) => !!a.done[x] && a.done[x] <= x;
     let streak = 0, best = 0, run = 0, started = false;
-    all.forEach((x) => { if (a.done[x]) { run++; if (run > best) best = run; } else if (x < T) run = 0; });
+    all.forEach((x) => { if (x < from) return; if (ok(x)) { run++; if (run > best) best = run; } else if (x < T) run = 0; });
     for (let i = all.length - 1; i >= 0; i--) {
       const x = all[i];
-      if (a.done[x]) { streak++; started = true; } else if (x === T && !started) continue; else break;
+      if (ok(x)) { streak++; started = true; } else if (x === T && !a.done[x] && !started) continue; else break;
     }
     const over = overdue(a);
-    const dots = all.slice(-14).map((x) => {
+    // v41: ostatnie terminy – 7 dla „7 dni”, 30 dla „30 dni”, bez sekcji dla całego okresu (z całej historii aktywności)
+    const dots = per === 'a' ? [] : all.slice(per === 'w' ? -7 : -30).map((x) => {
       const v = a.done[x];
       if (v) return { c: v > x ? 'late' : 'ok', tip: dm(x) + ': ' + (v > x ? 'wykonana z opóźnieniem' : 'wykonana w terminie') };
       if (x < T) return { c: 'miss', tip: dm(x) + ': pominięta' };
       return { c: 'today', tip: dm(x) + ': dziś, do zrobienia' };
     });
-    return { planned, done, late, missed, streak, best, over, dots };
+    return { planned, done, late, missed, streak, best, over, dots, dotsLabel: per === 'w' ? 'Ostatnie 7 terminów' : 'Ostatnie 30 terminów' };
   }
 
   window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };

@@ -1,6 +1,6 @@
 /* MyLife – moduł Trening: ekrany (v17).
    #/train – Trening (liczba treningów, czas od ostatniego, „Dodaj trening”, funkcje),
-   #/train/history – Historia treningów, #/train/progress – Postępy, #/train/edit/<id|new> – formularz.
+   #/train/cal – Aktywność fizyczna (kalendarz, v41), #/train/history – Historia treningów, #/train/progress – Postępy, #/train/edit/<id|new> – formularz.
    Kolor modułu: fiolet #B9A2FF (tło ikon #221C3A, ramka #4A3F7A).
    v36 (makieta v181/v182): dystans w kondycji, znaczniki treningu (kolor wg kolejności w rejestrze), wyszukiwarka i filtr znacznika
    w Historii, treningi z Polar Flow (ikona „Polar”, karta danych tylko do odczytu, edycja zachowuje src/pid/pol). */
@@ -11,6 +11,7 @@
   const R = () => A.render();
   const ic = (w, sw, body) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
   const P = {
+    cal: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path><path d="M8 14h2M14 14h2M8 17h2"></path>',
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"></path>',
     clock: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"></path><path d="M3.5 4.5v4h4"></path><path d="M12 8v4.5l3 1.5"></path>',
     trend: '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>',
@@ -27,7 +28,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, qOpen: false, qMsg: '', pk: false, tm: 'main' };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, qOpen: false, qMsg: '', pk: false, tm: 'main', cm: null, csel: '' };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -78,6 +79,7 @@
             : '<div class="dcard"><div class="eyebrow">Ostatni trening</div><div class="v">—</div></div>'}</div>
         <button class="tprimary" data-a="trnew">${K.plus}<span>Dodaj trening</span></button>
         <div class="eyebrow" style="margin-top:4px">Funkcje</div>
+        ${fn('#/train/cal', P.cal, 'Aktywność fizyczna', 'Kalendarz miesięczny i wpisy treningowe')}
         ${fn('#/train/history', P.clock, 'Historia treningów', 'Zapisane treningi i ćwiczenia')}
         ${fn('#/train/progress', P.trend, 'Postępy', 'Największy ciężar w ćwiczeniu, wykres i tabela')}
         ${window.TrainRecUI ? fn('#/train/recur', P.rep, 'Aktywności cykliczne', esc(window.TrainRecUI.desc())) : ''}
@@ -91,14 +93,49 @@
     const reg = TR.tags(), nq = norm(T.q.trim()), nt = norm(T.tq.trim());
     const list = TR.list().filter((w) => (!nq || norm(w.name || 'Trening').indexOf(nq) >= 0) && (!nt || (w.tags || []).some((t) => norm(t).indexOf(nt) >= 0)) && !(T.hideP && w.src === 'polar'));
     if (!list.length) return '<div class="dcard tnores" role="status">Brak treningów dla wybranych kryteriów.</div>';
-    return list.map((w) => {
-      const s = TR.stats(w), chips = chipsOf(s);
-      return `<a class="dcard tcard" href="#/train/day/${w.id}" aria-label="Pokaż ćwiczenia z dnia ${esc(dl(w.d))}">
+    return list.map((w) => tCard(w, reg, true)).join('');
+  }
+  // Karta treningu (Historia; v41 – także „Aktywność fizyczna”, bez listy ćwiczeń)
+  function tCard(w, reg, lines) {
+    const s = TR.stats(w), chips = chipsOf(s);
+    return `<a class="dcard tcard" href="#/train/day/${w.id}" aria-label="Pokaż ćwiczenia z dnia ${esc(dl(w.d))}">
           <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="tdate">${esc(dl(w.d))}</div><div class="tname">${esc(w.name || 'Trening')}</div>${s.vol > 0 ? `<div class="tvol">Suma ciężaru: ${grp(s.vol)} kg</div>` : ''}</div><div style="color:var(--dim);display:flex">${K.chev}</div></div>
           ${metaRow(w, reg)}
           <div class="tchips">${chips.map((c) => `<span>${esc(c)}</span>`).join('')}</div>
-          <div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div></a>`;
-    }).join('');
+          ${lines ? `<div class="tlines">${w.ex.map((x) => `<div><span>${esc(x.name)}</span><span class="d">${esc(exDetail(x))}</span></div>`).join('')}</div>` : ''}</a>`;
+  }
+
+  // ---------- v41 (makieta v200): Aktywność fizyczna – kalendarz miesięczny i wpisy ----------
+  const MN = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+  const MG = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  function viewCal() {
+    const td = C.todayKey(), cm = T.cm || td.slice(0, 7), Y = +cm.slice(0, 4), M = +cm.slice(5, 7);
+    const sel = T.csel && T.csel.slice(0, 7) === cm ? T.csel : '';
+    const all = TR.list(), reg = TR.tags(), byDay = {};
+    all.forEach((w) => { (byDay[w.d] = byDay[w.d] || []).push(w); });
+    const lead = (new Date(Y, M - 1, 1).getDay() + 6) % 7, dim = new Date(Y, M, 0).getDate(), total = Math.ceil((lead + dim) / 7) * 7;
+    const pad = (n) => String(n).padStart(2, '0');
+    let cells = '';
+    for (let i = 0; i < total; i++) {
+      const d = i - lead + 1;
+      if (d < 1 || d > dim) { cells += '<span class="tcalc empty" aria-hidden="true"></span>'; continue; }
+      const k = cm + '-' + pad(d), ws = byDay[k] || [], on = k === sel;
+      const dots = ws.slice(0, 3).map((w) => `<span class="${w.src === 'polar' || w.pol ? 'p' : ''}"></span>`).join('');
+      cells += `<button class="tcalc${ws.length ? ' has' : ''}${on ? ' on' : ''}${k === td ? ' today' : ''}" data-a="trcpick" data-k="${k}" aria-pressed="${on}" aria-label="${esc(dl(k) + (ws.length ? ', ' + pl(ws.length, 'trening', 'treningi', 'treningów') : ', brak treningów') + (k === td ? ', dziś' : ''))}"><span class="n">${d}</span><span class="dots">${dots}</span></button>`;
+    }
+    const items = all.filter((w) => w.d.slice(0, 7) === cm && (!sel || w.d === sel));   // TR.list(): od najnowszego
+    const cnt = pl(items.length, 'trening', 'treningi', 'treningów');
+    return `<main class="screen">${topbar('Aktywność fizyczna')}
+      <div class="dscroll" data-scroll="train-cal">
+        <div class="dcard tcalcard"><div class="tcalhead"><button class="dparr" data-a="trcnav" data-d="-1" aria-label="Poprzedni miesiąc">${I.prev}</button><div role="status" aria-live="polite" class="tcalm">${MN[M - 1]} ${Y}</div><button class="dparr" data-a="trcnav" data-d="1" aria-label="Następny miesiąc">${I.next}</button></div>
+          <div class="tcalgrid tcalwd">${['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'].map((x) => `<span>${x}</span>`).join('')}</div>
+          <div class="tcalgrid">${cells}</div>
+          <div class="tcalleg"><span><i></i>trening</span><span><i class="p"></i>z Polar</span></div></div>
+        <div class="tcallist"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="eyebrow">${sel ? 'Wybrany dzień' : 'Wpisy w miesiącu'}</div><div class="tcalt">${esc(sel ? dl(sel) + ' · ' + cnt : MN[M - 1] + ' · ' + cnt)}</div></div>
+          ${sel ? '<button class="tcalall" data-a="trcall">Cały miesiąc</button>' : ''}</div>
+        ${items.length ? items.map((w) => tCard(w, reg, false)).join('')
+          : `<div class="dcard tnores" role="status">${esc(sel ? 'Brak treningów w dniu ' + (+sel.slice(8)) + ' ' + MG[M - 1] + '. Wybierz inny dzień albo wróć do całego miesiąca.' : 'Brak treningów w tym miesiącu.')}</div>`}
+      </div></main>`;
   }
   // v39 (makieta v194): karta „Z Polar do przypisania: N” – dopasowanie automatyczne, do 3 najbliższych datą ręcznych treningów, pominięcie.
   function queueCard() {
@@ -554,6 +591,10 @@
     trptag: (el) => { T.ptag = el.dataset.t; T.tday = null; T.tdd = false; R(); },
     trtdd: () => { T.tdd = !T.tdd; R(); },
     trtday: (el) => { T.tday = +el.dataset.id; R(); },
+    // v41: kalendarz „Aktywność fizyczna”
+    trcnav: (el) => { const td = C.todayKey(), cm = T.cm || td.slice(0, 7), n = new Date(+cm.slice(0, 4), +cm.slice(5, 7) - 1 + (+el.dataset.d), 1); T.cm = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); T.csel = ''; R(); },
+    trcpick: (el) => { const k = el.dataset.k; T.cm = k.slice(0, 7); T.csel = T.csel === k ? '' : k; R(); },
+    trcall: () => { T.csel = ''; R(); },
     trtm: (el) => { T.tm = el.dataset.v; T.tday = null; R(); },
     // v39 (makieta v194): kolejka „Z Polar do przypisania”
     trqtog: () => { T.qOpen = !T.qOpen; T.qMsg = ''; R(); },
@@ -604,14 +645,15 @@
     view(r) {
       if (r.arg === 'recur' && window.TrainRecUI) return window.TrainRecUI.view();
       if (r.arg === 'history') return viewHistory();
+      if (r.arg === 'cal') return viewCal();
       if (r.arg === 'progress') return viewProgress();
       if (r.arg === 'edit') return viewEdit(r.arg2);
       if (r.arg === 'day') return viewDay(r.arg2);
       return viewHome();
     },
     // Dolny pasek: Trening · Historia · Postępy; formularz bez paska.
-    navKey: (r) => (r.arg === 'edit' ? null : ['history', 'progress', 'recur'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
-    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend], ['recur', '#/train/recur', 'Aktywności', P.rep]],
+    navKey: (r) => (r.arg === 'edit' ? null : ['cal', 'history', 'progress', 'recur'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
+    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['cal', '#/train/cal', 'Kalendarz', P.cal], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend], ['recur', '#/train/recur', 'Aktywności', P.rep]],
     icon: P.dumbbell,
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
@@ -654,7 +696,8 @@
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tq = ''; T.hideP = false; }   // filtr Historii do wyjścia z niej
       if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; T.tm = 'main'; }
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.qOpen = false; }
-      T.qMsg = ''; T.pk = false;   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
+      T.qMsg = ''; T.pk = false;
+      if (!(r.name === 'train' && ['cal', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.cm = null; T.csel = ''; }   // v41: miesiąc i dzień kalendarza zostają przy powrocie z „Trening z dnia”   // v37: widok Postępów do wyjścia z nich (powrót z „Trening z dnia” go zachowuje)
     }
   };
 })();

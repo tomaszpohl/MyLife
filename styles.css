@@ -1186,3 +1186,36 @@ a.dcard { color: var(--text); }
 .tmseg { margin: 0; }
 .tmseg button { font-size: 13px; }
 .pfauto { min-height: 56px; background: var(--bg); }
+
+/* ---------- v41 (makieta v200): Trening · Aktywność fizyczna – kalendarz ---------- */
+.tcalcard { padding: 8px 8px 10px 8px; gap: 4px; }
+.tcalhead { display: flex; align-items: center; }
+.tcalm { flex: 1; text-align: center; font-family: var(--display); font-size: 18px; font-weight: 600; }
+.tcalgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.tcalwd span { text-align: center; font-size: 11px; font-weight: 500; letter-spacing: .06em; color: var(--dim); padding: 4px 0; }
+.tcalc { height: 48px; margin: 0 1px; padding: 0; box-sizing: border-box; border-radius: 12px; background: transparent; border: 1px solid transparent; color: var(--text); font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.tcalc.empty { visibility: hidden; }
+.tcalc .n { font-size: 15px; font-weight: 500; line-height: 1; }
+.tcalc.has { background: var(--surface-2, #171F2A); }
+.tcalc.today { border-color: #5BD0E8; }
+.tcalc.today .n, .tcalc.on .n { font-weight: 700; }
+.tcalc.on { background: #B9A2FF; border-color: #B9A2FF; color: #1A1230; }
+.tcalc .dots { height: 6px; display: flex; gap: 3px; align-items: center; }
+.tcalc .dots span { width: 6px; height: 6px; border-radius: 3px; background: #B9A2FF; }
+.tcalc .dots span.p { background: #FF8A9A; }
+.tcalc.on .dots span { background: #1A1230; }
+.tcalleg { display: flex; align-items: center; gap: 14px; padding: 4px 8px 0 8px; font-size: 11px; color: var(--muted); }
+.tcalleg span { display: inline-flex; align-items: center; gap: 5px; }
+.tcalleg i { width: 6px; height: 6px; border-radius: 3px; background: #B9A2FF; }
+.tcalleg i.p { background: #FF8A9A; }
+.tcallist { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.tcalt { font-family: var(--display); font-size: 17px; font-weight: 600; }
+.tcalall { flex: none; height: 44px; padding: 0 14px; border-radius: 12px; background: transparent; border: 1px solid #4A3F7A; color: #B9A2FF; font-size: 14px; font-weight: 600; font-family: inherit; }
+.tcalhead .dparr { background: none; border: none; width: 44px; height: 44px; color: var(--text); }
+
+/* ---------- v41 (makieta v199): kolejność podzadań w formularzu zadania ---------- */
+.subflist { display: flex; flex-direction: column; }
+.subcard .subflist .subgrip { margin-left: -6px; }
+.subcard .subrow { min-height: 44px; height: 44px; }
+.subcard .subrow .st { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+.subcard .subsw.lifting, .subcard .subsw.lifting .subrow { position: relative; z-index: 5; background: var(--surface-2); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.55); }
