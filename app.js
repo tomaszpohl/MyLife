@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v42 · 15.11.2026';
+  const APP_VERSION = 'v43 · 15.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -300,6 +300,7 @@
       if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (navMode = 'replace', location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
+    else if (r.name === 'today' && window.TodayUI) html = window.TodayUI.view();   // v43: ekran „Dziś”
     else if (r.name === 'syncerr' && window.GCalUI) html = window.GCalUI.viewErrors();
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
@@ -332,6 +333,7 @@
         <div class="eyebrow">${esc(label)}</div>
         <h1>MyLife</h1>
       </div>${gearLink('margin-top:-6px')}</div>
+      ${window.TodayUI ? window.TodayUI.homeCard() : ''}
       <div class="eyebrow" style="margin-top:4px">Moduły</div>
       <div class="modules">
         <a class="module active" href="#/plan/${S.lastPlan}">
@@ -785,6 +787,7 @@
           ${st.msg ? `<div class="okbox" role="status">${st.err ? I.warn : I.ok}<span>${esc(st.msg)}</span></div>` : ''}
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
+        ${window.XlsxExport ? window.XlsxExport.settingsSections() : ''}
         ${window.GCalUI ? window.GCalUI.settingsSection() : ''}
         ${window.PolarUI ? window.PolarUI.settingsSection() : ''}
       </div>
@@ -933,7 +936,7 @@
       render();
     },
     // Ustawienia
-    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); if (window.PolarUI) window.PolarUI.reset(); back(); },
+    sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); if (window.PolarUI) window.PolarUI.reset(); if (window.XlsxExport) window.XlsxExport.reset(); back(); },
     export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
@@ -1426,6 +1429,8 @@
   if (window.Train) { window.Train.load(); }
   if (window.TrainUI) { window.TrainUI.init(window.App); }
   if (window.Settle) { window.Settle.load(); }
+  if (window.TodayUI) { window.TodayUI.init(window.App); }
+  if (window.XlsxExport) { window.XlsxExport.init(window.App); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
   if (window.GCal) { window.GCal.load(); }

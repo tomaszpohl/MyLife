@@ -344,6 +344,17 @@
     return Object.values(agg).map((x) => ({ key: x.key, name: x.name, grams: x.grams, measure: measureText(x.grams, x.samples) }));
   }
 
+  // ---------- v43 (makieta v204): Bilans dnia – kcal zjedzonych posiłków minus kcal spalone w treningach Polar ----------
+  // Zjedzone = kcal dań z jadłospisu oznaczonych ✓; Polar = pol.kcal treningów z tego dnia (także ręcznych połączonych z Polar).
+  function balance(k) {
+    const p = planFor(k), j = jday(k);
+    const meals = p ? p.meals : [], eatenM = meals.filter((m) => j.meals[m.slot] === 'eaten' && m.dish);
+    const eat = Math.round(eatenM.reduce((t, m) => t + (m.dish.kcal || 0), 0));
+    const pw = window.Train ? window.Train.list().filter((w) => w.d === k && w.pol && w.pol.kcal > 0) : [];
+    const burn = Math.round(pw.reduce((t, w) => t + w.pol.kcal, 0));
+    return { eat, burn, net: eat - burn, nEaten: eatenM.length, nMeals: meals.length, nPolar: pw.length, has: eatenM.length > 0 || pw.length > 0 };
+  }
+
   // ---------- Eksport dziennika do .xlsx (jeden arkusz, dzień po dniu) ----------
   const xmlEsc = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
   // Nagłówek kolumny „zjedzone” jak w przykładzie z makiety („I śn. zjedzone”, „Obiad zjedzony”, „Kolacja zjedzona”).
@@ -443,6 +454,6 @@
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune, shopSource, shopToggle, shopUndo,
     BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,
-    exportXlsx, journalRows, exportData, importData, summary
+    balance, exportXlsx, journalRows, exportData, importData, summary
   };
 })();

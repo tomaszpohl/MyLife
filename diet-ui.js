@@ -384,6 +384,31 @@
   }
 
   // ---------- Dziennik ----------
+  // ---------- v43 (makieta v204): karta „Bilans dnia” w Dzienniku (zakładka Dzień) ----------
+  const kc = (n) => D.fmtNum(Math.abs(n), 0);
+  const sgK = (n) => (n < 0 ? '−' : '') + kc(n);
+  function balCard(k, T) {
+    const b = D.balance(k), Jn = U.journal, mx = Math.max(b.eat, b.burn, 1);
+    const trN = (n) => C.plural(n, 'trening', 'treningi', 'treningów');
+    let week = '';
+    if (Jn.balWeek) {
+      const rows = [];
+      for (let i = 0; i < 7; i++) {
+        const d = C.addDays(T, -i), x = D.balance(d);
+        rows.push(`<button class="jbalrow${d === k ? ' on' : ''}" data-a="djbalday" data-k="${d}" aria-label="${esc('Przejdź do dnia ' + D.dayShort(d))}"><span style="flex:1;min-width:0">${esc(D.dayShort(d))}</span><span class="e">${x.eat ? kc(x.eat) : '—'}</span><span class="b">${x.burn ? kc(x.burn) : '—'}</span><span class="n">${x.has ? sgK(x.net) : '—'}</span></button>`);
+      }
+      week = `<div class="jbalweek"><div class="jbalhead" aria-hidden="true"><span style="flex:1">Dzień</span><span class="e">Zjedz.</span><span class="b">Polar</span><span class="n">Bilans</span></div>${rows.join('')}</div>`;
+    }
+    return `<div class="dcard jbal"><div class="dhead"><div class="eyebrow">Bilans dnia</div>${b.has ? '<div style="font-size:12px;color:var(--muted)">kcal</div>' : ''}</div>
+        ${b.has ? `<div class="jbalv"><div><span>Zjedzone</span><b style="color:var(--coral)">${kc(b.eat)}</b></div><div><span>Spalone (Polar)</span><b style="color:var(--violet)">${kc(b.burn)}</b></div><div><span>Bilans</span><b>${sgK(b.net)}</b></div></div>
+          <div class="jbalbars" aria-hidden="true"><div><i style="width:${Math.round(100 * b.eat / mx)}%;background:var(--coral)"></i></div><div><i style="width:${Math.round(100 * b.burn / mx)}%;background:var(--violet)"></i></div></div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.4">${esc((b.nEaten ? 'Zjedzone posiłki: ' + b.nEaten + ' z ' + b.nMeals + '.' : 'Brak zaznaczonych posiłków.') + ' ' + (b.nPolar ? b.nPolar + ' ' + trN(b.nPolar) + ' Polar.' : 'Brak treningów Polar tego dnia.'))}</div>`
+          : '<div style="font-size:13px;color:var(--muted);padding:4px 0">Zaznacz zjedzone posiłki lub zsynchronizuj trening z Polar, a bilans pojawi się tutaj.</div>'}
+        <div style="font-size:12px;color:var(--dim);line-height:1.4">Bilans = kcal z zaznaczonych posiłków minus kcal spalone w treningach z Polar. Polar nie liczy podstawowej przemiany materii, więc to nie jest pełny bilans energii z całego dnia. Odstępstwa od diety nie mają kcal i nie są wliczone.</div>
+        <button class="jbalbtn" data-a="djbalweek" aria-expanded="${!!Jn.balWeek}"><span>Ostatnie dni</span><span style="color:var(--accent);font-size:13px">${Jn.balWeek ? 'Ukryj' : 'Pokaż 7 dni'}</span></button>
+        ${week}</div>`;
+  }
+
   function viewJournal() {
     const Jn = U.journal, T = today();
     if (!Jn.k) Jn.k = T;
@@ -420,6 +445,7 @@
             <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (opcjonalnie)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
             <button class="plus" data-a="djactadd" aria-label="${Jn.actEdit ? 'Zapisz zmiany aktywności' : 'Dodaj aktywność'}">${Jn.actEdit ? J.check : J.plus}</button></div>
           <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne. Wykonane aktywności cykliczne dopisują się same jako jeden wpis sumaryczny.'}</div></div>`;
+      body += balCard(k, T);
     } else {
       const s = D.stats(Jn.from, T);
       const SORTS = [['skipped-desc', 'Najczęściej pomijane'], ['skipped-asc', 'Najmniej pomijane'], ['eaten-desc', 'Najczęściej zjedzone'], ['eaten-asc', 'Najmniej zjedzone']];
@@ -690,6 +716,10 @@
     djtab: (el) => { U.journal.tab = el.dataset.v; U.journal.rec = null; R(); },
     djrec: (el) => { U.journal.rec = el.dataset.slot; R(); },
     djrecclose: () => { U.journal.rec = null; R(); },
+    djbalweek: () => { U.journal.balWeek = !U.journal.balWeek; R(); },
+    djbalday: (el) => { const Jn = U.journal; Jn.k = el.dataset.k; Jn.balWeek = false; Jn.rec = null; Jn.devEdit = null; Jn.actEdit = null; R(); },
+    // v43: „Dziś” → Dziennik na dzisiejszym dniu
+    djtoday: () => { const Jn = U.journal; Jn.tab = 'day'; Jn.k = today(); Jn.rec = null; location.hash = '#/diet/journal'; },
     djnav: (el) => { const Jn = U.journal; Jn.rec = null; const n = C.addDays(Jn.k, +el.dataset.d); if (n <= today()) Jn.k = n; Jn.actErr = false;
       Jn.devEdit = Jn.actEdit = null; Jn.dev = Jn.actName = Jn.actMin = Jn.actKm = ''; R(); },   // v32: zmiana dnia kończy edycję i czyści formularze
     djmark: (el) => { D.markMeal(U.journal.k, el.dataset.slot, el.dataset.v); R(); },
