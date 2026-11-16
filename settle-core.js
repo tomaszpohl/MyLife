@@ -47,6 +47,9 @@
     Object.keys(who).forEach((k) => syncLiab(who[k]));
     return gone;
   }
+  // v44 (makieta v205): „Synchronizacja z wydatkami” w Zobowiązaniach – spłata dodaje wydatek w Finansach (domyślnie wyłączona)
+  const syncExp = () => !!db.syncExp;
+  function setSyncExp(on) { db.syncExp = !!on; save(); }
   const knownPeople = (kind) => { const seen = {}, out = []; debts(kind).forEach((e) => { const k = key(e.who); if (!seen[k]) { seen[k] = 1; out.push(e.who); } }); return out; };
 
   // ---------- Rozliczenia grupowe ----------
@@ -126,5 +129,5 @@
   const summary = () => db.debts.list.length + ' ' + C.plural(db.debts.list.length, 'wpis', 'wpisy', 'wpisów') + ' należności i zobowiązań, ' +
     db.groups.list.length + ' ' + C.plural(db.groups.list.length, 'rozliczenie grupowe', 'rozliczenia grupowe', 'rozliczeń grupowych');
 
-  window.Settle = { load, key, debts, sum, addDebt, settleDebts, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
+  window.Settle = { load, key, debts, sum, addDebt, settleDebts, syncExp, setSyncExp, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
 })();

@@ -23,7 +23,7 @@
     calc: ic(20, 1.8, '<rect x="5" y="3.5" width="14" height="17" rx="2.5"></rect><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const U = { tab: 'recv', conf: null, dlg: null, gdlg: null, gdel: null, person: '', pc: null, dc: false, pdlg: null, msg: '' };
+  const U = { tab: 'recv', xp: null, conf: null, dlg: null, gdlg: null, gdel: null, person: '', pc: null, dc: false, pdlg: null, msg: '' };
   const money = (n) => window.Fin ? window.Fin.money(n) : String(n);
   const dmy = (k) => { const a = String(k).split('-'); return a[2] + '.' + a[1] + '.' + a[0]; };
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
@@ -95,9 +95,38 @@
         <div class="dcard" style="border-color:${owe ? '#5A2A30' : '#2B5A3C'};gap:4px"><div class="eyebrow">${owe ? 'Razem jestem winien' : 'Razem należy mi się'}</div>
           <div class="fbig" style="color:${owe ? '#FF9C8A' : 'var(--ok)'}">${money(SE.sum(T))}</div>
           <div style="font-size:12px;line-height:1.4;color:var(--muted)">${owe ? 'Pozycje trafiają do Finanse · Majątek jako zobowiązania (kwoty tej samej osoby sumują się).' : 'Należności nie są księgowane w Majątku. Po oddaniu wpis znika.'}</div></div>
+        ${owe && window.Fin ? syncCard() : ''}
         ${U.msg ? `<div class="okbox" role="status">${esc(U.msg)}</div>` : ''}
         ${people || `<div class="dcard"><div class="para" style="text-align:center;font-size:14px">${owe ? 'Brak zobowiązań.' : 'Brak należności.'}</div></div>`}
-      </div>${modal}</main>`;
+      </div>${modal}${U.xp ? xpDialog() : ''}</main>`;
+  }
+  // v44 (makieta v205): przełącznik „Synchronizacja z wydatkami” i okno „Dodaj wydatek” przy spłacie zobowiązania
+  function syncCard() {
+    const on = SE.syncExp();
+    return `<div class="dcard ssync"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div id="ssync-l" style="font-size:15px;font-weight:500">Synchronizacja z wydatkami</div>
+        <div style="font-size:12px;line-height:1.4;color:var(--muted)">${on ? 'Włączona. Po oznaczeniu spłaty pojawi się okno dodania wydatku – wybierasz tylko kategorię.' : 'Wyłączona. Oznaczenie spłaty tylko usuwa wpis.'}</div></div>
+      <button class="switch" role="switch" aria-checked="${on}" aria-labelledby="ssync-l" data-a="sdsync"><span class="track"><span class="knob"></span></span></button></div>`;
+  }
+  function xpDialog() {
+    const X = U.xp, F = window.Fin, cats = F.activeCats(), ok = !!X.cat && cats.some((c) => c.id === X.cat);
+    return `<div class="modal-wrap"><div class="modal smodal" role="dialog" aria-modal="true" aria-label="Dodaj wydatek">
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">Dodaj wydatek</div><button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="sxpno" aria-label="Zamknij">${K.xl}</button></div>
+      <div style="font-size:13px;line-height:1.4;color:var(--muted)">Spłata zobowiązania trafi do Finanse · Wydatki. Wybierz tylko kategorię.</div>
+      <div class="sxpbox"><div><span>Kwota</span><b style="color:#FF9C8A">${money(X.amt)}</b></div><div><span>Data</span><span>${dmy(X.d)}</span></div><div><span>Opis</span><span style="text-align:right;word-break:break-word">${esc(X.desc)}</span></div></div>
+      <div role="radiogroup" aria-label="Kategoria wydatku" style="display:flex;flex-direction:column;gap:6px"><div class="eyebrow">Kategoria</div>
+        <div class="sxpcats">${cats.map((c) => `<button role="radio" aria-checked="${X.cat === c.id}" class="sxpcat${X.cat === c.id ? ' on' : ''}" data-a="sxpcat" data-id="${esc(c.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${c.color}"></span>${esc(c.name)}</button>`).join('')}</div></div>
+      <div style="font-size:13px;line-height:1.4;color:${ok ? 'var(--muted)' : '#F2D9A0'}">${ok ? 'Wydatek zostanie dodany z dzisiejszą datą, a zobowiązanie zniknie z listy.' : 'Wybierz kategorię, aby zapisać.'}</div>
+      <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="sxpno">Anuluj</button><button class="sprimary owe${ok ? '' : ' off'}" style="flex:1;height:48px" data-a="sxpok"${ok ? '' : ' disabled aria-disabled="true"'}>Dodaj wydatek i uregulowano</button></div>
+    </div></div>`;
+  }
+  // Spłata: przy włączonej synchronizacji najpierw okno wydatku, inaczej od razu usunięcie wpisów (jak dotąd)
+  function settle(ids, desc) {
+    const list = SE.debts('owe').filter((e) => ids.indexOf(e.id) >= 0);
+    if (U.tab === 'owe' && SE.syncExp() && window.Fin && list.length) {
+      U.conf = null;
+      U.xp = { ids, amt: Math.round(list.reduce((a, e) => a + e.amt, 0) * 100) / 100, d: C.todayKey(), desc: desc.slice(0, 60), cat: null };
+    } else { SE.settleDebts(ids); U.conf = null; }
+    R();
   }
 
   // ---------- Rozliczenia grupowe ----------
@@ -278,8 +307,17 @@
     sdask: (el) => { U.conf = { type: 'one', id: +el.dataset.id }; U.msg = ''; R(); },
     sdall: (el) => { U.conf = { type: 'all', k: el.dataset.k }; U.msg = ''; R(); },
     sdno: () => { U.conf = null; R(); },
-    sdyes: (el) => { SE.settleDebts([+el.dataset.id]); U.conf = null; R(); },
-    sdallyes: (el) => { const k = el.dataset.k; SE.settleDebts(SE.debts(U.tab).filter((e) => SE.key(e.who) === k).map((e) => e.id)); U.conf = null; R(); },
+    sdyes: (el) => { const e = SE.debts(U.tab).find((x) => x.id === +el.dataset.id); if (!e) return; settle([e.id], 'Spłata: ' + e.who + (e.what ? ' – ' + e.what : '')); },
+    sdallyes: (el) => { const k = el.dataset.k, list = SE.debts(U.tab).filter((e) => SE.key(e.who) === k); if (!list.length) return; settle(list.map((e) => e.id), 'Spłata zobowiązań: ' + list[0].who); },
+    sdsync: () => { SE.setSyncExp(!SE.syncExp()); U.msg = ''; R(); },
+    sxpcat: (el) => { if (U.xp) { U.xp.cat = el.dataset.id; R(); } },
+    sxpno: () => { U.xp = null; R(); },
+    sxpok: () => {
+      const X = U.xp; if (!X || !X.cat) return;
+      window.Fin.addExpenses([{ date: X.d, desc: X.desc, amt: X.amt, cat: X.cat }]);
+      SE.settleDebts(X.ids);
+      U.xp = null; U.msg = 'Dodano wydatek „' + X.desc + '” (' + money(X.amt) + ') do Finanse · Wydatki. Zobowiązanie uregulowane.'; R();
+    },
     // Lista rozliczeń
     sgnew: () => { U.gdlg = { name: '', person: '', people: [] }; R(); },
     sgclose: () => { U.gdlg = null; R(); },
@@ -346,11 +384,11 @@
       return false;
     },
     onEscape() {
-      if (U.dlg || U.gdlg || U.pdlg || U.gdel || U.conf || U.pc || U.dc) { U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = null; U.dc = false; return true; }
+      if (U.dlg || U.gdlg || U.pdlg || U.gdel || U.conf || U.pc || U.dc || U.xp) { U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = null; U.dc = false; return true; }
       return false;
     },
     onRoute(r) {
-      U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = null; U.dc = false; U.msg = ''; U.person = '';
+      U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = null; U.dc = false; U.msg = ''; U.person = '';
       if (r.name === 'settle' && r.arg === 'debts') U.tab = r.arg2 === 'owe' ? 'owe' : 'recv';
     },
     // Przeciągnięcie wiersza na liście rozliczeń w prawo – okno potwierdzenia usunięcia.

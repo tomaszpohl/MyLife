@@ -887,6 +887,7 @@
   window.DietUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view, settingsSections, onInput, onChange, onKey, onEscape, onRoute,
+    openSettings() { U.settings.open = true; },   // v44: wyszukiwarka funkcji
     // Aktywna pozycja dolnego paska: Jadłospis także na ekranie jednego jadłospisu, Dieta na ekranie „Brak jadłospisu”.
     navKey: (r) => (r.arg === 'menus' || r.arg === 'menu' ? 'menus' : ['plan', 'shop', 'journal', 'weight', 'body'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
     // Przeciągnięcie jadłospisu w prawo (≥100 px) na liście – wywoływane z obsługi gestów w app.js.

@@ -247,18 +247,24 @@
           <button class="iconbtn soft" data-a="fgedit" data-id="${g.id}" aria-label="${esc('Edytuj cel ' + g.name)}">${J.pen}</button></div>
         <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font-size:15px"><b style="font-family:var(--display)">${F.money(g.saved)}</b> <span style="color:var(--muted);font-size:13px">z ${F.money(g.target)}</span></div><b style="font-family:var(--display);font-size:18px;color:${col}">${pf(p)}</b></div>
         <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, p))}" aria-label="${esc('Realizacja celu ' + g.name)}"><span style="width:${Math.min(100, Math.round(p * 10) / 10)}%;background:${col}"></span></div>
-        <div style="font-size:13px;color:${done ? okC : 'var(--muted)'}">${note}</div></div>`;
+        <div style="font-size:13px;color:${done ? okC : 'var(--muted)'}">${note}</div>
+        ${g.asset ? `<div style="display:flex;align-items:center;gap:8px"><span class="fbadge goal">Cel</span><span style="font-size:12px;color:var(--muted);min-width:0;word-break:break-word">${esc('Powiązany z Majątkiem: ' + g.asset.name + '. Kwotę zmienisz tu albo w Majątku.')}</span></div>` : ''}</div>`;
     }).join('');
     const D = U.goals.dlg;
     let modal = '';
     if (D) {
-      const c = goalCheck(D);
+      const c = goalCheck(D), freeA = F.goalFreeAssets(D.id), selA = D.aid ? freeA.find((i) => i.id === D.aid) || null : null;
       const fld = (lab, key, val, mode, ph, max) => `<label class="ffield"><span style="font-size:13px;color:var(--muted)">${lab}</span><input class="finput${mode ? ' amt' : ''}" type="text"${mode ? ` inputmode="${mode}"` : ''} maxlength="${max}" value="${esc(val)}" placeholder="${ph}" data-in="fin-g${key}" autocomplete="off"></label>`;
       modal = `<div class="modal-wrap"><div class="modal gold" role="dialog" aria-modal="true" aria-label="${D.id ? 'Edytuj cel' : 'Nowy cel'}">
         <div style="font-family:var(--display);font-size:18px;font-weight:600">${D.id ? 'Edytuj cel' : 'Nowy cel'}</div>
         ${fld('Nazwa celu *', 'name', D.name, '', 'np. Wakacje', 40)}
         ${fld('Kwota docelowa (zł) *', 'target', D.target, 'decimal', '0,00', 12)}
-        ${fld('Odłożono dotychczas (zł)', 'saved', D.saved, 'decimal', '0,00', 12)}
+        ${fld(selA ? esc('Kwota na aktywie „' + selA.name + '” (zł)') : 'Odłożono dotychczas (zł)', 'saved', D.saved, 'decimal', '0,00', 12)}
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--muted)">Powiązanie z Majątkiem (opcjonalnie)</span>
+          <div class="fglink" role="radiogroup" aria-label="Aktywo powiązane z celem">
+            <button role="radio" aria-checked="${!selA}" class="fgopt${selA ? '' : ' on'}" data-a="fglink" data-aid="">Bez powiązania (kwota wpisywana ręcznie)</button>
+            ${freeA.map((i) => `<button role="radio" aria-checked="${!!selA && selA.id === i.id}" class="fgopt${selA && selA.id === i.id ? ' on' : ''}" data-a="fglink" data-aid="${i.id}"><span style="flex:1;min-width:0;word-break:break-word">${esc(i.name)}</span><b style="font-family:var(--display);flex:none">${F.money(i.val)}</b></button>`).join('')}</div>
+          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${selA ? 'Aktywo dostanie plakietkę „Cel” w Majątku. Zmiana kwoty tutaj zapisze się też w Majątku (wpis w historii), a zmiana w Majątku od razu zmieni cel.' : freeA.length ? 'Wybierz aktywo, którego kwota ma być kwotą odłożoną na ten cel.' : 'Brak wolnych aktywów (aktywa poduszki i innych celów są pominięte).'}</div></div>
         <div data-gpv role="status" style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--text-2)' : '#F2D9A0'}">${esc(c.msg)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fgclose">Anuluj</button><button class="primary gold${c.ok ? '' : ' dim'}" style="height:48px;font-size:14px" data-a="fgsave">${D.id ? 'Zapisz zmiany' : 'Dodaj cel'}</button></div>
         ${D.id ? (D.confirm ? `<div class="fconfirm" role="alert"><div>Usunąć cel „${esc(D.name)}”? Tej operacji nie można cofnąć.</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fgdelno">Nie</button><button class="btn-del" style="height:44px;font-size:14px" data-a="fgdelyes">Tak, usuń</button></div></div>`
@@ -587,7 +593,7 @@
     const sec = (key, label, extra, inner) => `<div class="dcard tight" style="padding-bottom:4px">
         <button class="fsec" data-a="fwsec" data-v="${key}" aria-expanded="${!!W.open[key]}"><span class="eyebrow" style="flex:1">${label}</span>${extra}<span class="frot${W.open[key] ? ' up' : ''}">${J.down}</span></button>
         ${W.open[key] ? inner : ''}</div>`;
-    const rowsOf = (t) => its.filter((i) => i.type === t).map((i) => `<button class="fitem" data-a="fwedit" data-id="${i.id}" aria-label="${esc('Zaktualizuj: ' + i.name + ', ' + F.money(i.val))}"><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(i.name)}</span>${F.inCush(i.id) ? '<span class="fbadge">Poduszka</span>' : ''}<b>${F.money(i.val)}</b><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak pozycji.</div>';
+    const rowsOf = (t) => its.filter((i) => i.type === t).map((i) => `<button class="fitem" data-a="fwedit" data-id="${i.id}" aria-label="${esc('Zaktualizuj: ' + i.name + ', ' + F.money(i.val))}"><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(i.name)}</span>${F.inCush(i.id) ? '<span class="fbadge">Poduszka</span>' : ''}${F.goalOf(i.id) ? '<span class="fbadge goal">Cel</span>' : ''}<b>${F.money(i.val)}</b><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('') || '<div class="para" style="padding:8px 0 10px">Brak pozycji.</div>';
     // Historia zmian z filtrem: „Wszystkie” albo jedna pozycja (wartość przed → po; dla zobowiązań spadek jest zielony).
     const fItem = W.hf !== 'all' ? its.find((i) => i.id === W.hf) : null;
     if (W.hf !== 'all' && !fItem) W.hf = 'all';
@@ -610,6 +616,7 @@
         <div style="font-family:var(--display);font-size:18px;font-weight:600">Zaktualizuj: ${esc(ed.name)}</div>
         <div style="font-size:13px;color:var(--muted)">Obecna wartość: ${F.money(ed.val)}</div>
         ${F.inCush(ed.id) ? '<div class="fnote">Ta pozycja jest składnikiem poduszki bezpieczeństwa – zmiana kwoty zaktualizuje też poduszkę.</div>' : ''}
+        ${F.goalOf(ed.id) ? `<div class="fnote">${esc('Ta pozycja jest powiązana z celem „' + F.goalOf(ed.id).name + '” – zmiana kwoty zaktualizuje też cel.')}</div>` : ''}
         <div style="display:flex;align-items:center;gap:8px"><input class="finput amt gold" type="text" inputmode="decimal" maxlength="12" aria-label="Nowa wartość w złotych" value="${esc(W.edit.val)}" data-in="fin-wedit" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
         <div data-pv style="font-size:12px;line-height:1.4;color:var(--muted)">${esc(pv)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fweditclose">Anuluj</button><button class="primary" style="height:48px;font-size:14px" data-a="fweditsave"${can ? '' : ' disabled'}>Zapisz aktualizację</button></div>
@@ -668,7 +675,7 @@
           <div data-cpv style="font-size:14px;line-height:1.4">${ok ? 'Kwota docelowa: ' + F.money(F.r2(m * n)) : 'Podaj kwotę miesięczną i liczbę miesięcy (1–120).'}</div>
           ${btns(ok, 'Zapisz cel', 'fcgoalsave')}</div></div>`;
       } else if (D.t === 'new' || D.t === 'link') {
-        const pc = num(D.pct), free = F.items().filter((i) => i.type === 'a' && !F.inCush(i.id));
+        const pc = num(D.pct), free = F.items().filter((i) => i.type === 'a' && !F.inCush(i.id) && !F.goalOf(i.id));   // v44: bez aktywów powiązanych z celami
         const sel = D.t === 'link' ? free.find((i) => i.id === D.aid) : null;
         const ok = pc !== null && pc > 0 && pc <= 100 && (D.t === 'new' ? String(D.name || '').trim() && num(D.amt) !== null : !!sel);
         const after = Math.round((sp + (pc || 0)) * 10) / 10;
@@ -1036,10 +1043,12 @@
       Object.assign(M, { file: null, pending: null, parts: null }); R_();
     },
     // Cele (v19)
-    fgnew: () => { U.goals.dlg = { id: null, name: '', target: '', saved: '', confirm: false }; R_(); },
-    fgedit: (el) => { const g = F.goals().find((x) => x.id === el.dataset.id); if (g) U.goals.dlg = { id: g.id, name: g.name, target: String(g.target).replace('.', ','), saved: String(g.saved).replace('.', ','), confirm: false }; R_(); },
+    fgnew: () => { U.goals.dlg = { id: null, name: '', target: '', saved: '', aid: null, confirm: false }; R_(); },
+    fgedit: (el) => { const g = F.goals().find((x) => x.id === el.dataset.id); if (g) U.goals.dlg = { id: g.id, name: g.name, target: String(g.target).replace('.', ','), saved: String(g.saved).replace('.', ','), aid: g.asset ? g.asset.id : null, confirm: false }; R_(); },
+    // v44: wybór aktywa wypełnia kwotę wartością aktywa
+    fglink: (el) => { const D = U.goals.dlg; if (!D) return; const a = el.dataset.aid ? F.items().find((i) => i.id === el.dataset.aid) : null; D.aid = a ? a.id : null; if (a) D.saved = String(a.val).replace('.', ','); R_(); },
     fgclose: () => { U.goals.dlg = null; R_(); },
-    fgsave: () => { const D = U.goals.dlg, c = goalCheck(D); if (!c.ok) return; F.goalSave({ id: D.id, name: D.name, target: c.t, saved: c.s }); U.goals.dlg = null; R_(); },
+    fgsave: () => { const D = U.goals.dlg, c = goalCheck(D); if (!c.ok) return; F.goalSave({ id: D.id, name: D.name, target: c.t, saved: c.s, aid: D.aid || null }); U.goals.dlg = null; R_(); },
     fgdelask: () => { U.goals.dlg.confirm = true; R_(); },
     fgdelno: () => { U.goals.dlg.confirm = false; R_(); },
     fgdelyes: () => { F.goalRemove(U.goals.dlg.id); U.goals.dlg = null; R_(); },

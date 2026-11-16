@@ -146,6 +146,7 @@
     db.worth.items = db.worth.items.filter((i) => i.id !== wid);
     db.cush.items = db.cush.items.filter((k) => k.aid !== wid);   // usunięte aktywo znika też z poduszki
     db.invRet.links = db.invRet.links.filter((l) => l.aid !== wid);   // v37: i z powiązań zwrotu z inwestycji
+    db.goals.forEach((g) => { if (g.aid === wid) { g.saved = r2(it.val); delete g.aid; } });   // v44: cel zostaje z ostatnią wartością, bez powiązania
     pushHist('Usunięto pozycję: ' + it.name, hx('del', it, it.val, 0));
     save();
   }
@@ -196,18 +197,26 @@
   }
   function cushRemove(kid) { db.cush.items = db.cush.items.filter((x) => x.id !== kid); save(); }
 
-  // ---------- Cele (v19, makieta FinGoals) – kwota „odłożono” wpisywana ręcznie, bez powiązania z Majątkiem (decyzja właściciela) ----------
-  const goals = () => db.goals.slice();
+  // ---------- Cele (v19, makieta FinGoals) – kwota „odłożono” wpisywana ręcznie ----------
+  // v44 (makieta v205): cel może być powiązany z jednym aktywem z Majątku (`aid`) – „odłożono” = wartość aktywa, zmiana w obie strony.
+  const assetOf = (aid) => (aid ? db.worth.items.find((i) => i.id === aid && i.type === 'a') || null : null);
+  const goals = () => db.goals.map((g) => { const a = assetOf(g.aid); return a ? Object.assign({}, g, { saved: a.val, asset: a }) : g; });
+  const goalOf = (aid) => db.goals.find((g) => g.aid === aid && assetOf(g.aid)) || null;
+  // Aktywa wolne do powiązania: nie w Poduszce i nie przy innym celu (jedno aktywo = jeden cel).
+  const goalFreeAssets = (gid) => db.worth.items.filter((i) => i.type === 'a' && !inCush(i.id) && !db.goals.some((g) => g.aid === i.id && g.id !== gid));
   function goalSave(g) {
+    const a = assetOf(g.aid);
     const e = { id: g.id || id('g'), name: String(g.name).trim().slice(0, 40), target: r2(g.target), saved: r2(g.saved || 0) };
+    if (a) e.aid = a.id;
     if (g.id && db.goals.some((x) => x.id === g.id)) db.goals = db.goals.map((x) => (x.id === g.id ? e : x)); else db.goals.push(e);
+    if (a && a.val !== e.saved) updateItem(a.id, e.saved);   // zapis kwoty w Majątku (wpis historii „Aktualizacja: …” i punkt wykresu)
     save(); return e;
   }
   function goalRemove(gid) { db.goals = db.goals.filter((x) => x.id !== gid); save(); }
   // Łączna realizacja: nadwyżki ponad cel nie zawyżają sumy.
   function goalsTotal() {
-    const t = r2(db.goals.reduce((a, g) => a + g.target, 0)), s = r2(db.goals.reduce((a, g) => a + Math.min(g.saved, g.target), 0));
-    return { target: t, saved: s, pct: t > 0 ? s / t * 100 : 0, done: db.goals.filter((g) => g.saved >= g.target).length };
+    const L = goals(), t = r2(L.reduce((a, g) => a + g.target, 0)), s = r2(L.reduce((a, g) => a + Math.min(g.saved, g.target), 0));
+    return { target: t, saved: s, pct: t > 0 ? s / t * 100 : 0, done: L.filter((g) => g.saved >= g.target).length };
   }
 
   // ---------- Inwestycje (v19, makieta FinInvest) – osobny rejestr, nie wpływa na wydatki, wynik ani majątek (decyzja właściciela) ----------
@@ -352,7 +361,7 @@
     items, hist, histDays, liabSync, itemHist, net, netOf, sumType, addItem, updateItem, removeItem,
     PAL, freeColors, nextColor,
     cush, cushTarget, cushComps, cushSum, cushPctSum, inCush, setCushGoal, cushAddNew, cushLink, cushUpdate, cushRemove,
-    goals, goalSave, goalRemove, goalsTotal, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
+    goals, goalSave, goalRemove, goalsTotal, goalOf, goalFreeAssets, INV_DEF, gkey, invs, invIn, invSave, invRemove, invGoals, invGoalAdd, invGoalRemove, invGoalOpts, invColors,
     retLinks, retInvested, retComps, retSave, retRemove,
     planMonth, planYear, planSet, planCopy, planView, planOrder, planSetOrder, updateExpense, updateIncome,
     importParts, exportData, importData, summary

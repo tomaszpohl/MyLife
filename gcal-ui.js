@@ -66,7 +66,7 @@
     const s = G.state(), err = s.on ? s.err : [], busy = G.isBusy();
     const sum = err.length + ' ' + (err.length === 1 ? 'element nie został zsynchronizowany' : C.plural(err.length, 'element nie został', 'elementy nie zostały', 'elementów nie zostało') + ' zsynchronizowane');
     return `<main class="screen">
-      <div class="topbar">${A.navBtns('Wróć do ustawień')}<h1>Błędy synchronizacji</h1></div>
+      <div class="topbar">${A.navBtns('Wróć do ustawień')}<h1>Błędy synchronizacji</h1>${A.srchBtn && window.SearchUI ? '<span style="margin-left:auto">' + A.srchBtn() + '</span>' : ''}</div>
       <div class="form tight" style="gap:12px" data-scroll="syncerr">
         <div class="para" style="font-size:13px">Kalendarz Google · ostatnia próba: ${esc(s.last || '—')}</div>
         ${err.length ? `<div class="gerrsum" role="alert">${esc(sum)}</div>

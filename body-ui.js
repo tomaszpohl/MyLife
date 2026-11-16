@@ -84,12 +84,20 @@
             ${!st.dateOk || st.clash ? `<div class="bfnote miss">${!st.dateOk ? 'Podaj poprawną datę (nie późniejszą niż dziś).' : 'Pomiar z tego dnia już istnieje – zapis go zastąpi.'}</div>` : ''}
             ${photo && r.printDate && r.printDate !== r.date ? `<div class="bfnote">Data z wydruku: ${esc(dl(r.printDate))}.</div>` : ''}</div>
           <div class="dcard bfields">${fields}</div>
+          ${r.mode !== 'edit' ? addWHtml(st) : ''}
           ${rr.length ? `<div style="font-size:12px;line-height:1.4;color:var(--muted)">${esc('Zakres pożądany z wydruku: ' + rr.join(', ') + '.')}</div>` : ''}
         </div>
         <div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 16px" data-a="${photo ? 'bdagain' : 'bdrevclose'}">${photo ? 'Zrób ponownie' : 'Anuluj'}</button>
           <button id="bdsave" class="primary" data-a="bdsave"${st.ok ? '' : ' disabled'}>${r.mode === 'edit' ? 'Zapisz zmiany' : 'Zapisz pomiar'}</button></div>
       </div>`;
   }
+  // v44 (makieta v205): „Dodaj wagę do monitoringu diety” – domyślnie wyłączone; waga z pomiaru → Dieta · Waga w dniu pomiaru
+  function addWText(st) {
+    const r = B.rev, w = st.parsed[0];
+    if (w === null || st.bad[0]) return 'Wpisz wagę w pomiarze, aby dodać ją do Dieta · Waga.';
+    return r.addW ? 'Po zapisie waga ' + fmt(w, 1) + ' kg trafi do Dieta · Waga w dniu pomiaru (' + dl(r.date) + ').' : 'Wyłączone. Waga ' + fmt(w, 1) + ' kg zostanie tylko w Składzie ciała.';
+  }
+  const addWHtml = (st) => `<button class="thsw bdaddw" role="switch" aria-checked="${!!B.rev.addW}" data-a="bdaddw"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14px;font-weight:600">Dodaj wagę do monitoringu diety</span><span id="bdaddwt" style="font-size:12px;line-height:1.35;color:var(--muted)">${esc(addWText(st))}</span></span><span class="sw${B.rev.addW ? ' on' : ''}" aria-hidden="true"><span></span></span></button>`;
   // Odświeżenie okna podczas wpisywania bez przerysowania (klawiatura zostaje, kolejne dotknięcie nie przepada).
   function liveRev() {
     if (!B.rev) return;
@@ -100,6 +108,7 @@
       if (note) { note.className = 'bfnote ' + (n ? n.cls : ''); note.textContent = n ? n.text : ''; }
     });
     const b = document.getElementById('bdsave'); if (b) b.disabled = !st.ok;
+    const wt = document.getElementById('bdaddwt'); if (wt) wt.textContent = addWText(st);
   }
   function openRev(mode, e) {
     const vals = {};
@@ -262,6 +271,7 @@
     bdsel: (el) => { B.sel = el.dataset.id; B.tip = false; R(); },
     bdhist: () => { B.histOpen = !B.histOpen; R(); },
     bdrevclose: () => { B.rev = null; R(); },
+    bdaddw: () => { if (B.rev) { B.rev.addW = !B.rev.addW; R(); } },
     bdsave: () => {
       const r = B.rev; if (!r) return;
       const st = revState(); if (!st.ok) return;
@@ -269,6 +279,11 @@
       D.BODY.forEach((m, i) => { v[m.id] = st.parsed[i]; });
       D.bodySave({ d: r.date, t: r.t || '', v, fatR: r.fatR || null, massR: r.massR || null }, r.orig);
       B.msg = (r.mode === 'edit' ? 'Zapisano zmiany pomiaru z ' : 'Zapisano pomiar z ') + dl(r.date) + ' (' + st.cnt + ' ' + C.plural(st.cnt, 'wartość', 'wartości', 'wartości') + ').';
+      if (r.addW && r.mode !== 'edit' && st.parsed[0] !== null) {
+        const had = D.weights().some((x) => x.k === r.date);
+        D.setWeight(r.date, st.parsed[0]);
+        B.msg += ' Waga ' + fmt(st.parsed[0], 1) + ' kg dodana do Dieta · Waga' + (had ? ' (zastąpiła wpis z tego dnia).' : '.');
+      }
       B.undo = null; B.day = r.date; B.rev = null; B.tip = false; R();
     }
   };

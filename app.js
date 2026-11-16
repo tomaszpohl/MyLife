@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v43 · 15.11.2026';
+  const APP_VERSION = 'v44 · 16.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -92,7 +92,9 @@
     if (i < 0) return html;
     return html.slice(0, i).replace('<main class="screen', '<main class="screen withnav') + navbar(mod, active) + html.slice(i);
   }
-  const gearLink = (extra) => `<a class="iconbtn soft" href="#/settings" aria-label="Ustawienia"${extra ? ' style="' + extra + '"' : ''}>${I.gear}</a>`;
+  // v44: lupa „Szukaj funkcji” przed zębatką w nagłówku każdego ekranu
+  const srchBtn = () => `<button class="iconbtn soft" data-a="srch" aria-label="Szukaj funkcji">${svg(22, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>')}</button>`;
+  const gearLink = (extra) => `<span class="hdrbtns"${extra ? ' style="' + extra + '"' : ''}>${window.SearchUI ? srchBtn() : ''}<a class="iconbtn soft" href="#/settings" aria-label="Ustawienia">${I.gear}</a></span>`;
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -300,7 +302,8 @@
       if (r.arg === 'repeat') html = S.rdraft ? viewRecurrence() : (navMode = 'replace', location.replace('#/task/new'), '');
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
-    else if (r.name === 'today' && window.TodayUI) html = window.TodayUI.view();   // v43: ekran „Dziś”
+    else if (r.name === 'today' && window.TodayUI) html = window.TodayUI.view();
+    else if (r.name === 'search' && window.SearchUI) html = window.SearchUI.view();   // v44: „Szukaj funkcji”   // v43: ekran „Dziś”
     else if (r.name === 'syncerr' && window.GCalUI) html = window.GCalUI.viewErrors();
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
@@ -760,7 +763,7 @@
     const lbText = !lb ? 'brak' : lb === C.todayKey() ? 'dziś' : lb === C.addDays(C.todayKey(), -1) ? 'wczoraj' : longDay(lb);
     const st = S.set;
     return `<main class="screen">
-      <div class="topbar">${navBtns('Wróć', 'sback')}<h1>Ustawienia</h1></div>
+      <div class="topbar">${navBtns('Wróć', 'sback')}<h1>Ustawienia</h1>${window.SearchUI ? '<span style="margin-left:auto">' + srchBtn() + '</span>' : ''}</div>
       <div class="form tight" style="gap:14px;padding-bottom:calc(20px + var(--safe-bottom))" data-scroll="settings">
         <section class="scard">
           <div class="eyebrow">Przechowywanie danych</div>
@@ -1420,7 +1423,7 @@
 
   // ---------- Start ----------
   C.load();
-  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
+  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, srchBtn, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   if (window.BodyUI) { window.BodyUI.init(window.App); }
@@ -1431,6 +1434,7 @@
   if (window.Settle) { window.Settle.load(); }
   if (window.TodayUI) { window.TodayUI.init(window.App); }
   if (window.XlsxExport) { window.XlsxExport.init(window.App); }
+  if (window.SearchUI) { window.SearchUI.init(window.App); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
   if (window.GCal) { window.GCal.load(); }

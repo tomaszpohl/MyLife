@@ -152,5 +152,5 @@
   };
   function reset() { ['xf', 'xt'].forEach((k) => { U[k].msg = ''; }); }
   function init(app) { A = app; esc = A.esc; Object.assign(A.actions, actions); }
-  window.XlsxExport = { init, build, finSheets, trSheets, settingsSections, reset };
+  window.XlsxExport = { open: (k) => { if (U[k]) U[k].open = true; }, init, build, finSheets, trSheets, settingsSections, reset };
 })();
