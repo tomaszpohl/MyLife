@@ -43,7 +43,8 @@
   // [moduł, nazwa, cel (#/… albo nazwa akcji), opis, słowa kluczowe, ikona]
   const FUNCS = [
     ['pulpit', 'Pulpit główny', '#/', 'Skróty do wszystkich modułów', 'start ekran główny moduły skróty', 'home'],
-    ['pulpit', 'Dziś', '#/today', 'Zadania, posiłki, aktywności i wydatki na dziś w jednym miejscu', 'dzisiaj dzień podsumowanie', 'sun'],
+    ['pulpit', 'Dziś', '#/today', 'Zadania, posiłki, aktywności i wydatki na dziś – z odhaczaniem', 'dzisiaj dzień odhacz posiłki zadania', 'sun'],
+    ['pulpit', 'Podsumowanie miesiąca', '#/summary', 'Wynik finansowy, aktywności, treningi, waga i posiłki w miesiącu', 'podsumowanie miesiąc statystyki wynik waga posiłki', 'chart'],
     ['plan', 'Planer dnia – dzień', '#/plan/day', 'Zadania i podzadania wybranego dnia', 'zadania lista dzień podzadania kolejność', 'calcheck'],
     ['plan', 'Planer dnia – tydzień', '#/plan/week', 'Widok tygodnia z zadaniami', 'tydzień kalendarz', 'cal'],
     ['plan', 'Planer dnia – miesiąc', '#/plan/month', 'Kalendarz miesiąca z zaległymi dniami', 'miesiąc kalendarz zaległe', 'cal'],

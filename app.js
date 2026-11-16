@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v46 · 16.11.2026';
+  const APP_VERSION = 'v47 · 16.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -303,7 +303,8 @@
       else html = viewForm(r.arg);
     } else if (r.name === 'settings' || r.name === 'data') html = viewSettings();
     else if (r.name === 'today' && window.TodayUI) html = window.TodayUI.view();
-    else if (r.name === 'search' && window.SearchUI) html = window.SearchUI.view();   // v44: „Szukaj funkcji”   // v43: ekran „Dziś”
+    else if (r.name === 'search' && window.SearchUI) html = window.SearchUI.view();
+    else if (r.name === 'summary' && window.SummaryUI) html = window.SummaryUI.view();   // v47: „Podsumowanie miesiąca”   // v44: „Szukaj funkcji”   // v43: ekran „Dziś”
     else if (r.name === 'syncerr' && window.GCalUI) html = window.GCalUI.viewErrors();
     else if (r.name === 'diet' && window.DietUI) html = withNavbar(window.DietUI.view(r), 'diet', window.DietUI.navKey(r));
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
@@ -337,32 +338,28 @@
         <h1>MyLife</h1>
       </div>${gearLink('margin-top:-6px')}</div>
       ${window.TodayUI ? window.TodayUI.homeCard() : ''}
+      ${window.SummaryUI ? window.SummaryUI.homeCard() : ''}
       <div class="eyebrow" style="margin-top:4px">Moduły</div>
-      <div class="modules">
+      <div class="modules grid2">
         <a class="module active" href="#/plan/${S.lastPlan}">
-          <div class="ico" style="background:var(--accent-bg);color:var(--accent)">${I.plan}</div>
-          <div class="txt"><div class="name">Plan dnia</div><div class="desc">${esc(desc)}</div></div>
-          <div style="color:var(--accent);flex:none;display:flex">${I.chevR}</div>
+          <div class="ico" style="background:var(--accent-bg);color:var(--accent)">${svg(22, 1.8, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path><path d="m9 15 2 2 4-4"></path>')}</div>
+          <div class="txt"><div class="name">Plan dnia</div><div class="desc">Zadania, cykle, kalendarz</div></div>
         </a>
         <a class="module fin" href="#/fin">
-          <div class="ico" style="background:var(--gold-bg);color:var(--gold)">${I.wallet}</div>
-          <div class="txt"><div class="name">Finanse</div><div class="desc">Majątek, wydatki i wynik finansowy</div></div>
-          <div style="color:var(--gold);flex:none;display:flex">${I.chevR}</div>
+          <div class="ico" style="background:var(--gold-bg);color:var(--gold)">${svg(22, 1.8, '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2"></path><path d="M4 7.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 1 4 7.5Z"></path><circle cx="16" cy="14" r="1"></circle>')}</div>
+          <div class="txt"><div class="name">Finanse</div><div class="desc">Majątek, wydatki, wynik</div></div>
         </a>
         <a class="module diet" href="#/diet">
-          <div class="ico" style="background:var(--coral-bg);color:var(--coral)">${I.apple}</div>
-          <div class="txt"><div class="name">Dieta</div><div class="desc">Jadłospis, zakupy, dziennik i waga</div></div>
-          <div style="color:var(--coral);flex:none;display:flex">${I.chevR}</div>
+          <div class="ico" style="background:var(--coral-bg);color:var(--coral)">${svg(22, 1.8, '<path d="M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z"></path><path d="M12 7c0-1.5.7-3 2-4"></path>')}</div>
+          <div class="txt"><div class="name">Dieta</div><div class="desc">Jadłospis, zakupy, waga</div></div>
         </a>
         <a class="module train" href="#/train">
-          <div class="ico" style="background:var(--violet-bg);color:var(--violet)">${svg(26, 1.8, window.TrainUI ? window.TrainUI.icon : '')}</div>
-          <div class="txt"><div class="name">Trening</div><div class="desc">Treningi, ćwiczenia i serie</div></div>
-          <div style="color:var(--violet);flex:none;display:flex">${I.chevR}</div>
+          <div class="ico" style="background:var(--violet-bg);color:var(--violet)">${svg(22, 1.8, window.TrainUI ? window.TrainUI.icon : '')}</div>
+          <div class="txt"><div class="name">Trening</div><div class="desc">Treningi i aktywności</div></div>
         </a>
         ${window.SettleUI ? `<a class="module settle" href="#/settle">
-          <div class="ico" style="background:var(--green-bg);color:var(--ok)">${svg(26, 1.8, window.SettleUI.icon)}</div>
-          <div class="txt"><div class="name">Rozliczenia</div><div class="desc">Należności, zobowiązania i wspólne wydatki</div></div>
-          <div style="color:var(--ok);flex:none;display:flex">${I.chevR}</div>
+          <div class="ico" style="background:var(--green-bg);color:var(--ok)">${svg(22, 1.8, window.SettleUI.icon)}</div>
+          <div class="txt"><div class="name">Rozliczenia</div><div class="desc">Długi i wspólne wydatki</div></div>
         </a>` : ''}
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
@@ -1441,6 +1438,7 @@
   if (window.TodayUI) { window.TodayUI.init(window.App); }
   if (window.XlsxExport) { window.XlsxExport.init(window.App); }
   if (window.SearchUI) { window.SearchUI.init(window.App); }
+  if (window.SummaryUI) { window.SummaryUI.init(window.App); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
   if (window.GCal) { window.GCal.load(); }
@@ -1458,6 +1456,7 @@
     if (window.FinUI) window.FinUI.onRoute(r);
     if (window.TrainUI) window.TrainUI.onRoute(r);
     if (window.SettleUI) window.SettleUI.onRoute(r);
+    if (r.name === 'home' && window.SummaryUI) window.SummaryUI.reset();   // v47: podsumowanie wraca na bieżący miesiąc
     window.scrollTo(0, 0); render();
   });
   document.addEventListener('visibilitychange', () => {

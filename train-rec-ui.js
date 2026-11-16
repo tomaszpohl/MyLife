@@ -192,6 +192,7 @@
   function retDay() { if (!U.fromDay) return false; U.fromDay = false; A.actions.navback(); return true; }
 
   window.TrainRecUI = {
+    statsTab() { U.tab = 'stats'; },   // v47: kafelek „Statystyki aktywności” w Podsumowaniu miesiąca
     init(app) { A = app; esc = app.esc; Object.assign(app.actions, actions); },
     view,
     onInput(el, k) {

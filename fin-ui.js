@@ -1215,6 +1215,7 @@
   window.FinUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view, navKey, onInput, onChange, onKey, onEscape, onRoute, settingsSection, planMove,
+    resMonth(m) { U.res.period = 'month'; U.res.mk = m; },   // v47: kafelek „Wynik finansowy” w Podsumowaniu miesiąca
     resetSettings() { Object.assign(U.imp, { msg: '', done: null, parts: null }); }
   };
 })();

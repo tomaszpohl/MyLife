@@ -106,12 +106,17 @@
   const syncOf = (a) => Array.isArray(a.polar) && a.polar.length > 0 && a.sync !== false;
   const syncCodes = () => { const c = []; list().forEach((a) => { if (syncOf(a)) a.polar.forEach((x) => { if (c.indexOf(x) < 0) c.push(x); }); }); return c; };
   // Wpisy Dziennika z treningów Polar (po jednym na trening) dla sportów aktywności z synchronizacją – zamiast wpisu z odhaczeń.
+  // v47 (makieta v218): ręczny trening siłowy z dołączonymi danymi Polar (pol.min > 0) – wpis „Nazwa · N min” (czas z zegarka) przed wpisami z synchronizacji.
+  const strPolar = (w) => w.src !== 'polar' && w.pol && +w.pol.min > 0 && (w.ex || []).some((x) => x.kind === 'str');
   function polarEntries(k) {
-    const codes = syncCodes(); if (!codes.length) return [];
-    return TR.list().filter((w) => w.src === 'polar' && w.d === k && codes.indexOf(TR.sportOf(w)) >= 0).reverse()
-      .map((w) => ({ name: w.name || 'Trening Polar', min: Math.round(w.ex.reduce((t, x) => t + (x.kind === 'car' ? +x.min || 0 : 0), 0)), km: Math.round(w.ex.reduce((t, x) => t + (+x.km || 0), 0) * 10) / 10, auto: true, polar: true, wid: w.id }));
+    const codes = syncCodes();
+    const str = TR.list().filter((w) => w.d === k && strPolar(w)).reverse()
+      .map((w) => ({ name: w.name || 'Trening siłowy', min: Math.round(+w.pol.min), km: 0, auto: true, polar: true, str: true, wid: w.id }));
+    if (!codes.length) return str;
+    return str.concat(TR.list().filter((w) => w.src === 'polar' && w.d === k && codes.indexOf(TR.sportOf(w)) >= 0).reverse()
+      .map((w) => ({ name: w.name || 'Trening Polar', min: Math.round(w.ex.reduce((t, x) => t + (x.kind === 'car' ? +x.min || 0 : 0), 0)), km: Math.round(w.ex.reduce((t, x) => t + (+x.km || 0), 0) * 10) / 10, auto: true, polar: true, wid: w.id })));
   }
-  function polarDays() { const codes = syncCodes(); return codes.length ? TR.list().filter((w) => w.src === 'polar' && codes.indexOf(TR.sportOf(w)) >= 0).map((w) => w.d) : []; }
+  function polarDays() { const codes = syncCodes(); return TR.list().filter((w) => strPolar(w) || (codes.length && w.src === 'polar' && codes.indexOf(TR.sportOf(w)) >= 0)).map((w) => w.d); }
   function journalEntry(k) {
     const items = list().filter((a) => !syncOf(a)).map((a) => ({ name: a.name, n: Object.keys(a.done || {}).filter((x) => a.done[x] === k).length, dur: parseInt(a.dur, 10) || 0 }))
       .filter((x) => x.n > 0).map((x) => ({ name: x.name + (x.n > 1 ? ' ×' + x.n : ''), min: x.n * x.dur }));

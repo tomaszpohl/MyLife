@@ -15,6 +15,8 @@
   };
   const CHEV = ic(18, 2, '<path d="m9 6 6 6-6 6"></path>');
   const CHECK = ic(13, 3, '<path d="m5 12 5 5 9-10"></path>');
+  const CHECKL = ic(22, 2.6, '<path d="M5 12.5l4.5 4.5L19 7.5"></path>');
+  const XL = ic(20, 2.6, '<path d="M6 6l12 12M18 6 6 18"></path>');
   const MAX_T = 5;
 
   // Wiersz z kółkiem stanu (zadania, posiłki, aktywności) albo bez (wydatki); każdy jest przejściem do modułu.
@@ -35,7 +37,11 @@
       if (t.g && t.g.src === 'g') parts.push('z kalendarza');
       if (sc.total) parts.push('Podzadania: ' + sc.done + ' z ' + sc.total);
       else if (C.isRecurring(t) && !(t.g && t.g.src === 'g')) parts.push(C.repeatLabel(t));
-      return row({ act: 'tdplan', dot: 'var(--accent)', done: x.done, title: t.title, sub: parts.join(' · '), aria: (x.done ? 'Zrobione: ' : 'Do zrobienia: ') + t.title + '. Otwórz plan dnia' });
+      // v47 (makieta v220): kółko przed zadaniem odhacza je (te same dane co Plan dnia); zadania o zwrocie potwierdza się w Planie dnia
+      const debt = !!(t.debt && window.Settle && window.Settle.debtById && window.Settle.debtById(t.debt));
+      const lbl = debt ? 'Zadanie o zwrocie – potwierdź w planie dnia: ' + t.title : (x.done ? 'Odznacz zadanie: ' : 'Oznacz jako zrobione: ') + t.title;
+      return `<div class="tdrow tdrowx${x.done ? ' done' : ''}"><button class="tdchk${debt ? ' lock' : ''}" data-a="tdtask" data-id="${esc(t.id)}" data-k="${esc(x.k)}" aria-pressed="${x.done}"${debt ? ' aria-disabled="true"' : ''} aria-label="${esc(lbl)}"><span class="tddot" style="${x.done ? '' : 'border-color:var(--accent)'}">${x.done ? CHECK : ''}</span></button>
+        <button class="tdlink" data-a="tdplan" aria-label="${esc((x.done ? 'Zrobione: ' : 'Do zrobienia: ') + t.title + '. Otwórz plan dnia')}"><span class="tdtxt"><span class="t">${esc(t.title)}</span>${parts.length ? `<span class="s">${esc(parts.join(' · '))}</span>` : ''}</span><span class="tdchev">${CHEV}</span></button></div>`;
     }).join('');
     const more = list.length - MAX_T;
     return `<section class="tdsec" style="border-color:var(--accent-line, #2A6F80)">
@@ -48,16 +54,17 @@
   function mealsSection(T) {
     const D = window.Diet; if (!D) return '';
     const p = D.planFor(T), j = D.jday(T), meals = p ? p.meals.filter((m) => m.dish) : [];
-    const b = D.balance(T), nE = meals.filter((m) => j.meals[m.slot] === 'eaten').length;
+    const b = D.balance(T), nE = meals.filter((m) => j.meals[m.slot] === 'eaten').length, nS = meals.filter((m) => j.meals[m.slot] === 'skipped').length;
+    // v47 (makieta v220): przyciski ✓ (zjedzone) i ✕ (pominięte) jak w Dzienniku – zapis w Dzienniku diety; ponowne dotknięcie zdejmuje oznaczenie
     const rows = meals.map((m) => {
-      const done = j.meals[m.slot] === 'eaten';
-      return row({ act: 'djtoday', dot: 'var(--coral)', done, title: m.dish.name, sub: m.slot, right: Math.round(m.dish.kcal || 0) + ' kcal', aria: (done ? 'Zjedzone: ' : 'Do zjedzenia: ') + m.slot + ', ' + m.dish.name + '. Otwórz dziennik diety' });
+      const st = j.meals[m.slot], done = st === 'eaten';
+      return `<div class="tdrow tdrowx tdmeal${done ? ' done' : ''}"><button class="tdlink" data-a="djtoday" aria-label="${esc(m.slot + ', ' + m.dish.name + '. Otwórz dziennik diety')}"><span class="tdtxt"><span class="t">${esc(m.dish.name)}</span><span class="s">${esc(m.slot + ' · ' + Math.round(m.dish.kcal || 0) + ' kcal')}</span></span></button>
+        <button class="jbtn eat${done ? ' on' : ''}" data-a="tdmeal" data-slot="${esc(m.slot)}" data-v="eaten" aria-pressed="${done}" aria-label="${esc(m.slot + ': zjedzone')}">${CHECKL}</button>
+        <button class="jbtn skip${st === 'skipped' ? ' on' : ''}" data-a="tdmeal" data-slot="${esc(m.slot)}" data-v="skipped" aria-pressed="${st === 'skipped'}" aria-label="${esc(m.slot + ': pominięte')}">${XL}</button></div>`;
     }).join('');
-    const net = (b.net < 0 ? '−' : '') + Math.abs(b.net);
     return `<section class="tdsec" style="border-color:#6A3A2C">
-        ${head('tddiet', 'var(--coral)', P.apple, 'Posiłki', 'Zjedzone ' + nE + ' z ' + meals.length + ' · ' + b.eat + ' kcal')}
+        ${head('tddiet', 'var(--coral)', P.apple, 'Posiłki', 'Zjedzone ' + nE + ' z ' + meals.length + (nS ? ' · pominięte ' + nS : '') + ' · ' + b.eat + ' kcal')}
         ${meals.length ? rows : empty('Brak jadłospisu na dziś.')}
-        <button class="tdrow tdbal" data-a="djtoday" aria-label="Otwórz dziennik diety: bilans dnia"><span class="tdtxt"><span class="s">Bilans dnia</span><span class="t" style="font-size:13px">${esc(net + ' kcal (zjedzone ' + b.eat + ' − Polar ' + b.burn + ')')}</span></span><span class="tdchev">${CHEV}</span></button>
       </section>`;
   }
 
@@ -101,6 +108,8 @@
       <div style="color:var(--text);flex:none;display:flex">${ic(22, 2, '<path d="m9 6 6 6-6 6"></path>')}</div></a>`;
 
   const actions = {
+    tdtask: (el) => { if (el.getAttribute('aria-disabled') === 'true') return; C.toggleDone(el.dataset.id, el.dataset.k); A.render(); },
+    tdmeal: (el) => { window.Diet.markMeal(C.todayKey(), el.dataset.slot, el.dataset.v); A.render(); },
     tdplan: () => { A.S.sel = C.todayKey(); A.go('#/plan/day'); },
     tddiet: () => { location.hash = '#/diet'; },
     tdacts: () => { location.hash = '#/train/cal'; },   // makieta: wiersz aktywności → „Aktywność fizyczna”
