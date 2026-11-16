@@ -75,7 +75,7 @@
     const c = calc(g), moved = g.moved || [];
     const recv = c.tr.filter((t) => key(t.to) === key(me)).map((t) => ({ who: t.from, c: t.c, k: key(t.from) + '|' + t.c }));
     const owe = c.tr.filter((t) => key(t.from) === key(me)).map((t) => ({ who: t.to, c: t.c, k: 'o|' + key(t.to) + '|' + t.c }));
-    [recv, owe].forEach((l) => l.forEach((x) => { x.moved = moved.indexOf(x.k) >= 0; }));
+    [recv, owe].forEach((l) => l.forEach((x) => { x.moved = moved.indexOf(x.k) >= 0; x.inst = (g.inst || []).indexOf(x.k) >= 0; }));
     return { recv, owe };
   }
   function moveTransfers(id, kind) {
@@ -84,6 +84,15 @@
     pend.forEach((x) => addDebt(kind, x.who, x.c / 100, 'Rozliczenie grupowe: ' + g.name, C.todayKey()));
     g.moved = (g.moved || []).concat(pend.map((x) => x.k)); save();
     return pend.length;
+  }
+  // v45 (makieta v208): rozliczenie natychmiastowe – oczekujące kwoty, które oddaję, jako jeden wydatek; bez wpisów w Zobowiązaniach.
+  // Klucze trafiają do g.moved (bez duplikatów, jak przy przenoszeniu) i do g.inst („rozliczono ✓”).
+  function instantPending(id) { const g = group(id); if (!g) return { list: [], total: 0 }; const list = myTransfers(g).owe.filter((x) => !x.moved); return { list, total: list.reduce((a, x) => a + x.c, 0) / 100 }; }
+  function settleInstant(id) {
+    const g = group(id); if (!g) return [];
+    const pend = myTransfers(g).owe.filter((x) => !x.moved);
+    g.moved = (g.moved || []).concat(pend.map((x) => x.k)); g.inst = (g.inst || []).concat(pend.map((x) => x.k)); save();
+    return pend;
   }
   function removePay(id, pid) { const g = group(id); if (!g) return; g.pays = g.pays.filter((p) => p.id !== +pid); save(); }
   // v23: podział każdej płatności po równo na zaznaczone osoby (`for`; puste = wszyscy uczestnicy), reszta groszy po 1 gr;
@@ -129,5 +138,5 @@
   const summary = () => db.debts.list.length + ' ' + C.plural(db.debts.list.length, 'wpis', 'wpisy', 'wpisów') + ' należności i zobowiązań, ' +
     db.groups.list.length + ' ' + C.plural(db.groups.list.length, 'rozliczenie grupowe', 'rozliczenia grupowe', 'rozliczeń grupowych');
 
-  window.Settle = { load, key, debts, sum, addDebt, settleDebts, syncExp, setSyncExp, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
+  window.Settle = { load, key, debts, sum, addDebt, settleDebts, syncExp, setSyncExp, instantPending, settleInstant, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
 })();

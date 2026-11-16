@@ -233,10 +233,11 @@
       const recv = kind === 'recv', pend = list.filter((x) => !x.moved).length;
       return `<div class="dcard smove ${recv ? 'recv' : 'owe'}" style="gap:8px">
         <div class="sname" style="font-size:16px;color:${recv ? 'var(--ok)' : 'var(--owe)'}">${recv ? 'Są dla Ciebie należności' : 'Twoje zobowiązania'}</div>
-        ${list.map((x) => `<div class="smvrow"><span style="flex:1;min-width:0;word-break:break-word">${esc(recv ? x.who : 'dla: ' + x.who)}</span>${x.moved ? '<span class="smvd">przeniesiono ✓</span>' : ''}<b>${money(x.c / 100)}</b></div>`).join('')}
+        ${list.map((x) => `<div class="smvrow"><span style="flex:1;min-width:0;word-break:break-word">${esc(recv ? x.who : 'dla: ' + x.who)}</span>${x.inst ? '<span class="smvd">rozliczono ✓</span>' : x.moved ? '<span class="smvd">przeniesiono ✓</span>' : ''}<b>${money(x.c / 100)}</b></div>`).join('')}
         ${pend ? `<button class="sprimary ${recv ? '' : 'owe'}" style="height:48px;font-size:15px" data-a="scmove" data-v="${kind}">${recv ? 'Przenieś do należności' : 'Przenieś do zobowiązań'}</button>
-          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${recv ? 'Powstaną wpisy w Należnościach: kto – uczestnik, kwota – z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza.' : 'Powstaną wpisy w Zobowiązaniach (komu – uczestnik, kwota z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza); trafią też do Finanse · Majątek.'}</div>`
-          : `<a class="slink" style="align-self:flex-start;display:flex;align-items:center;min-height:44px" href="#/settle/debts${recv ? '' : '/owe'}">${recv ? 'Zobacz w Należnościach' : 'Zobacz w Zobowiązaniach'} →</a>`}
+          <div style="font-size:12px;line-height:1.4;color:var(--muted)">${recv ? 'Powstaną wpisy w Należnościach: kto – uczestnik, kwota – z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza.' : 'Najpierw zapytamy, czy rozliczasz się natychmiast (wtedy powstanie jeden wydatek, bez zobowiązań). W przeciwnym razie powstaną wpisy w Zobowiązaniach (komu – uczestnik, kwota z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza), a przez nie pozycje w Finanse · Majątek.'}</div>`
+          : (recv || list.some((x) => x.moved && !x.inst) ? `<a class="slink" style="align-self:flex-start;display:flex;align-items:center;min-height:44px" href="#/settle/debts${recv ? '' : '/owe'}">${recv ? 'Zobacz w Należnościach' : 'Zobacz w Zobowiązaniach'} →</a>` : '')
+            + (!recv && list.some((x) => x.inst) && window.Fin ? `<button class="slink" style="align-self:flex-start;display:flex;align-items:center;min-height:44px;background:none;border:none;padding:0;font-family:inherit" data-a="scexp">Zobacz w Wydatkach →</button>` : '')}
       </div>`;
     };
     return `<div class="eyebrow" style="margin-top:8px">Kim jestem w tym rozliczeniu</div>
@@ -277,7 +278,38 @@
       <div class="dscroll" data-scroll="settle-calc">
         <div style="font-family:var(--display);font-size:22px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
         <div style="font-size:13px;color:var(--muted)">Razem ${m(c.totalC)} · ${pl(g.pays.length, 'płatność', 'płatności', 'płatności')} · podział po równo między zaznaczone osoby przy każdej płatności</div>
-        ${body}</div></main>`;
+        ${body}</div>${U.im ? imDialog(g) : ''}${U.ixp ? ixpDialog(g) : ''}</main>`;
+  }
+  // v45 (makieta v208–v209): „Rozliczenie natychmiastowe” → okno „Dodaj wydatek” (kategoria z listy z wyszukiwarką)
+  function imDialog(g) {
+    const P = SE.instantPending(g.id);
+    return `<div class="modal-wrap"><div class="modal smodal" role="dialog" aria-modal="true" aria-label="Rozliczenie natychmiastowe">
+      <div style="font-family:var(--display);font-size:20px;font-weight:600">Rozliczenie natychmiastowe</div>
+      <div style="font-size:14px;line-height:1.45;color:#C9D3DF">${esc('Do oddania: ' + P.list.map((x) => x.who + ' ' + money(x.c / 100)).join(', ') + '. Razem ' + money(P.total) + '. Czy rozliczasz się z tego natychmiast?')}</div>
+      <div style="font-size:13px;line-height:1.4;color:var(--muted)">Tak – otworzy się okno dodania wydatku (jeden wpis na łączną kwotę), a w Zobowiązaniach nic nie powstanie. Nie – zobowiązania zostaną dodane jak dotąd.</div>
+      <div style="display:flex;flex-direction:column;gap:8px"><button class="sprimary owe" style="height:48px;font-size:15px" data-a="scimyes">Tak, rozliczam teraz</button>
+        <button class="btn2" style="height:48px;font-size:15px" data-a="scimno">Nie, przenieś do zobowiązań</button>
+        <button class="btn-cancel small" style="border:none;background:none" data-a="scimcancel">Anuluj</button></div>
+    </div></div>`;
+  }
+  const nz = (t) => String(t).toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function ixpCatList() {
+    const X = U.ixp, all = window.Fin.activeCats(), q = nz(X.q || '').trim(), shown = q ? all.filter((c) => nz(c.name).indexOf(q) >= 0) : all;
+    return shown.map((c) => `<button role="option" aria-selected="${X.cat === c.id}" class="sxpopt${X.cat === c.id ? ' on' : ''}" data-a="scxcat" data-id="${esc(c.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${c.color}"></span><span style="flex:1">${esc(c.name)}</span>${X.cat === c.id ? '<span aria-hidden="true">✓</span>' : ''}</button>`).join('') || '<div style="padding:12px 10px;font-size:14px;color:var(--muted)">Brak pasujących kategorii.</div>';
+  }
+  function ixpDialog(g) {
+    const X = U.ixp, all = window.Fin.activeCats(), sel = all.find((c) => c.id === X.cat), ok = !!sel;
+    return `<div class="modal-wrap"><div class="modal smodal" role="dialog" aria-modal="true" aria-label="Dodaj wydatek">
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">Dodaj wydatek</div><button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="scxno" aria-label="Zamknij">${K.xl}</button></div>
+      <div style="font-size:13px;line-height:1.4;color:var(--muted)">Rozliczenie trafi do Finanse · Wydatki jako jeden wpis. Wybierz tylko kategorię.</div>
+      <div class="sxpbox"><div><span>Kwota</span><b style="color:#FF9C8A">${money(X.amt)}</b></div><div><span>Data</span><span>${dmy(X.d)}</span></div><div><span>Opis</span><span style="text-align:right;word-break:break-word">${esc(X.desc)}</span></div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div id="sxc-l" class="eyebrow">Kategoria</div>
+        <button class="sxpsel${X.open ? ' open' : ''}" data-a="scxtog" aria-haspopup="listbox" aria-expanded="${!!X.open}" aria-labelledby="sxc-l"><span style="width:10px;height:10px;border-radius:5px;background:${sel ? sel.color : '#4A5A6E'}"></span><span style="flex:1;color:${sel ? 'var(--text)' : 'var(--muted)'}">${esc(sel ? sel.name : 'Wybierz kategorię')}</span><span class="frot${X.open ? ' up' : ''}">${A.svg(18, 2, '<path d="m6 9 6 6 6-6"></path>')}</span></button>
+        ${X.open ? `<div class="sxpdrop"><label for="sxc-q" class="sr-only">Szukaj kategorii</label><input id="sxc-q" class="finput" type="text" maxlength="24" autocomplete="off" placeholder="Szukaj kategorii…" value="${esc(X.q || '')}" data-in="settle-ixq">
+          <div role="listbox" aria-label="Kategorie" id="sxclist" class="sxplist">${ixpCatList()}</div></div>` : ''}</div>
+      <div style="font-size:13px;line-height:1.4;color:${ok ? 'var(--muted)' : '#F2D9A0'}">${ok ? 'Wydatek zostanie dodany z dzisiejszą datą, a w Zobowiązaniach nic nie powstanie.' : 'Wybierz kategorię, aby zapisać.'}</div>
+      <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="scxno">Anuluj</button><button class="sprimary owe${ok ? '' : ' off'}" style="flex:1;height:48px" data-a="scxok"${ok ? '' : ' disabled aria-disabled="true"'}>Dodaj wydatek</button></div>
+    </div></div>`;
   }
 
   // ---------- Odświeżanie podczas pisania (bez przerysowania – „zgubione dotknięcie”) ----------
@@ -309,6 +341,20 @@
     sdno: () => { U.conf = null; R(); },
     sdyes: (el) => { const e = SE.debts(U.tab).find((x) => x.id === +el.dataset.id); if (!e) return; settle([e.id], 'Spłata: ' + e.who + (e.what ? ' – ' + e.what : '')); },
     sdallyes: (el) => { const k = el.dataset.k, list = SE.debts(U.tab).filter((e) => SE.key(e.who) === k); if (!list.length) return; settle(list.map((e) => e.id), 'Spłata zobowiązań: ' + list[0].who); },
+    scimyes: () => { const g = SE.group(curGroup()); if (!g) return; const P = SE.instantPending(g.id); U.im = false; if (!P.list.length) { R(); return; }
+      U.ixp = { amt: Math.round(P.total * 100) / 100, d: C.todayKey(), desc: ('Rozliczenie grupowe: ' + g.name).slice(0, 60), cat: null, open: false, q: '' }; R(); },
+    scimno: () => { U.im = false; const n = SE.moveTransfers(curGroup(), 'owe'); U.msg = n ? 'Przeniesiono do Zobowiązań (i do Majątku): ' + n + ' ' + C.plural(n, 'wpis', 'wpisy', 'wpisów') + '.' : ''; R(); },
+    scimcancel: () => { U.im = false; R(); },
+    scxtog: () => { if (U.ixp) { U.ixp.open = !U.ixp.open; U.ixp.q = ''; R(); if (U.ixp.open) setTimeout(() => { const i = document.getElementById('sxc-q'); if (i) i.focus(); }, 20); } },
+    scxcat: (el) => { if (U.ixp) { U.ixp.cat = el.dataset.id; U.ixp.open = false; U.ixp.q = ''; R(); } },
+    scxno: () => { U.ixp = null; R(); },
+    scxok: () => {
+      const X = U.ixp; if (!X || !X.cat) return;
+      const pend = SE.settleInstant(curGroup()); if (!pend.length) { U.ixp = null; R(); return; }
+      window.Fin.addExpenses([{ date: X.d, desc: X.desc, amt: X.amt, cat: X.cat }]);
+      U.ixp = null; U.msg = 'Rozliczono natychmiast: dodano wydatek „' + X.desc + '” (' + money(X.amt) + ') do Finanse · Wydatki. W Zobowiązaniach nic nie powstało.'; R();
+    },
+    scexp: () => { if (A.actions.fhometoday) A.actions.fhometoday(); else location.hash = '#/fin/exp'; },
     sdsync: () => { SE.setSyncExp(!SE.syncExp()); U.msg = ''; R(); },
     sxpcat: (el) => { if (U.xp) { U.xp.cat = el.dataset.id; R(); } },
     sxpno: () => { U.xp = null; R(); },
@@ -344,7 +390,7 @@
     spno: () => { U.pc = null; R(); },
     spyes: (el) => { SE.removePay(curGroup(), el.dataset.id); U.pc = null; R(); },
     scme: (el) => { const g = SE.group(curGroup()); if (g) SE.setMe(g.id, g.people[+el.dataset.i]); U.msg = ''; R(); },
-    scmove: (el) => { const k = el.dataset.v, n = SE.moveTransfers(curGroup(), k); U.msg = n ? (k === 'recv' ? 'Przeniesiono do Należności: ' : 'Przeniesiono do Zobowiązań (i do Majątku): ') + n + ' ' + C.plural(n, 'wpis', 'wpisy', 'wpisów') + '.' : ''; R(); },
+    scmove: (el) => { if (el.dataset.v === 'owe' && window.Fin && !el.dataset.direct) { U.im = true; U.msg = ''; R(); return; } const k = el.dataset.v, n = SE.moveTransfers(curGroup(), k); U.msg = n ? (k === 'recv' ? 'Przeniesiono do Należności: ' : 'Przeniesiono do Zobowiązań (i do Majątku): ') + n + ' ' + C.plural(n, 'wpis', 'wpisy', 'wpisów') + '.' : ''; R(); },
     sgdask: () => { U.dc = true; R(); },
     sgdno: () => { U.dc = false; R(); },
     sgdyes: () => { SE.removeGroup(curGroup()); U.dc = false; A.go('#/settle/groups'); }
@@ -363,6 +409,7 @@
     navItems: [['home', '#/settle', 'Rozliczenia', P.home], ['debts', '#/settle/debts', 'Długi', P.debts], ['groups', '#/settle/groups', 'Grupy', P.groups]],
     icon: P.debts,
     onInput(el, k) {
+      if (k === 'settle-ixq') { if (U.ixp) { U.ixp.q = el.value.slice(0, 24); const l = document.getElementById('sxclist'); if (l) l.innerHTML = ixpCatList(); } return; }
       const v = el.value, amt = () => { el.value = v.replace(/[^\d,.]/g, '').slice(0, 12); return el.value; };
       if (k === 'settle-who') U.dlg.who = v.slice(0, 40);
       else if (k === 'settle-amt') U.dlg.amt = amt();
@@ -384,11 +431,12 @@
       return false;
     },
     onEscape() {
-      if (U.dlg || U.gdlg || U.pdlg || U.gdel || U.conf || U.pc || U.dc || U.xp) { U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = null; U.dc = false; return true; }
+      if (U.ixp && U.ixp.open) { U.ixp.open = false; U.ixp.q = ''; return true; }
+      if (U.dlg || U.gdlg || U.pdlg || U.gdel || U.conf || U.pc || U.dc || U.xp || U.im || U.ixp) { U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = U.ixp = null; U.dc = false; U.im = false; return true; }
       return false;
     },
     onRoute(r) {
-      U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = null; U.dc = false; U.msg = ''; U.person = '';
+      U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = U.ixp = null; U.dc = false; U.im = false; U.msg = ''; U.person = '';
       if (r.name === 'settle' && r.arg === 'debts') U.tab = r.arg2 === 'owe' ? 'owe' : 'recv';
     },
     // Przeciągnięcie wiersza na liście rozliczeń w prawo – okno potwierdzenia usunięcia.

@@ -346,12 +346,14 @@
             <button class="shopundo${hn ? '' : ' off'}" data-a="dshopundo" aria-disabled="${!hn}" aria-label="${hn ? 'Cofnij ostatnie odhaczenie (' + hn + ' do cofnięcia)' : 'Nie ma czego cofać'}">${J.undo}<span>Cofnij (${hn})</span></button></div>
           <div><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding-bottom:6px"><span>Kupiono ${bn} z ${items.length}</span><span>${pct}%</span></div>
             <div class="bar"><div style="width:${pct}%"></div></div></div>
+          ${window.Fin ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="shopxpbtn" data-a="dshxp">${I.plus || ''}<span>Dodaj wydatek</span></button>
+            ${U.shop.xpMsg ? `<div class="shopxpmsg" role="status">${esc(U.shop.xpMsg)}</div>` : ''}</div>` : ''}
           <div class="dcard tight shopsrc"><button class="shopsrch" data-a="dshopsrc" aria-expanded="${srcOpen}"><span>LISTA Z POSIŁKÓW · ${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} · ${dayCount} ${dayCount === 1 ? 'dzień' : 'dni'}</span><span style="display:flex">${srcOpen ? J.up : J.down}</span></button>
             ${srcOpen ? src.map((d) => `<div class="shopsrcday"><div class="dl">${esc(D.dayShort(d.k))}</div>${d.meals.map((m) => `<div class="ml"><span class="sl">${esc(m.slot)}</span> – ${esc(m.name)}</div>`).join('')}</div>`).join('') : ''}</div>
           <div class="dcard tight">${sorted.map((x) => `<button class="shoprow${bought[x.key] ? ' done' : ''}" role="checkbox" aria-checked="${!!bought[x.key]}" data-a="dbuy" data-key="${esc(x.key)}">
             <span class="cbox">${bought[x.key] ? I.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="amt"><span>${D.fmtNum(x.grams)} g</span>${x.measure ? `<span class="meas">${esc(x.measure)}</span>` : ''}</span></button>`).join('')}</div>
         </div>
-        <div class="footbar"><button class="btn2" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div></main>`;
+        <div class="footbar"><button class="btn2" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div>${U.shop.xp ? shopXpDialog() : ''}</main>`;
     }
     D.shopPrune();   // usuń zaznaczenia z dni, które już minęły
     const sel = D.shopping().sel || {};
@@ -707,7 +709,19 @@
       const sel = {}; if (!all) keys.forEach((x) => { sel[x] = true; });
       D.shopSet({ sel }); R();
     },
-    dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {}, hist: [] }); R(); },
+    dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {}, hist: [] }); U.shop.xpMsg = ''; R(); },
+    dshxp: () => { const cats = window.Fin.activeCats(), food = cats.find((c) => c.id === 'food') || cats.find((c) => /jedzenie/i.test(c.name)) || null;
+      U.shop.xp = { amt: '', desc: 'Zakupy spożywcze', d: C.todayKey(), cat: food ? food.id : null }; U.shop.xpMsg = ''; R();
+      setTimeout(() => { const i = document.querySelector('[data-in="diet-shxp-amt"]'); if (i) i.focus(); }, 30); },
+    dshxpno: () => { U.shop.xp = null; R(); },
+    dshxpcat: (el) => { if (U.shop.xp) { U.shop.xp.cat = el.dataset.id; R(); } },
+    dshxpdate: () => { const X = U.shop.xp; if (X) A.datePick({ value: X.d, max: C.todayKey(), onPick: (k) => { if (U.shop.xp) U.shop.xp.d = k; } }); },
+    dshxpok: () => {
+      const X = U.shop.xp; if (!X) return; const c = shopXpCheck(X); if (c.err) return;
+      const desc = X.desc.trim() || 'Zakupy spożywcze';
+      window.Fin.addExpenses([{ date: X.d, desc, amt: c.a, cat: X.cat }]);
+      U.shop.xp = null; U.shop.xpMsg = 'Dodano wydatek ' + window.Fin.money(c.a) + ' („' + desc + '”, ' + C.dmy(X.d) + ') do Finanse · Wydatki.'; R();
+    },
     dshopundo: () => { if (D.shopUndo()) R(); },
     dshopsrc: () => { U.shop.srcOpen = U.shop.srcOpen === false; R(); },
     dshopback: () => { D.shopSet({ stage: 'select' }); R(); },
@@ -822,8 +836,35 @@
   }
 
   // ---------- Wejście z pól tekstowych ----------
+  // v45 (makieta v208): „Dodaj wydatek” na liście zakupów – kwota (wymagana), opis, data (kalendarz, do dziś), kategoria (domyślnie Jedzenie)
+  function shopXpCheck(X) {
+    const a = parseFloat(String(X.amt).replace(/\s/g, '').replace(',', '.'));
+    const err = !isFinite(a) || a <= 0 ? 'Podaj kwotę większą od zera.' : !X.cat ? 'Wybierz kategorię.' : '';
+    return { a: Math.round(a * 100) / 100, err };
+  }
+  function shopXpDialog() {
+    const X = U.shop.xp, F = window.Fin, cats = F.activeCats(), c = shopXpCheck(X);
+    return `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="Dodaj wydatek">
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">Dodaj wydatek</div><button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="dshxpno" aria-label="Zamknij">${A.svg(16, 2, '<path d="M6 6l12 12M18 6 6 18"></path>')}</button></div>
+      <label class="shxpf"><span class="eyebrow">Kwota (zł)</span><input class="finput" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${esc(X.amt)}" data-in="diet-shxp-amt" autocomplete="off"></label>
+      <label class="shxpf"><span class="eyebrow">Opis</span><input class="finput" type="text" maxlength="60" value="${esc(X.desc)}" data-in="diet-shxp-desc" autocomplete="off"></label>
+      <div class="shxpf"><span class="eyebrow">Data</span>${A.dateBtn(X.d, 'dshxpdate', '', 'Data wydatku')}</div>
+      <div role="radiogroup" aria-label="Kategoria wydatku" class="shxpf"><span class="eyebrow">Kategoria</span>
+        <div class="sxpcats">${cats.map((k) => `<button role="radio" aria-checked="${X.cat === k.id}" class="sxpcat cy${X.cat === k.id ? ' on' : ''}" data-a="dshxpcat" data-id="${esc(k.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${k.color}"></span>${esc(k.name)}</button>`).join('')}</div></div>
+      <div id="shxphint" style="font-size:13px;line-height:1.4;color:${c.err ? '#F2D9A0' : 'var(--muted)'}">${esc(c.err || 'Wydatek trafi do Finanse · Wydatki. Kwoty nie da się wyliczyć z listy (brak cen).')}</div>
+      <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dshxpno">Anuluj</button><button id="shxpok" class="primary" style="flex:1;height:48px" data-a="dshxpok"${c.err ? ' disabled' : ''}>Dodaj wydatek</button></div>
+    </div></div>`;
+  }
+  function shopXpLive() {
+    const X = U.shop.xp; if (!X) return; const c = shopXpCheck(X);
+    const h = document.getElementById('shxphint'), b = document.getElementById('shxpok');
+    if (h) { h.textContent = c.err || 'Wydatek trafi do Finanse · Wydatki. Kwoty nie da się wyliczyć z listy (brak cen).'; h.style.color = c.err ? '#F2D9A0' : 'var(--muted)'; }
+    if (b) b.disabled = !!c.err;
+  }
   function onInput(el, k) {
     const v = el.value;
+    if (k === 'diet-shxp-amt' && U.shop.xp) { el.value = v.replace(/[^\d,.]/g, '').slice(0, 12); U.shop.xp.amt = el.value; shopXpLive(); return; }
+    if (k === 'diet-shxp-desc' && U.shop.xp) { U.shop.xp.desc = v.slice(0, 60); return; }
     if (k === 'diet-ren') { U.list.draft = v; U.list.err = false; }
     else if (k === 'diet-simown') {
       const G = U.settings.sim; if (!G) return;
@@ -855,6 +896,7 @@
   }
   function onEscape() {
     if (window.BodyUI && A.route().arg === 'body' && window.BodyUI.onEscape()) return true;
+    if (U.shop.xp) { U.shop.xp = null; return true; }
     if (U.settings.sim) { U.settings.sim = null; return true; }
     if (U.settings.parsed) { U.settings.parsed = null; return true; }
     if (U.plan.sheet) { U.plan.sheet = null; return true; }
