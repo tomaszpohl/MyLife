@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v45 · 16.11.2026';
+  const APP_VERSION = 'v46 · 16.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -426,7 +426,7 @@
         <button class="plus" data-a="new" aria-label="Dodaj zadanie ze szczegółami">${I.plus}</button>
       </div>
       ${S.sheet ? viewSheet() : ''}
-      ${S.del ? viewDelSheet() : ''}${S.sdel ? viewSubDelSheet() : ''}
+      ${S.del ? viewDelSheet() : ''}${S.sdel ? viewSubDelSheet() : ''}${window.SettleUI ? window.SettleUI.dueOverlay() : ''}
     </main>`;
   }
 
@@ -831,7 +831,12 @@
       const mon = C.mondayOf(S.sel); const keys = [...Array(7)].map((_, i) => C.addDays(mon, i));
       const all = keys.every((k) => S.weekOpen[k]); keys.forEach((k) => { S.weekOpen[k] = !all; }); render();
     },
-    done: (el) => { C.toggleDone(el.dataset.id, el.dataset.k); render(); },
+    done: (el) => {
+      // v46: zadanie o zwrocie (Rozliczenia) – odhaczenie pyta „Uregulować wpis?” zamiast zwykłego odhaczenia
+      const t = C.get(el.dataset.id), k = el.dataset.k;
+      if (t && t.debt && !(t.done && t.done[k]) && window.SettleUI && window.SettleUI.askDue(t.id, k)) { render(); return; }
+      C.toggleDone(el.dataset.id, k); render();
+    },
     // Podzadania (v13)
     dpnav: (el) => { const P = S.dp, x = new Date(P.y, P.m + +el.dataset.d, 1); P.y = x.getFullYear(); P.m = x.getMonth(); render(); },
     dppick: (el) => { const P = S.dp; S.dp = null; if (P && P.cb) P.cb(el.dataset.k); render(); },
@@ -1094,6 +1099,7 @@
     // v32: karta edycji podzadania – Enter zapisuje, Escape anuluje
     if (e.target.id === 'subedit' && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); if (e.key === 'Enter') actions.subedok(); else actions.subedno(); return; }
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }
+    if (e.key === 'Escape' && window.SettleUI && route().name === 'plan' && window.SettleUI.dueEsc()) { render(); return; }
     if (e.key === 'Escape' && (S.sheet || S.del || S.bk || S.sdel)) { S.sheet = null; S.del = null; S.bk = null; S.sdel = null; render(); return; }
     if (e.key === 'Escape' && window.GCalUI && route().name === 'settings' && window.GCalUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.PolarUI && route().name === 'settings' && window.PolarUI.onEscape()) { render(); return; }

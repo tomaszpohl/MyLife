@@ -1352,3 +1352,7 @@ a.dcard { color: var(--text); }
 .shxpf .finput, .sxpdrop .finput { width: 100%; box-sizing: border-box; height: 48px; padding: 0 12px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; color: var(--text); font-size: 16px; font-family: inherit; }
 .sxpdrop .finput { height: 44px; background: var(--surface); border-radius: 10px; font-size: 15px; }
 .shxpf .finput, .sxpdrop .finput { flex: none; }
+/* v46 – termin zwrotu i „Uregulować wpis?” z planu dnia (makieta v211–v214) */
+.sduexp { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #5A2A2E; border-radius: 12px; background: #1A1215; }
+.sduexp .finput { flex: none; }
+.ffield > div > .dpbtn { flex: 1; }

@@ -64,7 +64,7 @@
           <div class="ssum ${owe ? 'owe' : 'recv'}">${money(Math.round(g.sum * 100) / 100)}</div></div>
         ${items.map((e) => {
           const on = U.conf && U.conf.type === 'one' && U.conf.id === e.id;
-          return `<div class="sitem"><div class="sirow"><div style="flex:1;min-width:0"><div style="font-size:15px;word-break:break-word">${esc(e.what || 'Bez opisu')}</div><div style="font-size:12px;color:var(--muted)">Powstało: ${dmy(e.d)}</div></div>
+          return `<div class="sitem"><div class="sirow"><div style="flex:1;min-width:0"><div style="font-size:15px;word-break:break-word">${esc(e.what || 'Bez opisu')}</div><div style="font-size:12px;color:var(--muted)">Powstało: ${dmy(e.d)}${e.due ? ' · <span style="color:#C9D3DF">Zwrot do: ' + dmy(e.due) + '</span>' : ''}</div></div>
             <b style="font-size:15px">${money(e.amt)}</b>
             ${on ? '' : `<button class="iconbtn scheck" data-a="sdask" data-id="${e.id}" aria-label="${esc('Oznacz jako uregulowane: ' + (e.what || 'Bez opisu') + ', ' + g.who)}">${K.check}</button>`}</div>
             ${on ? confirmBox(owe ? 'Zobowiązanie uregulowane? Wpis zostanie usunięty.' : 'Należność oddana? Wpis zostanie usunięty.', 'sdno', 'sdyes', 'Tak', ` data-id="${e.id}"`) : ''}</div>`;
@@ -84,6 +84,10 @@
         <label class="ffield"><span class="eyebrow">Kwota (zł)</span><input class="finput amt" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${esc(D.amt)}" data-in="settle-amt" autocomplete="off"></label>
         <label class="ffield"><span class="eyebrow">Za co</span><input class="finput" type="text" maxlength="60" placeholder="np. obiad, pożyczka" value="${esc(D.what)}" data-in="settle-what" autocomplete="off"></label>
         <div class="ffield"><span class="eyebrow">${owe ? 'Kiedy powstało zobowiązanie' : 'Kiedy powstała należność'}</span>${A.dateBtn(D.date, 'sddate', '', 'Data powstania')}</div>
+        <div class="ffield"><span class="eyebrow">Termin zwrotu (opcjonalnie)</span><div style="display:flex;gap:8px;align-items:center">
+          ${D.due ? A.dateBtn(D.due, 'sddue', '', 'Termin zwrotu') : `<button type="button" class="dpbtn" data-a="sddue" aria-haspopup="dialog" aria-label="Termin zwrotu: bez terminu"><span style="color:var(--muted)">Bez terminu</span>${A.svg(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')}</button>`}
+          ${D.due ? `<button class="iconbtn soft" data-a="sddueclr" aria-label="Usuń termin zwrotu">${K.xl}</button>` : ''}</div>
+          ${D.due ? `<div style="font-size:12px;line-height:1.4;color:var(--muted)">${esc('W planie dnia ' + dmy(D.due) + ' pojawi się zadanie o zwrocie.')}</div>` : ''}</div>
         <div data-shint style="font-size:13px;line-height:1.4;color:${c.ok ? 'var(--muted)' : '#F2D9A0'}">${esc(c.msg)}</div>
         <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="sdclose">Anuluj</button><button class="sprimary ${owe ? 'owe' : ''}${c.ok ? '' : ' off'}" style="flex:1;height:48px" data-a="sdsave">Zapisz</button></div>
       </div></div>`;
@@ -113,8 +117,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">Dodaj wydatek</div><button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="sxpno" aria-label="Zamknij">${K.xl}</button></div>
       <div style="font-size:13px;line-height:1.4;color:var(--muted)">Spłata zobowiązania trafi do Finanse · Wydatki. Wybierz tylko kategorię.</div>
       <div class="sxpbox"><div><span>Kwota</span><b style="color:#FF9C8A">${money(X.amt)}</b></div><div><span>Data</span><span>${dmy(X.d)}</span></div><div><span>Opis</span><span style="text-align:right;word-break:break-word">${esc(X.desc)}</span></div></div>
-      <div role="radiogroup" aria-label="Kategoria wydatku" style="display:flex;flex-direction:column;gap:6px"><div class="eyebrow">Kategoria</div>
-        <div class="sxpcats">${cats.map((c) => `<button role="radio" aria-checked="${X.cat === c.id}" class="sxpcat${X.cat === c.id ? ' on' : ''}" data-a="sxpcat" data-id="${esc(c.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${c.color}"></span>${esc(c.name)}</button>`).join('')}</div></div>
+      ${catPick(X)}
       <div style="font-size:13px;line-height:1.4;color:${ok ? 'var(--muted)' : '#F2D9A0'}">${ok ? 'Wydatek zostanie dodany z dzisiejszą datą, a zobowiązanie zniknie z listy.' : 'Wybierz kategorię, aby zapisać.'}</div>
       <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="sxpno">Anuluj</button><button class="sprimary owe${ok ? '' : ' off'}" style="flex:1;height:48px" data-a="sxpok"${ok ? '' : ' disabled aria-disabled="true"'}>Dodaj wydatek i uregulowano</button></div>
     </div></div>`;
@@ -124,7 +127,7 @@
     const list = SE.debts('owe').filter((e) => ids.indexOf(e.id) >= 0);
     if (U.tab === 'owe' && SE.syncExp() && window.Fin && list.length) {
       U.conf = null;
-      U.xp = { ids, amt: Math.round(list.reduce((a, e) => a + e.amt, 0) * 100) / 100, d: C.todayKey(), desc: desc.slice(0, 60), cat: null };
+      U.xp = { ids, amt: Math.round(list.reduce((a, e) => a + e.amt, 0) * 100) / 100, d: C.todayKey(), desc: desc.slice(0, 60), cat: null, open: false, q: '' };
     } else { SE.settleDebts(ids); U.conf = null; }
     R();
   }
@@ -292,24 +295,70 @@
         <button class="btn-cancel small" style="border:none;background:none" data-a="scimcancel">Anuluj</button></div>
     </div></div>`;
   }
+  // v46 (makieta v211): kategoria jako lista rozwijana z wyszukiwarką – wspólna dla spłaty zobowiązania, rozliczenia natychmiastowego i okna z planu dnia
+  const pickState = () => U.due || U.ixp || U.xp || null;
+  function catPick(X) {
+    const all = window.Fin.activeCats(), sel = all.find((c) => c.id === X.cat);
+    return `<div style="display:flex;flex-direction:column;gap:6px"><div id="sxc-l" class="eyebrow">Kategoria</div>
+        <button class="sxpsel${X.open ? ' open' : ''}" data-a="scxtog" aria-haspopup="listbox" aria-expanded="${!!X.open}" aria-labelledby="sxc-l"><span style="width:10px;height:10px;border-radius:5px;background:${sel ? sel.color : '#4A5A6E'}"></span><span style="flex:1;color:${sel ? 'var(--text)' : 'var(--muted)'}">${esc(sel ? sel.name : 'Wybierz kategorię')}</span><span class="frot${X.open ? ' up' : ''}">${A.svg(18, 2, '<path d="m6 9 6 6 6-6"></path>')}</span></button>
+        ${X.open ? `<div class="sxpdrop"><label for="sxc-q" class="sr-only">Szukaj kategorii</label><input id="sxc-q" class="finput" type="text" maxlength="24" autocomplete="off" placeholder="Szukaj kategorii…" value="${esc(X.q || '')}" data-in="settle-ixq">
+          <div role="listbox" aria-label="Kategorie" id="sxclist" class="sxplist">${ixpCatList()}</div></div>` : ''}</div>`;
+  }
   const nz = (t) => String(t).toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   function ixpCatList() {
-    const X = U.ixp, all = window.Fin.activeCats(), q = nz(X.q || '').trim(), shown = q ? all.filter((c) => nz(c.name).indexOf(q) >= 0) : all;
+    const X = pickState(), all = window.Fin.activeCats(), q = nz(X.q || '').trim(), shown = q ? all.filter((c) => nz(c.name).indexOf(q) >= 0) : all;
     return shown.map((c) => `<button role="option" aria-selected="${X.cat === c.id}" class="sxpopt${X.cat === c.id ? ' on' : ''}" data-a="scxcat" data-id="${esc(c.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${c.color}"></span><span style="flex:1">${esc(c.name)}</span>${X.cat === c.id ? '<span aria-hidden="true">✓</span>' : ''}</button>`).join('') || '<div style="padding:12px 10px;font-size:14px;color:var(--muted)">Brak pasujących kategorii.</div>';
   }
   function ixpDialog(g) {
-    const X = U.ixp, all = window.Fin.activeCats(), sel = all.find((c) => c.id === X.cat), ok = !!sel;
+    const X = U.ixp, all = window.Fin.activeCats(), ok = all.some((c) => c.id === X.cat);
     return `<div class="modal-wrap"><div class="modal smodal" role="dialog" aria-modal="true" aria-label="Dodaj wydatek">
       <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-family:var(--display);font-size:20px;font-weight:600">Dodaj wydatek</div><button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="scxno" aria-label="Zamknij">${K.xl}</button></div>
       <div style="font-size:13px;line-height:1.4;color:var(--muted)">Rozliczenie trafi do Finanse · Wydatki jako jeden wpis. Wybierz tylko kategorię.</div>
       <div class="sxpbox"><div><span>Kwota</span><b style="color:#FF9C8A">${money(X.amt)}</b></div><div><span>Data</span><span>${dmy(X.d)}</span></div><div><span>Opis</span><span style="text-align:right;word-break:break-word">${esc(X.desc)}</span></div></div>
-      <div style="display:flex;flex-direction:column;gap:6px"><div id="sxc-l" class="eyebrow">Kategoria</div>
-        <button class="sxpsel${X.open ? ' open' : ''}" data-a="scxtog" aria-haspopup="listbox" aria-expanded="${!!X.open}" aria-labelledby="sxc-l"><span style="width:10px;height:10px;border-radius:5px;background:${sel ? sel.color : '#4A5A6E'}"></span><span style="flex:1;color:${sel ? 'var(--text)' : 'var(--muted)'}">${esc(sel ? sel.name : 'Wybierz kategorię')}</span><span class="frot${X.open ? ' up' : ''}">${A.svg(18, 2, '<path d="m6 9 6 6 6-6"></path>')}</span></button>
-        ${X.open ? `<div class="sxpdrop"><label for="sxc-q" class="sr-only">Szukaj kategorii</label><input id="sxc-q" class="finput" type="text" maxlength="24" autocomplete="off" placeholder="Szukaj kategorii…" value="${esc(X.q || '')}" data-in="settle-ixq">
-          <div role="listbox" aria-label="Kategorie" id="sxclist" class="sxplist">${ixpCatList()}</div></div>` : ''}</div>
+      ${catPick(X)}
       <div style="font-size:13px;line-height:1.4;color:${ok ? 'var(--muted)' : '#F2D9A0'}">${ok ? 'Wydatek zostanie dodany z dzisiejszą datą, a w Zobowiązaniach nic nie powstanie.' : 'Wybierz kategorię, aby zapisać.'}</div>
       <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="scxno">Anuluj</button><button class="sprimary owe${ok ? '' : ' off'}" style="flex:1;height:48px" data-a="scxok"${ok ? '' : ' disabled aria-disabled="true"'}>Dodaj wydatek</button></div>
     </div></div>`;
+  }
+
+  // v46 (makieta v213–v214): odhaczenie zadania o zwrocie w planie dnia → „Uregulować wpis?” (dla zobowiązania – opcjonalny wydatek)
+  function askDue(taskId, k) {
+    const t = window.Core.get(taskId), e = t && SE.debtById(t.debt); if (!e) return false;
+    const T = C.todayKey();
+    U.due = { tid: taskId, id: e.id, k, owe: e.kind === 'owe', amt: String(e.amt.toFixed(2)).replace('.', ','), desc: ('Spłata: ' + e.who + (e.what ? ' (' + e.what + ')' : '')).slice(0, 60), cat: null, open: false, q: '', d: k > T ? T : k };
+    return true;
+  }
+  function dueCheck(X) { const a = parseFloat(String(X.amt).replace(/\s/g, '').replace(',', '.')); return { a: Math.round(a * 100) / 100, ok: isFinite(a) && a > 0 && !!X.desc.trim() && window.Fin.activeCats().some((c) => c.id === X.cat) }; }
+  function dueOverlay() {
+    const X = U.due; if (!X) return '';
+    const e = SE.debtById(X.id); if (!e) { U.due = null; return ''; }
+    const c = X.owe && window.Fin ? dueCheck(X) : null;
+    return `<div class="modal-wrap"><div class="modal smodal" role="dialog" aria-modal="true" aria-label="Uregulować wpis?">
+      <div style="font-family:var(--display);font-size:20px;font-weight:600">Uregulować wpis?</div>
+      <div style="font-size:14px;line-height:1.45;color:#C9D3DF">${esc((X.owe ? 'Zobowiązanie wobec: ' : 'Należność od: ') + e.who + ' – ' + money(e.amt) + (e.what ? ' (' + e.what + ')' : '') + '.')}</div>
+      <div style="font-size:13px;line-height:1.4;color:var(--muted)">${X.owe ? 'Po potwierdzeniu wpis zniknie z Rozliczeń · Zobowiązania (i z Majątku), a zadanie – z planu dnia.' : 'Po potwierdzeniu wpis zniknie z Rozliczeń · Należności, a zadanie – z planu dnia.'}</div>
+      ${c ? `<div class="sduexp"><div class="eyebrow" style="color:#FF9C8A">Dodaj wydatek do Finansów (opcjonalnie)</div>
+        <label class="ffield"><span class="eyebrow">Kwota (zł)</span><input class="finput" type="text" inputmode="decimal" maxlength="12" value="${esc(X.amt)}" data-in="settle-dueamt" autocomplete="off"></label>
+        <label class="ffield"><span class="eyebrow">Opis</span><input class="finput" type="text" maxlength="60" value="${esc(X.desc)}" data-in="settle-duedesc" autocomplete="off"></label>
+        ${catPick(X)}
+        <div style="font-size:12px;color:var(--muted)">${esc('Data wydatku: ' + dmy(X.d) + '.')}</div></div>` : ''}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${c ? `<button id="sdueok" class="sprimary owe${c.ok ? '' : ' off'}" style="height:48px;font-size:15px" data-a="sduexp"${c.ok ? '' : ' disabled aria-disabled="true"'}>Uregulowane i dodaj wydatek</button>
+          <button class="btn2" style="height:48px;font-size:15px" data-a="sduyes">Uregulowane bez wydatku</button>`
+        : `<button class="sprimary${X.owe ? ' owe' : ''}" style="height:48px;font-size:15px" data-a="sduyes">Tak, uregulowane</button>`}
+        <button class="btn-cancel small" style="border:none;background:none" data-a="sdueno">Anuluj</button></div>
+    </div></div>`;
+  }
+  function dueLive() { const X = U.due; if (!X || !X.owe) return; const c = dueCheck(X), b = document.getElementById('sdueok'); if (b) { b.disabled = !c.ok; b.classList.toggle('off', !c.ok); } }
+  function dueDone(withExp) {
+    const X = U.due; if (!X) return; const e = SE.debtById(X.id);
+    if (e) {
+      if (withExp) { const c = dueCheck(X); if (!c.ok) return; window.Fin.addExpenses([{ date: X.d, desc: X.desc.trim(), amt: c.a, cat: X.cat }]); }
+      SE.settleDebts([e.id]);
+      U.msg = '';
+      if (A.toast) A.toast((e.kind === 'owe' ? 'Zobowiązanie uregulowane' : 'Należność oddana') + (withExp ? '; dodano wydatek do Finanse · Wydatki.' : '.'));
+    }
+    U.due = null; R();
   }
 
   // ---------- Odświeżanie podczas pisania (bez przerysowania – „zgubione dotknięcie”) ----------
@@ -326,15 +375,17 @@
   const actions = {
     // Należności i zobowiązania
     sdtab: (el) => { U.tab = el.dataset.v; U.conf = null; U.msg = ''; R(); },
-    sdnew: () => { U.dlg = { who: '', amt: '', what: '', date: C.todayKey() }; U.conf = null; U.msg = ''; R(); },
+    sdnew: () => { U.dlg = { who: '', amt: '', what: '', date: C.todayKey(), due: '' }; U.conf = null; U.msg = ''; R(); },
+    sddue: () => { const D = U.dlg; if (D) A.datePick({ value: D.due || C.todayKey(), min: C.todayKey(), onPick: (k) => { D.due = k; } }); },
+    sddueclr: () => { if (U.dlg) { U.dlg.due = ''; R(); } },
     sddate: () => { const D = U.dlg; A.datePick({ value: D.date, max: C.todayKey(), onPick: (k) => { D.date = k; } }); },
     spdate: () => { const D = U.pdlg; A.datePick({ value: D.date, max: C.todayKey(), onPick: (k) => { D.date = k; } }); },
     sdclose: () => { U.dlg = null; R(); },
     sdpick: (el) => { U.dlg.who = el.dataset.v; R(); },
     sdsave: () => {
       const D = U.dlg, c = debtCheck(D); if (!c.ok) return;
-      const e = SE.addDebt(U.tab, D.who, c.a, D.what, D.date);
-      U.dlg = null; U.msg = (U.tab === 'owe' ? 'Dodano zobowiązanie wobec: ' : 'Dodano należność od: ') + e.who + ' (' + money(e.amt) + ').' + (U.tab === 'owe' ? ' Zaktualizowano Majątek.' : ''); R();
+      const e = SE.addDebt(U.tab, D.who, c.a, D.what, D.date, D.due || '');
+      U.dlg = null; U.msg = (U.tab === 'owe' ? 'Dodano zobowiązanie wobec: ' : 'Dodano należność od: ') + e.who + ' (' + money(e.amt) + ').' + (U.tab === 'owe' ? ' Zaktualizowano Majątek.' : '') + (e.due ? ' Zadanie o zwrocie w planie dnia ' + dmy(e.due) + '.' : ''); R();
     },
     sdask: (el) => { U.conf = { type: 'one', id: +el.dataset.id }; U.msg = ''; R(); },
     sdall: (el) => { U.conf = { type: 'all', k: el.dataset.k }; U.msg = ''; R(); },
@@ -345,8 +396,8 @@
       U.ixp = { amt: Math.round(P.total * 100) / 100, d: C.todayKey(), desc: ('Rozliczenie grupowe: ' + g.name).slice(0, 60), cat: null, open: false, q: '' }; R(); },
     scimno: () => { U.im = false; const n = SE.moveTransfers(curGroup(), 'owe'); U.msg = n ? 'Przeniesiono do Zobowiązań (i do Majątku): ' + n + ' ' + C.plural(n, 'wpis', 'wpisy', 'wpisów') + '.' : ''; R(); },
     scimcancel: () => { U.im = false; R(); },
-    scxtog: () => { if (U.ixp) { U.ixp.open = !U.ixp.open; U.ixp.q = ''; R(); if (U.ixp.open) setTimeout(() => { const i = document.getElementById('sxc-q'); if (i) i.focus(); }, 20); } },
-    scxcat: (el) => { if (U.ixp) { U.ixp.cat = el.dataset.id; U.ixp.open = false; U.ixp.q = ''; R(); } },
+    scxtog: () => { const X = pickState(); if (X) { X.open = !X.open; X.q = ''; R(); if (X.open) setTimeout(() => { const i = document.getElementById('sxc-q'); if (i) i.focus(); }, 20); } },
+    scxcat: (el) => { const X = pickState(); if (X) { X.cat = el.dataset.id; X.open = false; X.q = ''; R(); } },
     scxno: () => { U.ixp = null; R(); },
     scxok: () => {
       const X = U.ixp; if (!X || !X.cat) return;
@@ -355,8 +406,10 @@
       U.ixp = null; U.msg = 'Rozliczono natychmiast: dodano wydatek „' + X.desc + '” (' + money(X.amt) + ') do Finanse · Wydatki. W Zobowiązaniach nic nie powstało.'; R();
     },
     scexp: () => { if (A.actions.fhometoday) A.actions.fhometoday(); else location.hash = '#/fin/exp'; },
+    sduyes: () => dueDone(false),
+    sduexp: () => dueDone(true),
+    sdueno: () => { U.due = null; R(); },
     sdsync: () => { SE.setSyncExp(!SE.syncExp()); U.msg = ''; R(); },
-    sxpcat: (el) => { if (U.xp) { U.xp.cat = el.dataset.id; R(); } },
     sxpno: () => { U.xp = null; R(); },
     sxpok: () => {
       const X = U.xp; if (!X || !X.cat) return;
@@ -397,6 +450,8 @@
   };
 
   window.SettleUI = {
+    askDue, dueOverlay, dueOpen: () => !!U.due,
+    dueEsc() { if (!U.due) return false; if (U.due.open) { U.due.open = false; U.due.q = ''; } else U.due = null; return true; },
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view(r) {
       if (r.arg === 'debts') return viewDebts();
@@ -409,7 +464,9 @@
     navItems: [['home', '#/settle', 'Rozliczenia', P.home], ['debts', '#/settle/debts', 'Długi', P.debts], ['groups', '#/settle/groups', 'Grupy', P.groups]],
     icon: P.debts,
     onInput(el, k) {
-      if (k === 'settle-ixq') { if (U.ixp) { U.ixp.q = el.value.slice(0, 24); const l = document.getElementById('sxclist'); if (l) l.innerHTML = ixpCatList(); } return; }
+      if (k === 'settle-dueamt' && U.due) { el.value = el.value.replace(/[^\d,.]/g, '').slice(0, 12); U.due.amt = el.value; dueLive(); return; }
+      if (k === 'settle-duedesc' && U.due) { U.due.desc = el.value.slice(0, 60); dueLive(); return; }
+      if (k === 'settle-ixq') { const X = pickState(); if (X) { X.q = el.value.slice(0, 24); const l = document.getElementById('sxclist'); if (l) l.innerHTML = ixpCatList(); } return; }
       const v = el.value, amt = () => { el.value = v.replace(/[^\d,.]/g, '').slice(0, 12); return el.value; };
       if (k === 'settle-who') U.dlg.who = v.slice(0, 40);
       else if (k === 'settle-amt') U.dlg.amt = amt();
@@ -431,7 +488,7 @@
       return false;
     },
     onEscape() {
-      if (U.ixp && U.ixp.open) { U.ixp.open = false; U.ixp.q = ''; return true; }
+      const PX = pickState(); if (PX && PX.open) { PX.open = false; PX.q = ''; return true; }
       if (U.dlg || U.gdlg || U.pdlg || U.gdel || U.conf || U.pc || U.dc || U.xp || U.im || U.ixp) { U.dlg = U.gdlg = U.pdlg = U.gdel = U.conf = U.pc = U.xp = U.ixp = null; U.dc = false; U.im = false; return true; }
       return false;
     },

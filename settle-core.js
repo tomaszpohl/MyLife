@@ -32,16 +32,27 @@
     window.Fin.liabSync(liabId(who), mine.length ? mine[0].who : who, r2(mine.reduce((a, e) => a + e.amt, 0)));
   }
   // Ta sama osoba (bez rozróżniania wielkości liter) – pisownia z pierwszego wpisu.
-  function addDebt(kind, who, amt, what, d) {
+  // v46 (makieta v211–v214): opcjonalny termin zwrotu `due` – zapis tworzy zadanie jednorazowe w planie dnia (bez godziny) powiązane z wpisem (`task.debt`, `e.tid`).
+  const moneyTxt = (v) => (window.Fin && window.Fin.money ? window.Fin.money(v) : String(v).replace('.', ',') + ' zł');
+  const dueTitle = (e) => (e.kind === 'owe' ? 'Oddać: ' : 'Odebrać zwrot: ') + e.who + ' – ' + moneyTxt(e.amt) + (e.what ? ' (' + e.what + ')' : '');
+  function addDebt(kind, who, amt, what, d, due) {
     const ex = db.debts.list.find((e) => key(e.who) === key(who));
     const e = { id: db.debts.next++, kind, who: ex ? ex.who : String(who).trim().slice(0, 40), amt: r2(amt), what: String(what || '').trim().slice(0, 60), d };
+    if (due && /^\d{4}-\d{2}-\d{2}$/.test(due) && window.Core) {
+      e.due = due;
+      const t = window.Core.blankTask(due); t.title = dueTitle(e).slice(0, 120); t.debt = e.id;
+      e.tid = window.Core.upsert(t).id;
+    }
     db.debts.list.push(e); save();
     if (kind === 'owe') syncLiab(e.who);
     return e;
   }
+  const debtById = (id) => db.debts.list.find((e) => e.id === id) || null;
   function settleDebts(ids) {
     const gone = db.debts.list.filter((e) => ids.indexOf(e.id) >= 0);
     db.debts.list = db.debts.list.filter((e) => ids.indexOf(e.id) < 0); save();
+    // v46: uregulowanie usuwa też zadanie o zwrocie z planu dnia
+    if (window.Core) gone.forEach((e) => { window.Core.all().filter((t) => t.debt === e.id).forEach((t) => window.Core.remove(t.id)); });
     const who = {};
     gone.filter((e) => e.kind === 'owe').forEach((e) => { who[key(e.who)] = e.who; });
     Object.keys(who).forEach((k) => syncLiab(who[k]));
@@ -138,5 +149,5 @@
   const summary = () => db.debts.list.length + ' ' + C.plural(db.debts.list.length, 'wpis', 'wpisy', 'wpisów') + ' należności i zobowiązań, ' +
     db.groups.list.length + ' ' + C.plural(db.groups.list.length, 'rozliczenie grupowe', 'rozliczenia grupowe', 'rozliczeń grupowych');
 
-  window.Settle = { load, key, debts, sum, addDebt, settleDebts, syncExp, setSyncExp, instantPending, settleInstant, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
+  window.Settle = { load, key, debts, sum, addDebt, settleDebts, debtById, dueTitle, syncExp, setSyncExp, instantPending, settleInstant, knownPeople, liabId, groups, group, addGroup, removeGroup, addPerson, removePerson, personUsed, addPay, updatePay, removePay, setMe, meOf, myTransfers, moveTransfers, calc, forOf, exportData, importData, summary };
 })();
