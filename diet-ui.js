@@ -223,7 +223,7 @@
     const days = m.days.map((d) => {
       const tot = d.meals.reduce((t, x) => t + m.dishes[x.dish].kcal, 0), op = isOpen(d.n);
       return `<div class="dcard tight">
-        <button class="dhead mdtog" data-a="dmday" data-n="${d.n}" aria-expanded="${op}" aria-label="${esc('Dzień ' + d.n + ', ' + kcal(tot) + '. ' + (op ? 'Zwiń posiłki' : 'Rozwiń posiłki'))}"><span style="font-family:var(--display);font-size:16px;font-weight:600">Dzień ${d.n}</span><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">${kcal(tot)} · ${d.meals.length} ${C.plural(d.meals.length, 'posiłek', 'posiłki', 'posiłków')}<span class="frot${op ? ' up' : ''}" style="display:flex">${J.down}</span></span></button>
+        <button class="dhead mdtog" data-a="dmday" data-n="${d.n}" aria-expanded="${op}" aria-label="${esc('Dzień ' + d.n + ', ' + kcal(tot) + '. ' + (op ? 'Zwiń posiłki' : 'Rozwiń posiłki'))}"><span style="font-family:var(--display);font-size:16px;font-weight:600">Dzień ${d.n}</span><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">${kcal(tot)}<span class="frot${op ? ' up' : ''}" style="display:flex">${J.down}</span></span></button>
         ${!op ? '' : d.meals.map((x) => `<button class="dmrow" data-a="ddish" data-dish="${x.dish}" data-slot="${esc(x.slot)}" data-day="${d.n}" aria-label="${esc(x.slot + ': ' + m.dishes[x.dish].name + '. Pokaż składniki i przepis')}">
           <span class="slot">${esc(x.slot)}</span><span class="nm">${esc(m.dishes[x.dish].name)}</span><span style="color:var(--dim);display:flex">${J.chevS}</span></button>`).join('')}
       </div>`;
@@ -251,12 +251,14 @@
     if (P.view === 'day') {
       navTitle = planDayLabel(P.k); navSub = P.k === T ? 'Dziś' : P.k < T ? 'Minione' : 'Zaplanowane';
       const p = D.planFor(P.k);
-      body = p ? `<div class="dcard tight">${p.meals.map((x) => `<div class="pslot">
+      // v50 (makieta DietPlan): każdy posiłek w osobnej karcie, „Zmień” z ikoną, „Razem w tym dniu” pod kartami
+      const SWAP = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3"></path><path d="M3 11V9a4 4 0 0 1 4-4h13"></path><path d="M7 22l-3-3 3-3"></path><path d="M21 13v2a4 4 0 0 1-4 4H4"></path></svg>';
+      body = p ? `${p.meals.map((x) => `<div class="dcard pslotcard"><div class="pslot">
             <button class="precbtn" data-a="dprec" data-k="${P.k}" data-slot="${esc(x.slot)}" aria-label="${esc('Pokaż przepis: ' + x.slot + ', ' + x.dish.name)}">
               <span class="slot">${esc(x.slot)}</span><span style="font-size:15px">${esc(x.dish.name)}</span>
               <span style="font-size:12px;color:var(--muted)">${kcal(x.dish.kcal)}${x.changed ? ' · <span style="color:var(--coral)">zmienione</span>' : ''}</span></button>
-            <button class="pillbtn" style="margin:0" data-a="dchange" data-slot="${esc(x.slot)}" aria-label="Zmień posiłek: ${esc(x.slot)}"><span class="pill">Zmień</span></button></div>`).join('')}
-          <div class="ingrow" style="border-top:1px solid var(--line)"><span style="color:var(--muted)">Razem w tym dniu</span><span style="color:var(--text);font-weight:600">${kcal(p.kcal)}</span></div></div>
+            <button class="pillbtn" style="margin:0" data-a="dchange" data-slot="${esc(x.slot)}" aria-label="Zmień posiłek: ${esc(x.slot)}"><span class="pill">${SWAP}<span>Zmień</span></span></button></div></div>`).join('')}
+          <div class="ptotal"><span>Razem w tym dniu</span><span>${kcal(p.kcal)}</span></div>
           <a class="pillbtn" style="margin:0;align-self:flex-start" href="#/diet/menu/${p.menu.id}"><span class="pill">${J.arrow}<span>Składniki i przepisy</span></span></a>`
         : noPlan(D.menus().length ? 'Na ten dzień nie obowiązuje żaden jadłospis. Aktywuj jadłospis na liście jadłospisów.' : null);
     } else if (P.view === 'week') {
@@ -368,7 +370,7 @@
         <div class="shopday">
           <button class="tri ${state}" role="checkbox" aria-checked="${state === 'full' ? 'true' : state === 'part' ? 'mixed' : 'false'}" data-a="dshopday" data-k="${k}" aria-label="${esc(D.dayShort(k))}: zaznacz cały dzień"><span class="cbox">${state === 'full' ? I.check : state === 'part' ? '<i></i>' : ''}</span></button>
           <button class="shopexp" data-a="dshopexp" data-k="${k}" aria-expanded="${exp}" aria-label="${esc(D.dayShort(k))}: pokaż posiłki">
-            <span style="flex:1;display:flex;flex-direction:column;gap:2px;text-align:left"><span style="font-size:15px;font-weight:500">${esc(D.dayShort(k))}${k === today() ? ' · dziś' : ''}</span><span style="font-size:12px;color:var(--muted)">${n} z ${keys.length} posiłków</span></span>
+            <span style="flex:1;display:flex;flex-direction:column;gap:2px;text-align:left"><span style="font-size:15px;font-weight:500">${esc(C.DAY_SHORT[C.parse(k).getDay()] + ' ' + C.dmy(k))}</span><span style="font-size:12px;color:var(--muted)">${n} z ${keys.length} posiłków</span></span>
             <span style="color:var(--muted);display:flex">${exp ? J.up : J.down}</span></button>
         </div>
         ${exp ? p.meals.map((x) => { const key = k + '|' + x.slot, on = !!sel[key]; return `<div class="shopmrow"><button class="shopmeal" role="checkbox" aria-checked="${on}" data-a="dshopmeal" data-key="${esc(key)}" aria-label="${esc(x.slot + ': ' + x.dish.name)}">

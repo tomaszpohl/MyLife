@@ -133,7 +133,7 @@
         <div class="dcard tcalcard"><div class="tcalhead"><button class="dparr" data-a="trcnav" data-d="-1" aria-label="Poprzedni miesiąc">${I.prev}</button><div role="status" aria-live="polite" class="tcalm">${MN[M - 1]} ${Y}</div><button class="dparr" data-a="trcnav" data-d="1" aria-label="Następny miesiąc">${I.next}</button></div>
           <div class="tcalgrid tcalwd">${['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'].map((x) => `<span>${x}</span>`).join('')}</div>
           <div class="tcalgrid">${cells}</div>
-          <div class="tcalleg"><span><i></i>trening</span><span><i class="p"></i>z Polar</span></div></div>
+          <div class="tcalleg"><span><i></i>trening</span><span><i class="p"></i>z Polar</span><span><i class="t"></i>dziś</span></div></div>
         <div class="tcallist"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="eyebrow">${sel ? 'Wybrany dzień' : 'Wpisy w miesiącu'}</div><div class="tcalt">${esc(sel ? dl(sel) + ' · ' + cnt : MN[M - 1] + ' · ' + cnt)}</div></div>
           ${sel ? '<button class="tcalall" data-a="trcall">Cały miesiąc</button>' : ''}</div>
         ${items.length ? items.map((w) => tCard(w, reg, false)).join('')
@@ -219,7 +219,7 @@
     }).join('');
     return `<main class="screen">${topbar('Trening z dnia')}
       <div class="dscroll" data-scroll="train-day">${flashBar()}
-        <div class="dcard tdhead"><div class="tdate">${esc(dl(w.d))}</div><div class="tname" style="font-size:20px">${esc(w.name || 'Trening')}</div>
+        <div class="dcard trdayhead"><div class="tdate">${esc(dl(w.d))}</div><div class="tname" style="font-size:20px">${esc(w.name || 'Trening')}</div>
           ${s.vol > 0 ? `<div class="tvol" style="font-size:14px">Suma ciężaru: ${grp(s.vol)} kg</div>` : ''}
           ${metaRow(w, TR.tags())}
           <div class="tchips">${chipsOf(s).map((c) => `<span>${esc(c)}</span>`).join('')}</div></div>

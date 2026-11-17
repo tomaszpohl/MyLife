@@ -37,6 +37,7 @@
       if (t.g && t.g.src === 'g') parts.push('z kalendarza');
       const tp = t.tplan && window.Train && window.Train.plan(t.tplan);   // v49: zaplanowany trening – wiersz otwiera plan treningu
       if (tp) parts.push('Plan treningu · zaplanowany trening');
+      else if (t.debt) parts.push('Rozliczenia · zwrot');   // v50 (makieta v232–v233)
       if (sc.total) parts.push('Podzadania: ' + sc.done + ' z ' + sc.total);
       else if (C.isRecurring(t) && !(t.g && t.g.src === 'g')) parts.push(C.repeatLabel(t));
       // v47 (makieta v220): kółko przed zadaniem odhacza je (te same dane co Plan dnia); zadania o zwrocie potwierdza się w Planie dnia

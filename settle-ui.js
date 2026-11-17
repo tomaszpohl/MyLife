@@ -187,8 +187,8 @@
       const fl = p.for && p.for.length && p.for.length < g.people.length ? SE.forOf(g, p) : null;
       const forText = fl ? 'Dzielone na: ' + fl.join(', ') + ' (po ' + money(Math.round(p.amt / fl.length * 100) / 100) + ')' : 'Dzielone na wszystkich (po ' + money(Math.round(p.amt / g.people.length * 100) / 100) + ')';
       return `<div class="mwrap" data-id="${p.id}"><div class="mrev" aria-hidden="true">${K.trash}<span class="lbl">Usuń</span></div>
-        <div class="mcard spay" data-mswipe="settlepay"><div class="sirow"><div style="flex:1;min-width:0"><div style="font-size:15px;word-break:break-word"><b>${esc(p.who)}</b> · ${esc(p.what || 'Bez opisu')}</div><div style="font-size:12px;color:var(--muted)">${dmy(p.d)}</div><div style="font-size:12px;color:var(--text-2)">${esc(forText)}</div></div>
-          <b style="font-size:15px">${money(p.amt)}</b><button class="iconbtn soft" data-a="spedit" data-id="${p.id}" aria-label="${esc('Edytuj płatność: ' + (p.what || 'Bez opisu'))}">${K.pen}</button></div></div></div>`;
+        <div class="mcard spay" data-mswipe="settlepay"><div class="sirow"><div style="flex:1;min-width:0"><div style="font-size:15px;word-break:break-word"><b>${esc(p.who)}</b> · ${esc(p.what || 'Bez opisu')}</div><div style="font-size:12px;color:var(--muted)">${dmy(p.d)}</div><div style="font-size:12px;color:var(--ok)">${esc(forText)}</div></div>
+          <b style="font-size:15px">${money(p.amt)}</b><button class="iconbtn spedit" data-a="spedit" data-id="${p.id}" aria-label="${esc('Edytuj płatność: ' + (p.what || 'Bez opisu'))}">${K.pen}</button></div></div></div>`;
     }).join('');
     let modal = '';
     const pd = U.pc ? g.pays.find((x) => x.id === U.pc) : null;
@@ -214,7 +214,7 @@
     return `<main class="screen" style="position:relative">${topbar('Rozliczenie grupowe')}
       <div class="dscroll" data-scroll="settle-group">
         <div style="font-family:var(--display);font-size:22px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
-        <div class="tstats"><div class="dcard"><div class="eyebrow">Razem</div><div class="v" style="font-size:19px">${money(c.totalC / 100)}</div></div><div class="dcard"><div class="eyebrow">Płatności</div><div class="v" style="font-size:19px;color:var(--ok)">${g.pays.length}</div></div></div>
+        <div class="tstats"><div class="dcard"><div class="eyebrow">Razem</div><div class="v" style="font-size:19px;color:var(--ok)">${money(c.totalC / 100)}</div></div><div class="dcard"><div class="eyebrow">Płatności</div><div class="v" style="font-size:19px">${g.pays.length}</div></div></div>
         <a class="sprimary" href="#/settle/calc/${g.id}">${K.calc}<span>Pokaż wyliczenie</span></a>
         <div class="eyebrow" style="margin-top:4px">Uczestnicy</div>
         <div class="dcard" style="gap:10px">
@@ -222,7 +222,7 @@
           <div style="display:flex;gap:8px"><input class="finput" type="text" maxlength="30" placeholder="Dodaj uczestnika" aria-label="Nowy uczestnik" value="${esc(U.person)}" data-in="settle-person" data-key="settle-person" enterkeyhint="done" autocomplete="off"><button class="sadd" data-a="spperson" aria-label="Dodaj uczestnika">${K.plus}</button></div>
           <div style="font-size:12px;line-height:1.4;color:var(--muted)">Uczestnika powiązanego z płatnościami nie można usunąć. Przy każdej płatności zaznaczasz, na kogo dzielony jest wydatek (po równo).</div></div>
         <div class="eyebrow" style="margin-top:4px">Płatności</div>
-        <button class="fsecbtn sfsec" data-a="spnew">${K.plus}<span>Dodaj płatność</span></button>
+        <button class="fsecbtn sfsec spadd" data-a="spnew">${K.plus}<span>Dodaj płatność</span></button>
         ${pays ? '<div style="font-size:12px;color:var(--muted);text-align:center">Przeciągnij płatność w prawo, aby ją usunąć.</div>' + pays : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak płatności. Dodaj, kto, ile, kiedy i za co zapłacił.</div></div>'}
         ${U.dc ? confirmBox('Usunąć rozliczenie wraz z wszystkimi płatnościami?', 'sgdno', 'sgdyes', 'Usuń') : '<button class="btn-del" style="height:48px;font-size:15px;flex:none" data-a="sgdask">Usuń całe rozliczenie</button>'}
       </div>${modal}</main>`;

@@ -120,7 +120,7 @@
           <button class="ftoday" data-a="fhometoday" aria-label="${esc('Dzisiejsze wydatki: ' + F.money(todaySum) + '. Otwórz listę wydatków')}">
             <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left">
             <span class="eyebrow">Dziś · ${esc(F.dlabel(T))}</span>
-            <span style="font-size:15px">Wydatki: <b style="font-family:var(--display)">${F.money(todaySum)}</b></span></span>
+            <span style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Wydatki: <b style="font-family:var(--display)">${F.money(todaySum)}</b></span></span>
             <span style="color:var(--dim);display:flex">${J.chev}</span></button>
           <button class="fadd" data-a="faddopen" data-from="home">${J.plus}Dodaj wydatek</button>
         </div>
@@ -202,9 +202,9 @@
     return `<main class="screen" style="position:relative">${topbar('Planer wydatków')}
       <div class="dscroll" data-scroll="fin-plan">
         ${seg([['month', 'Miesiąc'], ['year', 'Rok']], P.scope, 'fpscope')}
-        <div class="navrow"><button class="iconbtn soft" data-a="fpprev" aria-label="Poprzedni okres">${I.prev}</button>
+        <div class="navrow"><button class="iconbtn soft boxed" data-a="fpprev" aria-label="Poprzedni okres">${I.prev}</button>
           <div class="big">${esc(title)}</div>
-          <button class="iconbtn soft" data-a="fpnext" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
+          <button class="iconbtn soft boxed" data-a="fpnext" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
         <div class="dcard" style="gap:8px;border-color:${over ? '#6A2F36' : '#2B5A3C'}">
           <div class="eyebrow">${esc(isY ? 'Rok ' + P.y : title)}</div>
           <div style="font-family:var(--display);font-size:28px;font-weight:700;color:${col}">${over ? 'Ponad plan o ' + F.money(F.r2(v.spent - v.plan)) : 'Zostało ' + F.money(v.left)}</div>
@@ -244,7 +244,7 @@
       const note = done ? (g.saved > g.target ? 'Cel osiągnięty – nadwyżka ' + F.money(F.r2(g.saved - g.target)) : 'Cel osiągnięty') : 'Brakuje ' + F.money(F.r2(g.target - g.saved));
       return `<div class="dcard" style="gap:8px">
         <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
-          <button class="iconbtn soft" data-a="fgedit" data-id="${g.id}" aria-label="${esc('Edytuj cel ' + g.name)}">${J.pen}</button></div>
+          <button class="iconbtn soft boxed" data-a="fgedit" data-id="${g.id}" aria-label="${esc('Edytuj cel ' + g.name)}">${J.pen}</button></div>
         <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font-size:15px"><b style="font-family:var(--display)">${F.money(g.saved)}</b> <span style="color:var(--muted);font-size:13px">z ${F.money(g.target)}</span></div><b style="font-family:var(--display);font-size:18px;color:${col}">${pf(p)}</b></div>
         <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, p))}" aria-label="${esc('Realizacja celu ' + g.name)}"><span style="width:${Math.min(100, Math.round(p * 10) / 10)}%;background:${col}"></span></div>
         <div style="font-size:13px;color:${done ? okC : 'var(--muted)'}">${note}</div>
@@ -342,9 +342,9 @@
           <div class="eyebrow">Statystyki</div>
           ${seg([['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold"')}
           ${V.mode !== 'f' ? `<div class="navrow">
-              <button class="iconbtn soft" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
+              <button class="iconbtn soft boxed" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
               <div class="big">${esc(String(V.yr))}</div>
-              <button class="iconbtn soft" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
+              <button class="iconbtn soft boxed" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
             : `<div class="ffield"><span class="eyebrow">Od dnia</span>${A.dateBtn(V.from, 'fvfrom', '', 'Od dnia')}</div>`}
           <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
             <div style="font-size:12px;color:var(--muted)">${per.length} ${C.plural(per.length, 'wpis', 'wpisy', 'wpisów')}${gk.length ? ' · ' + gk.length + ' ' + C.plural(gk.length, 'cel', 'cele', 'celów') : ''}</div></div>
@@ -776,6 +776,7 @@
           <div style="height:1px;background:var(--line-2)"></div>
           <div class="fline"><span style="font-weight:600;color:var(--text)">= Wynik</span><b style="font-size:28px;font-weight:700;color:${r.res >= 0 ? 'var(--ok)' : 'var(--danger)'}">${esc(F.signed(r.res))}</b></div>
           <div style="font-size:12px;color:var(--muted)">${r.inc > 0 ? (r.res >= 0 ? 'Odkładasz ' + Math.round(100 * r.res / r.inc) + '% przychodów.' : 'Wydatki przekraczają przychody o ' + F.money(-r.res) + '.') : 'Brak przychodów w tym okresie.'}</div>
+          <button class="frcatlink" data-a="frcat">Zobacz podział wydatków →</button>
         </div>
         ${okbox(R.msg, R.undo ? 'frundo' : '')}
         <div class="dcard" style="padding:12px 14px 8px 14px;gap:4px">
@@ -934,6 +935,14 @@
     feday: (el) => { const k = el.dataset.k, E = U.exp; const cur = E.open[k] != null ? E.open[k] : k === today(); E.open[k] = !cur; R_(); },
     fedel: (el) => { const e = F.removeExpense(el.dataset.id); if (e) { U.exp.undo = e; U.exp.msg = 'Usunięto: ' + (e.desc || F.catOf(e.cat).name) + ' (' + F.money(e.amt) + ').'; } R_(); },
     feundo: () => { if (U.exp.undo) { F.restoreExpense(U.exp.undo); U.exp.undo = null; U.exp.msg = 'Przywrócono wydatek.'; } R_(); },
+    // v50 (makieta FinResult): „Zobacz podział wydatków →” – Wydatki, zakładka Kategorie, ten sam okres
+    frcat: () => {
+      const R = U.res, E = U.exp, T = C.todayKey();
+      if (R.period === 'month') { E.period = 'month'; E.ref = R.mk === T.slice(0, 7) ? T : R.mk + '-01'; }
+      else if (R.period === 'year') { E.period = 'range'; E.from = R.yr + '-01-01'; E.to = (R.yr + '-12-31') < T ? R.yr + '-12-31' : T; }
+      else { E.period = 'range'; E.from = R.from; E.to = R.to; }
+      E.tab = 'cat'; A.go('#/fin/exp/cat');
+    },
     feperiod: (el) => { U.exp.period = el.dataset.v; U.cal = null; R_(); },
     fenav: (el) => {
       const E = U.exp, d = +el.dataset.d;

@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v49 · 17.11.2026';
+  const APP_VERSION = 'v50 · 17.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -132,6 +132,9 @@
   const repLine = (t) => { const r = C.repeatLabel(t); return r ? `<div class="rep">${I.repeat}<span>${esc(r)}</span></div>` : ''; };
   // v35 (makieta 11.11): ikona „Z Kalendarza Google” przy tytule; pod tytułem godzina i stan synchronizacji z Google.
   const GC = () => window.GCal;
+  // v50 (makieta v232–v233): źródło wpisu – „Plan treningu” (zaplanowany trening) albo „Rozliczenia” (termin zwrotu)
+  const srcOf = (t) => (t.tplan && window.Train && window.Train.plan(t.tplan) ? ['Plan treningu', 'tp'] : t.debt ? ['Rozliczenia', 'st'] : null);
+  const srcPill = (t) => { const x = srcOf(t); return x ? `<span class="srcpill ${x[1]}">${x[0]}</span>` : ''; };
   const calMark = (t) => (GC() && GC().fromCal(t) ? `<span class="calic" role="img" aria-label="Z Kalendarza Google" title="Z Kalendarza Google">${I.calS}</span>` : '');
   function tLine(t) {
     if (!t.time) return '';
@@ -178,9 +181,10 @@
   function actRow(x, k) {
     const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== k, key = 'a|' + a.id + '|' + k, open = multi && !!S.subOpen[key];
     const nd = x.ds.filter((i) => a.done[i]).length;
-    return `<div class="act-wrap" data-act="${a.id}">
+    // v50: aktywność ma uchwyt kolejności jak zadanie (kolejność dnia zapisuje „a:<id>”); bez przesuwania w bok
+    return `<div class="act-wrap row-wrap" data-act="${a.id}" data-id="a:${a.id}" data-k="${k}" data-done="${x.done ? 1 : 0}">
         <div class="row${x.done ? ' done' : ''}">
-          <span class="actic" aria-hidden="true">${I.repeat}</span>
+          <button class="grip actgrip" data-grip="a:${a.id}" aria-label="Zmień kolejność: ${esc(a.name)} (aktywność)" aria-describedby="grip-help">${I.grip}</button>
           <button class="body" data-a="actopen" data-id="${a.id}" aria-label="Edytuj aktywność: ${esc(a.name)}"><span class="title">${esc(a.name)}</span>${actRep(a)}</button>
           ${multi ? `<button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} zaległe terminy: ${esc(a.name)}, wykonane ${nd} z ${x.ds.length}"><span class="cnt">${nd}/${x.ds.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>` : ''}
           <button class="check" data-a="actdone" data-id="${a.id}" data-k="${k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}"><span class="box">${x.done ? I.check : ''}</span></button>
@@ -213,7 +217,7 @@
         <div class="subedbar"><button class="subdel" data-a="subdel" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-label="Usuń podzadanie: ${esc(u.title)}">${I.trashS}</button><span style="flex:1"></span>
           <button class="btn-cancel small" data-a="subedno">Anuluj</button><button class="subedok${off ? ' off' : ''}" data-a="subedok" aria-disabled="${off}">Zapisz</button></div></div>`;
       }
-      return `<div class="subsw" data-subsw="${u.id}" data-id="${t.id}" data-k="${k}" data-kind="${C.isRecurring(t) ? 'rec' : 'one'}">${swBg('Usuń')}<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
+      return `<div class="subsw g" data-subsw="${u.id}" data-id="${t.id}" data-k="${k}" data-kind="${C.isRecurring(t) ? 'rec' : 'one'}">${swBg('Usuń')}<div class="subrow${u.done ? ' done' : ''}" data-sid="${u.id}">
         <button class="subgrip" data-sgrip="${u.id}" data-id="${t.id}" aria-label="Zmień kolejność: ${esc(u.title)} (${i + 1} z ${n})" aria-describedby="subgrip-hint">${I.grip}</button>
         <button class="subchk" data-a="subdone" data-id="${t.id}" data-k="${k}" data-sid="${u.id}" aria-pressed="${u.done}" aria-label="${u.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(u.title)}"><span class="box">${u.done ? I.check : ''}</span></button>
         <div class="st">${esc(u.title)}</div>
@@ -402,14 +406,18 @@
         <div class="row-move" aria-hidden="true"><span class="lbl">Przełóż</span>${I.moveCal}</div>
         <div class="row${x.done ? ' done' : ''}" data-swipe>
           <button class="grip" data-grip="${t.id}" aria-label="Zmień kolejność: ${esc(t.title)}" aria-describedby="grip-help">${I.grip}</button>
-          <button class="body" data-a="edit" data-id="${t.id}" data-k="${x.k}" aria-label="Edytuj zadanie: ${esc(t.title)}${t.time ? ', ' + t.time : ''}"><span class="tirow">${calMark(t)}<span class="title">${esc(t.title)}</span></span>${tLine(t)}${repLine(t)}</button>
+          <button class="body" data-a="edit" data-id="${t.id}" data-k="${x.k}" aria-label="Edytuj zadanie: ${esc(t.title)}${t.time ? ', ' + t.time : ''}"><span class="tirow">${calMark(t)}<span class="title">${esc(t.title)}</span></span>${srcOf(t) ? `<span class="srcrow">${srcPill(t)}</span>` : ''}${tLine(t)}${repLine(t)}</button>
           ${subToggle(t, x.k, 'd')}
           <button class="check" data-a="done" data-id="${t.id}" data-k="${x.k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(t.title)}"><span class="box">${x.done ? I.check : ''}</span></button>
         </div>${subOpenFor(t, x.k, 'd') ? subPanel(t, x.k) : ''}</div>`;
     };
-    // v20: aktywności (bez uchwytu i gestów) po zadaniach do zrobienia; wykonane na końcu.
-    const rows = items.filter((x) => !x.done).map(taskRow).join('') + acts.filter((x) => !x.done).map((x) => actRow(x, k)).join('') +
-      items.filter((x) => x.done).map(taskRow).join('') + acts.filter((x) => x.done).map((x) => actRow(x, k)).join('');
+    // v20: aktywności po zadaniach; v50 (makieta): aktywności z uchwytem – wspólna kolejność dnia z zadaniami (db.order: id zadania albo „a:<id>”).
+    const ord = C.dayOrder(k), opos = (id) => { const i = ord.indexOf(id); return i < 0 ? Infinity : i; };
+    const merged = (done) => items.filter((x) => x.done === done).map((x, i) => ({ id: x.task.id, i, html: () => taskRow(x) }))
+      .concat(acts.filter((x) => !!x.done === done).map((x, i) => ({ id: 'a:' + x.a.id, i: 1000 + i, html: () => actRow(x, k) })))
+      .map((e) => Object.assign(e, { p: opos(e.id) }))
+      .sort((a, b) => (a.p !== b.p ? a.p - b.p : a.i - b.i));
+    const rows = merged(false).map((e) => e.html()).join('') + merged(true).map((e) => e.html()).join('');
     return `<main class="screen">${planTop()}
       <div class="head-pad">${seg('day')}
         <div class="strip" data-strip>${strip}</div>
@@ -567,7 +575,7 @@
         if (nAll > 2) lines += `<div class="more">+${nAll - 2} więcej</div>`;
       }
       const actItems = ac.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}"><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
-      const items = open ? `<div class="items">${nAll ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') + actItems : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
+      const items = open ? `<div class="items">${nAll ? it.map((x) => `<div class="subwrap"><div class="subline"><button class="witem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}"><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${srcPill(x.task)}${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'w')}</div>${subOpenFor(x.task, x.k, 'w') ? subPreview(x.task, x.k) : ''}</div>`).join('') + actItems : '<div style="font-size:13px;color:var(--muted)">Brak zadań</div>'}</div>` : '';
       return `<div class="wday"><div class="top">
           <button class="open" data-a="openday" data-k="${k}" aria-label="Otwórz dzień: ${esc(dayTitle(k))}">${badge}</button>
           <button class="tog" data-a="wtoggle" data-k="${k}" aria-expanded="${open}" aria-label="${open ? 'Zwiń zadania' : 'Rozwiń wszystkie zadania'}: ${esc(dayTitle(k))}">
@@ -617,7 +625,7 @@
     const actList = macts.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="actopen" data-id="${x.a.id}" aria-label="${esc(x.a.name)}, aktywność${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="ti">${esc(x.a.name)}</div>${actRep(x.a)}</div></button></div></div>`).join('');
     const nAll = items.length + macts.length, nDone = items.filter((x) => x.done).length + macts.filter((x) => x.done).length;
     const list = nAll
-      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
+      ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${srcPill(x.task)}${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
       <div class="head-pad tight">${seg('month')}
@@ -664,7 +672,7 @@
           <input id="tytul" class="title-input" type="text" autocomplete="off" placeholder="Co masz do zrobienia?" value="${esc(d.title)}" data-in="title"></div>
         <div class="group">
           <button type="button" class="datecard dcbtn" data-a="fdate" aria-haspopup="dialog" aria-label="${esc('Data zadania: ' + calFmt(d.date) + '. Zmień dzień')}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div></div>
-            <span class="dcchg">Zmień dzień${svg(16, 2, '<path d="m9 6 6 6-6 6"></path>')}</span></button>
+            <span class="dcchg">Zmień dzień${svg(16, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')}</span></button>
         </div>
         <div class="panel tmcard">
           <div class="tmhead"><label class="eyebrow" for="godzina">Godzina <span class="opt">(opcjonalnie)</span></label>${d.time ? '<button type="button" class="tmclr" data-a="ftimeclr">Usuń godzinę</button>' : ''}</div>
@@ -1193,7 +1201,7 @@
     if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault(); e.stopPropagation();
     // v13: rozpoczęcie zmiany kolejności zwija rozwinięte podzadania (wiersze mają wtedy równą wysokość).
-    const openKeys = Object.keys(S.subOpen).filter((x) => x.indexOf('d|') === 0 && S.subOpen[x]);
+    const openKeys = Object.keys(S.subOpen).filter((x) => (x.indexOf('d|') === 0 || x.indexOf('a|') === 0) && S.subOpen[x]);
     if (openKeys.length) {
       openKeys.forEach((x) => { delete S.subOpen[x]; });
       const gid = g.dataset.grip; render();

@@ -265,6 +265,7 @@
     return list.filter((x) => !x.done).concat(list.filter((x) => x.done));
   }
   function setDayOrder(k, ids) { db.order[k] = ids.slice(); save(); }
+  const dayOrder = (k) => (db.order[k] || []).slice();   // v50: kolejność dnia (także aktywności „a:<id>”)
 
   // ---------- Podzadania (v13) ----------
   // Lista podzadań należy do zadania (wspólna dla wszystkich terminów cyklu): t.subs = [{ id, title }].
@@ -361,7 +362,7 @@
     pad, key, parse, todayKey, addDays, diffDays, dow, mondayOf, daysInMonth, isoWeek, plural, tasksWord, longDate,
     blankTask, occursOn, isRecurring, repeatLabel, repeatSummary, customShort,
     setCalHidden, visible,
-    load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder,
+    load, save, onChange, all, get, upsert, remove, snapshot, restore, toggleDone, skipOccurrence, moveOccurrence, forDay, setDayOrder, dayOrder,
     newSubId, subsFor, subCount, applySubToggle, stripSub, toggleSub, addSub, removeSub, renameSub, moveSub, hideSub, reorderSubs,
     exportJSON, importJSON, exportData, importData, wipe, lastBackup
   };

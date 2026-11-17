@@ -786,7 +786,7 @@ a.dcard { color: var(--text); }
 /* v18: Trening – suma ciężaru, Trening z dnia, interwały */
 .tstats a.dcard { color: var(--text); }
 .tvol { font-size: 13px; color: var(--violet-soft); font-weight: 500; }
-.tdhead { border-color: var(--violet-line); gap: 8px; }
+.trdayhead { border-color: var(--violet-line); gap: 8px; }  /* v50: wcześniej .tdhead – kolidowało z nagłówkiem sekcji ekranu „Dziś” (v43) */
 .tdex { gap: 8px; }
 .tdh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tdh .nm { font-size: 16px; font-weight: 600; min-width: 0; }
@@ -1415,3 +1415,32 @@ a.dcard { color: var(--text); }
 .tlast { display: flex; flex-direction: column; gap: 3px; border-radius: 12px; background: var(--bg); border: 1px solid #4A3F7A; padding: 8px 12px; font-size: 13px; }
 .tlast .h { font-size: 11px; letter-spacing: 0.1em; color: var(--violet); font-weight: 600; }
 .tlast[hidden] { display: none; }
+
+/* ---------- v50: poprawki z przeglądu makieta ↔ aplikacja ---------- */
+/* 1. Uchwyt podzadania (margines −30 px) był ucinany przez overflow-x: clip wiersza (od v34) – wiersz obejmuje teraz miejsce na uchwyt. */
+.subsw.g { margin-left: -30px; padding-left: 30px; }
+.subsw.g .subswbg { left: 30px; }
+/* 3. Aktywność cykliczna z uchwytem kolejności (fiolet) */
+.act-wrap .actgrip { color: var(--violet); }
+/* 2. Planer wydatków: pola ściskane w kolumnie flex (jak okna dialogowe w v45) – stała wysokość */
+.fsearch { flex: none; }
+.finput.fpin { flex: none; }
+/* 4. Wynik finansowy – link do podziału wydatków */
+.frcatlink { align-self: flex-start; background: none; border: none; padding: 8px 0; min-height: 36px; color: var(--accent); font-size: 13px; font-weight: 600; }
+/* 9 (makieta v232–v233): etykieta źródła wpisu w planie dnia */
+.srcrow { display: flex; padding: 2px 0 1px; }
+.srcpill { flex: none; display: inline-block; font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.srcpill.tp { color: #B9A2FF; }
+.srcpill.st { color: #7BE0A0; }
+.tirow .srcpill { margin-left: 2px; }
+/* 5. Plan posiłków – osobna karta każdego posiłku (jak w makiecie) */
+.dcard.pslotcard { padding: 12px 8px 12px 14px; }
+.pslotcard .pslot { border: none; padding: 0; }
+.ptotal { flex: none; display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 0; font-size: 13px; color: var(--muted); }
+/* 8. Rozliczenie grupowe – jak w makiecie: przerywana „Dodaj płatność”, ołówek w ramce, zielony podział */
+.fsecbtn.spadd { height: 48px; border-radius: 12px; border: 1px dashed #2B5A3C; background: transparent; color: var(--ok); }
+.iconbtn.spedit { flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--ok); }
+.tcalleg i.t { width: 10px; height: 10px; border-radius: 3px; background: none; border: 1.5px solid var(--accent, #5BD0E8); box-sizing: border-box; }
+/* 9. Przyciski w ramce jak w makiecie (Planer wydatków – okres, Inwestycje – rok, Cele – ołówek) */
+.iconbtn.boxed { border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); }
+.iconbtn.boxed:disabled { opacity: .4; }
