@@ -909,8 +909,12 @@
     if (U.menu.detail) { U.menu.detail = null; return true; }
     return false;
   }
+  // v51 (makieta v236): „Dziś” → przepis posiłku w Dzienniku (odpowiednik klucza mylife.diet.openrec makiety)
+  let openRec = null;
   function onRoute(r) {
-    U.menu.detail = null; U.plan.sheet = null; U.plan.rec = null; U.journal.rec = null; U.home.detail = null; U.list.edit = null; U.list.msg = ''; U.list.undo = null; U.weight.saved = false;
+    U.menu.detail = null; U.plan.sheet = null; U.plan.rec = null; U.journal.rec = null;
+    if (openRec && r.name === 'diet' && r.arg === 'journal') { const Jn = U.journal; Jn.tab = 'day'; Jn.k = openRec.k; Jn.rec = openRec.slot; }
+    openRec = null; U.home.detail = null; U.list.edit = null; U.list.msg = ''; U.list.undo = null; U.weight.saved = false;
     if (r.name === 'diet' && r.arg === 'weight') { U.weight.kg = ''; U.weight.tip = null; }
     if (window.BodyUI) window.BodyUI.onRoute(r);
   }
@@ -932,6 +936,7 @@
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view, settingsSections, onInput, onChange, onKey, onEscape, onRoute,
     openSettings() { U.settings.open = true; },   // v44: wyszukiwarka funkcji
+    openRecipe(k, slot) { openRec = { k, slot }; },   // v51: wywoływane z ekranu „Dziś” przed przejściem do Dziennika
     // Aktywna pozycja dolnego paska: Jadłospis także na ekranie jednego jadłospisu, Dieta na ekranie „Brak jadłospisu”.
     navKey: (r) => (r.arg === 'menus' || r.arg === 'menu' ? 'menus' : ['plan', 'shop', 'journal', 'weight', 'body'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
     // Przeciągnięcie jadłospisu w prawo (≥100 px) na liście – wywoływane z obsługi gestów w app.js.

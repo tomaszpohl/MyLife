@@ -61,7 +61,7 @@
     // v47 (makieta v220): przyciski ✓ (zjedzone) i ✕ (pominięte) jak w Dzienniku – zapis w Dzienniku diety; ponowne dotknięcie zdejmuje oznaczenie
     const rows = meals.map((m) => {
       const st = j.meals[m.slot], done = st === 'eaten';
-      return `<div class="tdrow tdrowx tdmeal${done ? ' done' : ''}"><button class="tdlink" data-a="djtoday" aria-label="${esc(m.slot + ', ' + m.dish.name + '. Otwórz dziennik diety')}"><span class="tdtxt"><span class="t">${esc(m.dish.name)}</span><span class="s">${esc(m.slot + ' · ' + Math.round(m.dish.kcal || 0) + ' kcal')}</span></span></button>
+      return `<div class="tdrow tdrowx tdmeal${done ? ' done' : ''}"><button class="tdlink" data-a="tdrec" data-slot="${esc(m.slot)}" aria-label="${esc('Pokaż przepis: ' + m.slot + ', ' + m.dish.name)}"><span class="tdtxt"><span class="t">${esc(m.dish.name)}</span><span class="s">${esc(m.slot + ' · ' + Math.round(m.dish.kcal || 0) + ' kcal')}</span></span></button>
         <button class="jbtn eat${done ? ' on' : ''}" data-a="tdmeal" data-slot="${esc(m.slot)}" data-v="eaten" aria-pressed="${done}" aria-label="${esc(m.slot + ': zjedzone')}">${CHECKL}</button>
         <button class="jbtn skip${st === 'skipped' ? ' on' : ''}" data-a="tdmeal" data-slot="${esc(m.slot)}" data-v="skipped" aria-pressed="${st === 'skipped'}" aria-label="${esc(m.slot + ': pominięte')}">${XL}</button></div>`;
     }).join('');
@@ -112,6 +112,8 @@
 
   const actions = {
     tdtask: (el) => { if (el.getAttribute('aria-disabled') === 'true') return; C.toggleDone(el.dataset.id, el.dataset.k); A.render(); },
+    // v51 (makieta v236): posiłek otwiera swój przepis (w Dzienniku diety); „Wróć” z przepisu zostawia w Dzienniku
+    tdrec: (el) => { if (window.DietUI && window.DietUI.openRecipe) window.DietUI.openRecipe(C.todayKey(), el.dataset.slot); A.go('#/diet/journal'); },
     tdmeal: (el) => { window.Diet.markMeal(C.todayKey(), el.dataset.slot, el.dataset.v); A.render(); },
     tdplan: () => { A.S.sel = C.todayKey(); A.go('#/plan/day'); },
     tdtplan: (el) => A.go('#/train/plan/' + el.dataset.id),

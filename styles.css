@@ -721,7 +721,7 @@ a.dcard { color: var(--text); }
 @keyframes bspin { to { transform: rotate(360deg); } }
 /* ---------- v17: Trening, ekran główny z zębatką, przewijany dolny pasek ---------- */
 :root { --violet: #B9A2FF; --violet-bg: #221C3A; --violet-line: #4A3F7A; --violet-ink: #1A1230; --violet-soft: #D9CCFF; }
-.hometop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-right: -10px; }
+.hometop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-right: -8px; }   /* v51: −8 px (makieta v236) */
 .module.train { border-color: var(--violet-line); }
 .navbar { overflow-x: auto; scrollbar-width: none; }
 .navbar::-webkit-scrollbar { display: none; }
@@ -1444,3 +1444,16 @@ a.dcard { color: var(--text); }
 /* 9. Przyciski w ramce jak w makiecie (Planer wydatków – okres, Inwestycje – rok, Cele – ołówek) */
 .iconbtn.boxed { border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); }
 .iconbtn.boxed:disabled { opacity: .4; }
+
+/* ---------- v51 (makieta v236) ---------- */
+/* 1. Postępy wg kategorii – trzy równe kafelki: min. 64 px, treść wyśrodkowana, etykiety i wartości w jednej linii */
+.tstats.teq > div { min-height: 64px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.tstats.teq .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tstats.teq .v { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 5. Najwyższy wynik ćwiczenia */
+.tlast .sep { height: 1px; background: var(--line-2); margin: 5px 0 3px; }
+.tlast .h.best { color: #7BE0A0; }
+/* 7. Lupa i koło zębate – odstęp 4 px na wszystkich ekranach (makieta v236) */
+.hdrbtns { gap: 4px; }
+/* 7. Ekran główny: górny margines 24 px jak w makiecie – lupa i zębatka 16 px od góry, jak w nagłówkach pozostałych ekranów */
+.home { padding-top: calc(24px + var(--safe-top)); }

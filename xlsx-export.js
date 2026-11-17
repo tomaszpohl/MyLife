@@ -61,7 +61,7 @@
     const ws = TR().list().filter((w) => w.d >= from && w.d <= T).slice().reverse();   // od najstarszego
     const wk = ws.map((w) => {
       const s = TR().stats(w), p = w.pol || {}, mins = s.mins > 0 ? s.mins : (p.min || 0);
-      return [dd(w.d), w.name || 'Trening', (w.tags || []).join(', '), mins > 0 ? num(mins) : '', num(p.kcal), num(p.hrAvg), num(p.hrMax), num(p.load), w.ex.map(exText).join('; ')];
+      return [dd(w.d), w.name || 'Trening', (w.tags || []).join(', '), mins > 0 ? num(mins) : '', num(p.kcal), num(p.hrAvg), num(p.hrMax), w.ex.map(exText).join('; ')];
     });
     const by = {};
     ws.forEach((w) => w.ex.filter((x) => x.kind === 'str').forEach((x) => {
@@ -71,7 +71,7 @@
     const pg = Object.keys(by).map((k) => by[k]).sort((a, b) => a.name.localeCompare(b.name, 'pl') || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))
       .map((o) => [o.name, dd(o.d), o.sets, o.reps, o.bw || o.kg == null ? '' : num(o.kg)]);
     return {
-      wk: { name: 'Treningi', rows: [['Data', 'Trening', 'Kategorie', 'Czas (min)', 'kcal Polar', 'Tętno śr.', 'Tętno maks.', 'Obciążenie Polar', 'Ćwiczenia']].concat(wk), widths: [12, 26, 18, 11, 11, 10, 11, 15, 70], n: wk.length },
+      wk: { name: 'Treningi', rows: [['Data', 'Trening', 'Kategorie', 'Czas (min)', 'kcal Polar', 'Tętno śr.', 'Tętno maks.', 'Ćwiczenia']].concat(wk), widths: [12, 26, 18, 11, 11, 10, 11, 70], n: wk.length },
       pg: { name: 'Postępy', rows: [['Ćwiczenie', 'Data', 'Serie', 'Powtórzenia', 'Maks. ciężar (kg)']].concat(pg), widths: [30, 12, 8, 13, 17], n: pg.length }
     };
   }
@@ -90,7 +90,7 @@
     xt: { title: 'Trening: eksport', sub: 'Treningi i postępy do .xlsx', ico: 'violet', file: 'trening', btn: 'Eksportuj treningi (.xlsx)', first: trFirst, sheets: trSheets,
       list: [['wk', 'Treningi', 'w'], ['pg', 'Postępy', 'w']],
       icon: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"></path>',
-      para: 'Plik .xlsx z arkuszami „Treningi” i „Postępy”. Treningi z Polar zawierają kcal, tętno i obciążenie. Aktywności cykliczne nie są eksportowane, bo mają własną historię w statystykach.',
+      para: 'Plik .xlsx z arkuszami „Treningi” i „Postępy”. Treningi z Polar zawierają kcal i tętno. Aktywności cykliczne nie są eksportowane, bo mają własną historię w statystykach.',
       sample: `<div class="expex"><div class="eyebrow">Arkusz „Treningi” – przykład</div><div class="expscroll"><table><tr><th>Data</th><th>Trening</th><th>Kategorie</th><th>Czas (min)</th><th>kcal Polar</th><th>Tętno śr.</th><th>Ćwiczenia</th></tr><tr><td>17.10.2026</td><td>Bieganie</td><td>kondycja</td><td>47</td><td>498</td><td>148</td><td>Bieganie 47 min 8,2 km</td></tr><tr><td>05.10.2026</td><td>Trening A – klatka i triceps</td><td>siłowy</td><td>61</td><td>438</td><td>121</td><td>Wyciskanie sztangi leżąc 3×10×47,5 kg, 1×8×52,5 kg; …</td></tr></table></div>
           <div style="font-size:12px;color:var(--muted)">Jeden wiersz na trening. Kolumny Polar są puste, gdy trening nie ma danych z Polar. Ćwiczenia są oddzielone średnikiem.</div></div>
         <div class="expex"><div class="eyebrow">Arkusz „Postępy” – przykład</div><div class="expscroll"><table><tr><th>Ćwiczenie</th><th>Data</th><th>Serie</th><th>Powtórzenia</th><th>Maks. ciężar (kg)</th></tr><tr><td>Wyciskanie sztangi leżąc</td><td>28.09.2026</td><td>3</td><td>30</td><td>42,5</td></tr><tr><td>Wyciskanie sztangi leżąc</td><td>05.10.2026</td><td>4</td><td>38</td><td>52,5</td></tr></table></div>

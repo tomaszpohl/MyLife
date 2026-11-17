@@ -59,7 +59,7 @@
   const linkBadge = () => `<span class="tpolb tlinkb" title="Wzbogacony danymi z Polar Flow">${POLI}Polar${LINKI}</span>`;
   const metaRow = (w, reg) => (w.src === 'polar' || TR.linked(w) || (w.tags || []).length
     ? `<div class="tmeta">${w.src === 'polar' ? polBadge() : ''}${TR.linked(w) ? linkBadge() : ''}${(w.tags || []).map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : '');
-  const polRows = (p) => [['Kalorie', p.kcal != null ? p.kcal + ' kcal' : '—'], ['Tętno średnie / maks.', (p.hrAvg != null ? p.hrAvg : '—') + ' / ' + (p.hrMax != null ? p.hrMax : '—') + ' bpm'], ['Obciążenie treningowe', p.load != null ? String(p.load) : '—']];
+  const polRows = (p) => [['Kalorie', p.kcal != null ? p.kcal + ' kcal' : '—'], ['Tętno średnie / maks.', (p.hrAvg != null ? p.hrAvg : '—') + ' / ' + (p.hrMax != null ? p.hrMax : '—') + ' bpm']];   // v51 (makieta v236): bez obciążenia treningowego
   const polRowsL = (p) => polRows(p).concat(p.min ? [['Czas z zegarka', fmt(p.min) + ' min']] : [], p.start ? [['Start', p.start]] : []);
   const nv = (v) => (v != null ? v : '—');
   const qSub = (q) => (q.start ? 'start ' + q.start + ' · ' : '') + fmt(q.min || 0) + ' min · ' + nv(q.kcal) + ' kcal · tętno ' + nv(q.hrAvg) + '/' + nv(q.hrMax);
@@ -147,7 +147,7 @@
     const items = PQ.map((q) => {
       const cs = free.slice().sort((a, b) => dd(a.d, q.d) - dd(b.d, q.d) || b.id - a.id).slice(0, 3);
       return `<div class="tqitem"><div style="font-size:14px;font-weight:600">${esc(q.name + ' · ' + dl(q.d) + (q.start ? ', start ' + q.start : ''))}</div>
-          <div style="font-size:12px;color:var(--muted)">${esc(fmt(q.min || 0) + ' min · ' + nv(q.kcal) + ' kcal · tętno śr./maks. ' + nv(q.hrAvg) + '/' + nv(q.hrMax) + ' · obciążenie ' + nv(q.load))}</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(fmt(q.min || 0) + ' min · ' + nv(q.kcal) + ' kcal · tętno śr./maks. ' + nv(q.hrAvg) + '/' + nv(q.hrMax) )}</div>
           <div class="tqeb">POŁĄCZ Z TRENINGIEM</div>
           ${cs.length ? cs.map((w) => `<button class="tqcand${w.d === q.d ? ' same' : ''}" data-a="trqpick" data-p="${esc(q.pid)}" data-id="${w.id}" aria-label="${esc('Połącz z treningiem ' + (w.name || 'Trening') + ' ' + dl(w.d))}"><span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px">${esc(w.name || 'Trening')}</span><span style="font-size:12px;color:var(--muted)">${esc(dl(w.d))}</span></span>${w.d === q.d ? '<span class="tqsame">ten sam dzień</span>' : ''}</button>`).join('')
             : '<div style="font-size:13px;color:var(--muted)">Brak ręcznych treningów bez danych z Polar.</div>'}
@@ -275,7 +275,7 @@
     if (!PQ.length && !(window.Polar && window.Polar.state().on)) return '';
     const pq = PQ.slice().sort((a, b) => ((b.d === w.d) - (a.d === w.d)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
     return `<div class="dcard tpolcard tpollink"><div class="h" style="display:flex;align-items:center;gap:6px">${POLI}Polar Flow</div>
-        <div style="font-size:13px;line-height:1.4;color:var(--muted)">Ten trening nie ma danych z zegarka. Połącz go z sesją z Polar Flow (kalorie, tętno, obciążenie), a ćwiczenia zostaną bez zmian.</div>
+        <div style="font-size:13px;line-height:1.4;color:var(--muted)">Ten trening nie ma danych z zegarka. Połącz go z sesją z Polar Flow (kalorie, tętno), a ćwiczenia zostaną bez zmian.</div>
         <button class="tqauto" data-a="trqpk" aria-expanded="${T.pk}">${T.pk ? 'Zwiń listę sesji' : 'Połącz z treningiem z Polar'}</button>
         ${T.pk ? `<div class="tqlist">${pq.length ? pq.map((q) => `<button class="tqses${q.d === w.d ? ' same' : ''}" data-a="trqpick" data-p="${esc(q.pid)}" data-id="${w.id}" aria-label="${esc('Połącz z sesją ' + q.name + ' ' + dl(q.d))}"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">${esc(q.name + ' · ' + dl(q.d))}</span><span style="font-size:12px;color:var(--muted)">${esc(qSub(q))}</span></span>${q.d === w.d ? '<span class="tqsame">ten sam dzień</span>' : ''}</button>`).join('')
           : '<div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.4">Brak sesji z Polar do przypisania. Pobierzesz je w Ustawieniach → Polar Flow („Synchronizuj teraz”).</div>'}</div>` : ''}</div>`;
@@ -309,7 +309,7 @@
       : hasVol ? ['OSTATNI (SUMA CIĘŻARU)', 'Suma ciężaru', 'kg (suma ciężaru)', 'SUMA CIĘŻARU'] : ['OSTATNI (CZAS)', 'Czas kondycji', 'min (czas)', 'CZAS'];
     const tmSeg = `<div class="seg tv tmseg" role="radiogroup" aria-label="Miara">${[['main', 'Ciężar / czas'], ['kcal', 'Kalorie'], ['hr', 'Śr. tętno']].map(([v, l]) => `<button role="radio" aria-checked="${tm === v}" class="${tm === v ? 'on' : ''}" data-a="trtm" data-v="${v}">${l}</button>`).join('')}</div>`
       + (tm !== 'main' ? `<div style="font-size:12px;line-height:1.4;color:var(--polar)">Liczone tylko treningi z danymi z Polar: ${ws.length} z ${ws0.length}. Dane z zegarka dołączasz w „Trening z dnia” albo automatycznie po synchronizacji.</div>` : '');
-    const n = ws.length, first = n ? val(ws[0]) : 0, last = n ? val(ws[n - 1]) : 0, g = Math.round((last - first) * 100) / 100;
+    const n = ws.length, prev = n > 1 ? val(ws[n - 2]) : 0, last = n ? val(ws[n - 1]) : 0, g = Math.round((last - prev) * 100) / 100;   // v51 (makieta v236): ZMIANA = ostatni − poprzedni
     const si = T.tday != null && ws.some((w) => w.id === T.tday) ? ws.findIndex((w) => w.id === T.tday) : n - 1;
     const gc = (v) => (v > 0 ? 'g' : v < 0 ? 'b' : 'n'), sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + grp(Math.abs(v));
     let chart = '';
@@ -338,7 +338,7 @@
         <div class="ddrop"><button class="select${T.tdd ? ' open tv' : ''}" data-a="trtdd" aria-haspopup="listbox" aria-expanded="${T.tdd}" aria-label="${esc('Kategoria: ' + sel)}"><span style="min-width:0;display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${col}"></span>${esc(sel)}</span><span class="frot${T.tdd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
           ${T.tdd ? `<div class="bdlist" role="listbox" aria-label="Kategorie">${used.map((t) => `<button role="option" class="bdopt tv${t === sel ? ' on' : ''}" aria-selected="${t === sel}" data-a="trptag" data-t="${esc(t)}"><span style="display:flex;align-items:center;gap:8px"><span class="tgdotc" style="background:${tagCol(reg, t)}"></span>${esc(t)}</span><span class="sub">${pl(cnt(t), 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
         ${tmSeg}
-        <div class="tstats in tg3"><div><div class="l">TRENINGI</div><div class="v">${n}</div></div><div><div class="l">${lbl[0]}</div><div class="v">${n ? grp(last) + unit : '—'}</div></div><div><div class="l">ZMIANA</div><div class="v ${n > 1 ? gc(g) : ''}">${n > 1 ? sgn(g) + unit : '—'}</div></div></div>
+        <div class="tstats in tg3 teq"><div><div class="l">TRENINGI</div><div class="v">${n}</div></div><div><div class="l">OSTATNI</div><div class="v">${n ? grp(last) + unit : '—'}</div></div><div><div class="l">ZMIANA</div><div class="v ${n > 1 ? gc(g) : ''}">${n > 1 ? sgn(g) + unit : '—'}</div></div></div>
         ${chart}
         <div style="font-size:12px;color:var(--muted)">Dotknij punktu, aby zobaczyć wynik. Dotknij wiersza, aby przejść do treningu.</div>
         <div style="display:flex;flex-direction:column"><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:84px;text-align:right">${lbl[3]}</span><span style="width:62px;text-align:right">ZMIANA</span></div>${rows}</div>
@@ -357,7 +357,7 @@
     const sel = rows[si];
     const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v)) + ' ' + unit;
     const dc = (v) => (v > 0 ? 'g' : v < 0 ? 'b' : 'n');
-    const gain = n > 1 ? Math.round((rows[n - 1].kg - rows[0].kg) * 100) / 100 : null;
+    const gain = n > 1 ? Math.round((rows[n - 1].kg - rows[n - 2].kg) * 100) / 100 : null;   // v51 (makieta v236): od poprzedniego treningu
     let chart = '<div class="para" style="padding:12px 0">Do wykresu potrzebne są co najmniej dwa treningi z tym ćwiczeniem.</div>';
     if (n >= 2) {
       const lo = Math.floor((Math.min(...kgs) - step) / step) * step, hi = Math.ceil((Math.max(...kgs) + step) / step) * step;
@@ -383,7 +383,7 @@
           <div class="ddrop"><button class="select${T.dd ? ' open tv' : ''}" data-a="trdd" aria-haspopup="listbox" aria-expanded="${T.dd}" aria-label="Ćwiczenie: ${esc(cur.name + (card ? ' · moc' : ''))}"><span style="min-width:0">${esc(cur.name + (card ? ' · moc' : ''))}</span><span class="frot${T.dd ? ' up' : ''}" style="display:flex">${K.down}</span></button>
             ${T.dd ? `<div class="bdlist" role="listbox" aria-label="Ćwiczenia">${all.map((x) => `<button role="option" class="bdopt tv${x.key === cur.key ? ' on' : ''}" aria-selected="${x.key === cur.key}" data-a="trpick" data-k="${esc(x.key)}"><span>${esc(x.name + (x.card ? ' · moc' : ''))}</span><span class="sub">${pl(x.rows.length, 'trening', 'treningi', 'treningów')}</span></button>`).join('')}</div>` : ''}</div>
           <div class="tstats in"><div><div class="l">REKORD</div><div class="v" style="color:var(--violet)">${esc(vt(best))}</div></div>
-            <div><div class="l">OD PIERWSZEGO</div><div class="v ${gain == null ? '' : dc(gain)}">${gain == null ? '—' : sg(gain)}</div></div></div></div>
+            <div><div class="l">OD POPRZEDNIEGO</div><div class="v ${gain == null ? '' : dc(gain)}">${gain == null ? '—' : sg(gain)}</div></div></div></div>
         <div class="dcard" style="gap:4px"><div class="dhead"><div class="eyebrow">${card ? 'Średnia moc' : 'Największy ciężar'}</div><div style="font-size:12px;color:var(--muted)">${unit}</div></div>${chart}</div>
         <div class="dcard tight"><button class="bhhead" data-a="trtab" aria-expanded="${T.tabOpen}"><span class="eyebrow" style="text-align:left">Tabela wyników</span><span class="cnt">${pl(n, 'trening', 'treningi', 'treningów')}<span class="frot${T.tabOpen ? ' up' : ''}" style="display:flex">${K.down}</span></span></button>
           ${T.tabOpen ? `<div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Dotknij punktu, aby zobaczyć wynik. Dotknij wiersza, aby przejść do treningu.</div><div class="bhcols" aria-hidden="true"><span style="flex:1">DATA</span><span style="width:74px;text-align:right">${card ? 'ŚR. MOC' : 'MAX CIĘŻAR'}</span><span style="width:54px;text-align:right">${card ? 'CZAS' : 'POWT.'}</span><span style="width:58px;text-align:right">ZMIANA</span></div>${tab}
@@ -480,7 +480,7 @@
               <input id="ex-${i}-name" class="tin txt${bad(!r.name)}" type="text" maxlength="50" autocomplete="off" value="${esc(x.name)}" placeholder="np. Przysiad ze sztangą" data-in="train-name" data-i="${i}" aria-autocomplete="list" aria-controls="sugg-${i}">
               <div class="tsugg" id="sugg-${i}" role="listbox" aria-label="Podpowiedzi ćwiczeń" data-sugg="${i}" hidden></div>
               ${err(T.tried && !r.name, 'Nazwa ćwiczenia jest wymagana.', 'n' + i)}
-              ${D.plan ? '' : (() => { const h = lastHtml(D, i); return `<div class="tlast" data-last="${i}"${h ? '' : ' hidden'}>${h}</div>`; })()}</div>
+              ${(() => { const h = lastHtml(D, i); return `<div class="tlast" data-last="${i}"${h ? '' : ' hidden'}>${h}</div>`; })()}</div>
             <button class="bdico del" style="margin-top:20px;flex:none" data-a="trexdel" data-i="${i}" aria-label="Usuń ćwiczenie ${esc(x.name || String(i + 1))}">${K.trash}</button></div>
           <div class="tkind" role="radiogroup" aria-label="Rodzaj ćwiczenia"><button role="radio" class="${isStr ? 'on' : ''}" aria-checked="${isStr}" data-a="trkind" data-i="${i}" data-v="str">Siłowe</button><button role="radio" class="${isStr ? '' : 'on'}" aria-checked="${!isStr}" data-a="trkind" data-i="${i}" data-v="car">Kondycyjne</button></div>
           ${isStr ? `<div style="display:flex;flex-direction:column;gap:6px">
@@ -527,10 +527,10 @@
             <input id="t-name" class="tin txt" type="text" maxlength="40" value="${esc(D.name)}" placeholder="np. Trening A – klatka" data-in="train-wname"></div>
           ${tagBlock(D)}
           ${D.src === 'polar' ? `<div class="tpolinfo"><div class="h">${polBadge()}<span>Zsynchronizowany z Polar Flow</span></div>
-            ${D.pol ? `<div class="s">Dane tylko do odczytu: ${esc((D.pol.kcal != null ? D.pol.kcal : '—') + ' kcal · tętno śr./maks. ' + (D.pol.hrAvg != null ? D.pol.hrAvg : '—') + '/' + (D.pol.hrMax != null ? D.pol.hrMax : '—') + ' · obciążenie treningowe ' + (D.pol.load != null ? D.pol.load : '—'))}</div>` : ''}
+            ${D.pol ? `<div class="s">Dane tylko do odczytu: ${esc((D.pol.kcal != null ? D.pol.kcal : '—') + ' kcal · tętno śr./maks. ' + (D.pol.hrAvg != null ? D.pol.hrAvg : '—') + '/' + (D.pol.hrMax != null ? D.pol.hrMax : '—'))}</div>` : ''}
             <div class="s">Możesz zmienić nazwę, ćwiczenia i kategorie – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}
           ${D.src !== 'polar' && D.pol && D.pol.pid ? `<div class="tpolinfo"><div class="h" style="display:flex;align-items:center;gap:6px;color:var(--polar)">${POLI}<span>Dane z Polar Flow dołączone</span></div>
-            <div class="s">${esc('Dane tylko do odczytu: ' + nv(D.pol.kcal) + ' kcal · tętno śr./maks. ' + nv(D.pol.hrAvg) + '/' + nv(D.pol.hrMax) + ' · obciążenie treningowe ' + nv(D.pol.load))}</div>
+            <div class="s">${esc('Dane tylko do odczytu: ' + nv(D.pol.kcal) + ' kcal · tętno śr./maks. ' + nv(D.pol.hrAvg) + '/' + nv(D.pol.hrMax))}</div>
             <div class="s">Dane z zegarka są tylko do odczytu. Odłączysz je w „Trening z dnia”.</div></div>` : ''}</div>`}
         <div class="eyebrow" style="margin-top:2px">Ćwiczenia</div>
         ${exs}
@@ -560,22 +560,40 @@
   // v49 (makieta v229–v230): „Ostatnie wyniki” – najnowszy inny trening (data nie późniejsza niż edytowana) z ćwiczeniem o tej samej nazwie.
   function lastFor(D, x) {
     const k = String(x.name || '').trim().toLocaleLowerCase('pl'); if (!k) return null;
-    let best = null, bx = null;
+    let best = null, bx = null; const all = [];
     TR.list().forEach((w) => {
-      if (D.id && w.id === D.id) return;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(D.d) && w.d > D.d) return;
+      if (!D.plan && D.id && w.id === D.id) return;
+      if (!D.plan && /^\d{4}-\d{2}-\d{2}$/.test(D.d) && w.d > D.d) return;
       const e = (w.ex || []).find((q) => String(q.name || '').trim().toLocaleLowerCase('pl') === k); if (!e) return;
+      all.push({ w, e });
       if (!best || w.d > best.d || (w.d === best.d && w.id > best.id)) { best = w; bx = e; }
     });
-    return best ? { w: best, x: bx } : null;
+    if (!best) return null;
+    // v51 (makieta v236): najwyższy wynik – siłowe: seria z największym ciężarem (ciężar własny – najwięcej powtórzeń),
+    // kondycyjne: największa średnia moc (bez mocy – brak); remis – nowszy trening.
+    let top = null, tq = null, tv = -1;
+    const newer = (a) => top && (a.w.d > top.w.d || (a.w.d === top.w.d && a.w.id > top.w.id));
+    all.forEach((a) => {
+      if (bx.kind === 'str') {
+        if (a.e.kind !== 'str') return;
+        (a.e.sets || []).forEach((q) => { const v = a.e.bw ? (+q.reps || 0) : (+q.kg || 0); if (v > tv || (v === tv && newer(a))) { tv = v; top = a; tq = q; } });
+      } else {
+        if (a.e.kind === 'str') return;
+        const v = +a.e.watts || 0;
+        if (v > 0 && (v > tv || (v === tv && newer(a)))) { tv = v; top = a; tq = null; }
+      }
+    });
+    return { w: best, x: bx, top: top && tv > 0 ? { w: top.w, x: top.e, q: tq } : null };
   }
   function lastHtml(D, i) {
     const r = lastFor(D, D.ex[i]); if (!r) return '';
-    const x = r.x, lines = x.kind === 'str'
-      ? (x.sets || []).map((q) => pl(q.n || 0, 'seria', 'serie', 'serii') + ' · ' + q.reps + ' powt. · ' + (x.bw ? 'ciężar własny' : fmt(q.kg) + ' kg'))
-      : [(x.min ? fmt(x.min) + ' min · ' : '') + (x.watts ? 'Średnia moc: ' + x.watts + ' W' : 'Brak zapisanej średniej mocy')];
+    const setTxt = (q, bw) => pl(q.n || 0, 'seria', 'serie', 'serii') + ' · ' + q.reps + ' powt. · ' + (bw ? 'ciężar własny' : fmt(q.kg) + ' kg');
+    const carTxt = (x) => (x.min ? fmt(x.min) + ' min · ' : '') + (x.watts ? 'Średnia moc: ' + x.watts + ' W' : 'Brak zapisanej średniej mocy');
+    const x = r.x, lines = x.kind === 'str' ? (x.sets || []).map((q) => setTxt(q, x.bw)) : [carTxt(x)];
     if (!lines.length) return '';
-    return `<div class="h">OSTATNIE WYNIKI · ${C.dmy ? esc(C.dmy(r.w.d)) : esc(r.w.d)}</div>${lines.map((l) => `<div>${esc(l)}</div>`).join('')}`;
+    const t = r.top;
+    return `<div class="h">OSTATNIE WYNIKI · ${esc(C.dmy(r.w.d))}</div>${lines.map((l) => `<div>${esc(l)}</div>`).join('')}`
+      + (t ? `<div class="sep"></div><div class="h best">NAJWYŻSZY WYNIK · ${esc(C.dmy(t.w.d))}</div><div>${esc(x.kind === 'str' ? setTxt(t.q, t.x.bw) : carTxt(t.x))}</div>` : '');
   }
   function liveLast(i) {
     const el = document.querySelector('[data-last="' + i + '"]'), D = T.draft; if (!el || !D) return;
@@ -799,7 +817,7 @@
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
-      else if (k === 'train-name') { x.name = el.value.slice(0, 50); T.sg = i; showSugg(i); if (!D.plan) liveLast(i); }
+      else if (k === 'train-name') { x.name = el.value.slice(0, 50); T.sg = i; showSugg(i); liveLast(i); }
       else if (k === 'train-n') x.sets[j].n = clean(false, 2);
       else if (k === 'train-kg') x.sets[j].kg = clean(true, 6);
       else if (k === 'train-reps') x.sets[j].reps = clean(false, 3);

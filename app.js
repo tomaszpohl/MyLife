@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v50.1 · 17.11.2026';
+  const APP_VERSION = 'v51 · 17.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -352,7 +352,7 @@
       <div class="hometop"><div style="display:flex;flex-direction:column;gap:6px">
         <div class="eyebrow">${esc(label)}</div>
         <h1>MyLife</h1>
-      </div>${gearLink('margin-top:-6px')}</div>
+      </div>${gearLink('margin-top:-8px')}</div>
       ${window.TodayUI ? window.TodayUI.homeCard() : ''}
       ${window.SummaryUI ? window.SummaryUI.homeCard() : ''}
       <div class="eyebrow" style="margin-top:4px">Moduły</div>
