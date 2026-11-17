@@ -30,7 +30,7 @@
   const num = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0; };
   const okDate = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= C.todayKey();
   const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1${title.length > 18 ? ' style="font-size:19px;min-width:0"' : ''}>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
-  const fn = (href, p, t, s) => `<a class="dfn sfn" href="${href}"><div class="dico sico">${K.big(p)}</div><div class="txt"><div class="t">${t}</div><div class="s">${esc(s)}</div></div><div style="color:var(--dim);display:flex">${K.chev}</div></a>`;
+  const fn = (href, p, t) => `<a class="dfn ftile sfn" href="${href}"><div class="dico sico">${K.big(p)}</div><div class="t">${t}</div></a>`;   // v48: kafelki 2×n bez opisu
   const confirmBox = (text, no, yes, yesLabel, data) => `<div class="fconfirm" role="alert"><div>${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="${no}">${yesLabel === 'Usuń' ? 'Anuluj' : 'Nie'}</button><button class="btn-del" style="height:44px;font-size:14px" data-a="${yes}"${data || ''}>${yesLabel}</button></div></div>`;
 
   // ---------- Rozliczenia (start) ----------
@@ -41,8 +41,8 @@
         <div class="tstats"><a class="dcard" href="#/settle/debts" data-tab="recv"><div class="eyebrow">Należności</div><div class="v" style="font-size:19px;color:var(--ok)">${money(SE.sum('recv'))}</div></a>
           <a class="dcard" href="#/settle/debts/owe"><div class="eyebrow">Zobowiązania</div><div class="v" style="font-size:19px;color:#FF9C8A">${money(SE.sum('owe'))}</div></a></div>
         <div class="eyebrow" style="margin-top:4px">Funkcje</div>
-        ${fn('#/settle/debts', P.debts, 'Należności i zobowiązania', 'Należności: ' + nR + ' · zobowiązania: ' + nO)}
-        ${fn('#/settle/groups', P.groups, 'Rozliczenia grupowe', nG ? 'Rozliczenia grupowe: ' + nG : 'Wspólne wydatki i wyliczenie, kto komu ile zalega')}
+        <div class="ftiles">${fn('#/settle/debts', P.debts, 'Należności i zobowiązania')}
+        ${fn('#/settle/groups', P.groups, 'Rozliczenia grupowe')}</div>
       </div></main>`;
   }
 

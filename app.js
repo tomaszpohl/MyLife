@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v47 · 16.11.2026';
+  const APP_VERSION = 'v48 · 17.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -266,6 +266,7 @@
     if (r[0] === 'diet' && r[1] === 'menu') return '#/diet/menus';
     if (r[0] === 'diet' && r[1]) return '#/diet';
     if (r[0] === 'fin' && r[1]) return '#/fin';
+    if (r[0] === 'train' && r[1] === 'plan' && r[2]) return '#/train/plan';   // v48: formularz planu → lista planów
     if (r[0] === 'train' && r[1]) return '#/train';
     if (r[0] === 'settle' && (r[1] === 'group' || r[1] === 'calc')) return r[1] === 'calc' ? '#/settle/group/' + r[2] : '#/settle/groups';
     if (r[0] === 'settle' && r[1]) return '#/settle';
@@ -1426,7 +1427,7 @@
 
   // ---------- Start ----------
   C.load();
-  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, srchBtn, navBtns, homeBtn, back, home, go, render, toast, route, actions, S, downloadBlob, longDay };
+  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, srchBtn, navBtns, homeBtn, back, home, go, replace: navReplace, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   if (window.BodyUI) { window.BodyUI.init(window.App); }

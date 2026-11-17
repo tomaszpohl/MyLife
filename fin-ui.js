@@ -100,7 +100,7 @@
     const dl = prev ? F.r2(last.net - prev.net) : 0;
     const [a, b] = monthRange(ym(T)), r = F.result(a, b);
     const todaySum = F.sum(F.expIn(T, T));
-    const fn = (href, icon, t, s) => `<a class="dfn" href="${href}"><div class="dico gold">${icon}</div><div class="txt"><div class="t">${t}</div><div class="s">${s}</div></div><div style="color:var(--dim);display:flex">${J.chev}</div></a>`;
+    const fn = (href, icon, t) => `<a class="dfn ftile" href="${href}"><div class="dico gold">${icon}</div><div class="t">${t}</div></a>`;   // v48: kafelki 2×n bez opisu
     return `<main class="screen" style="position:relative">${topbar('Finanse')}
       <div class="dscroll" data-scroll="fin-home">
         <a class="dcard gold" href="#/fin/worth" style="gap:6px">
@@ -126,14 +126,14 @@
         </div>
         ${okbox(U.home.msg)}
         <div class="eyebrow">Funkcje</div>
-        ${fn('#/fin/worth', J.trend, 'Majątek', 'Aktywa, zobowiązania i historia zmian')}
-        ${fn('#/fin/exp', J.cart, 'Wydatki', 'Lista dni, dodawanie i usuwanie')}
-        ${fn('#/fin/exp/cat', J.pie, 'Wydatki wg kategorii', 'Dzień, tydzień, miesiąc lub własny okres')}
-        ${fn('#/fin/plan', J.plan, 'Planer wydatków', esc(planDesc()))}
-        ${fn('#/fin/cush', J.shield, 'Poduszka bezpieczeństwa', esc(cushDesc()))}
-        ${fn('#/fin/goals', J.target, 'Cele', esc(goalsDesc()))}
-        ${fn('#/fin/inv', J.invest, 'Inwestycje', esc(invDesc()))}
-        ${fn('#/fin/result', J.cash, 'Wynik finansowy', 'Przychody − koszty = wynik miesiąca')}
+        <div class="ftiles">${fn('#/fin/worth', J.trend, 'Majątek')}
+        ${fn('#/fin/exp', J.cart, 'Wydatki')}
+        ${fn('#/fin/exp/cat', J.pie, 'Wydatki wg kategorii')}
+        ${fn('#/fin/plan', J.plan, 'Planer wydatków')}
+        ${fn('#/fin/cush', J.shield, 'Poduszka bezpieczeństwa')}
+        ${fn('#/fin/goals', J.target, 'Cele')}
+        ${fn('#/fin/inv', J.invest, 'Inwestycje')}
+        ${fn('#/fin/result', J.cash, 'Wynik finansowy')}</div>
       </div>
       ${U.add ? addOverlay() : ''}${U.cats ? catsOverlay() : ''}</main>`;
   }

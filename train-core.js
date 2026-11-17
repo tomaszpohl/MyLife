@@ -13,13 +13,15 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.train.v1';
-  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], tagCol: {}, pol: { seen: {}, q: [], sq: {} } });   // v20: rec – aktywności cykliczne
+  const empty = () => ({ version: 1, next: 1, list: [], rec: { next: 1, list: [] }, tags: [], tagCol: {}, pol: { seen: {}, q: [], sq: {} }, plans: { next: 1, list: [] } });   // v48: plans – plany (szablony) treningów   // v20: rec – aktywności cykliczne
   let db = empty();
 
   // v18: migracja kondycji z jednym interwałem (work/rest przy czasie) na wiersze interwałów z liczbą rund (jak w makiecie).
   function norm(d) {
     if (!d.rec || !Array.isArray(d.rec.list)) d.rec = { next: 1, list: [] };
     if (!Array.isArray(d.tags)) d.tags = [];
+    if (!d.plans || !Array.isArray(d.plans.list)) d.plans = { next: 1, list: [] };   // v48 (makieta v222): plany treningu
+    d.plans.list.forEach((p) => { p.tags = Array.isArray(p.tags) ? p.tags : []; p.ex = Array.isArray(p.ex) ? p.ex : []; p.tags.forEach((t) => { if (d.tags.indexOf(t) < 0) d.tags.push(t); }); });
     if (!d.tagCol || typeof d.tagCol !== 'object') d.tagCol = {};   // v38: kolory kategorii z palety (nazwa → #kolor)
     if (!d.pol || typeof d.pol !== 'object') d.pol = { seen: {} };
     if (!d.pol.seen || typeof d.pol.seen !== 'object') d.pol.seen = {};
@@ -137,7 +139,8 @@
     save();
   }
   const summary = () => db.list.length + ' ' + C.plural(db.list.length, 'trening', 'treningi', 'treningów') +
-    (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '');
+    (db.rec.list.length ? ', ' + db.rec.list.length + ' ' + C.plural(db.rec.list.length, 'aktywność cykliczna', 'aktywności cykliczne', 'aktywności cyklicznych') : '') +
+    (db.plans.list.length ? ', ' + db.plans.list.length + ' ' + C.plural(db.plans.list.length, 'plan', 'plany', 'planów') : '');
   const recDb = () => db.rec;
   // v36: rejestr znaczników (kolejność wpisania – od niej zależy kolor) i treningi z Polar Flow.
   const tags = () => db.tags.slice();
@@ -148,6 +151,7 @@
     if (colors) db.tagCol = Object.assign({}, colors);
     db.tags = db.tags.filter((x) => x !== t); delete db.tagCol[t];
     db.list.forEach((w) => { if ((w.tags || []).indexOf(t) >= 0) w.tags = w.tags.filter((x) => x !== t); });
+    db.plans.list.forEach((p) => { if ((p.tags || []).indexOf(t) >= 0) p.tags = p.tags.filter((x) => x !== t); });   // v48: także z planów
     save();
   }
   // Kod sportu treningu z Polar (od v37 zapisany; dla treningów z v36 – z polskiej nazwy sportu w ćwiczeniu).
@@ -195,6 +199,25 @@
     return n;
   }
 
-  window.Train = { load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf,
+  // ---------- v48 (makieta v222–v227): Plan treningu – szablony { id, name, tags, ex } (ćwiczenia jak w treningu, bez daty) ----------
+  const plans = () => db.plans.list.slice().sort((a, b) => a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' }) || a.id - b.id);
+  const plan = (id) => db.plans.list.find((p) => p.id === +id) || null;
+  function planUpsert(p) {
+    const e = JSON.parse(JSON.stringify(p));
+    e.tags = Array.isArray(e.tags) ? e.tags : [];
+    e.tags.forEach((t) => { if (db.tags.indexOf(t) < 0) db.tags.push(t); });
+    if (e.id && plan(e.id)) db.plans.list = db.plans.list.map((x) => (x.id === e.id ? e : x));
+    else { e.id = db.plans.next++; db.plans.list.push(e); }
+    save(); return e;
+  }
+  function planRemove(id) { const p = plan(id); if (!p) return null; db.plans.list = db.plans.list.filter((x) => x.id !== p.id); save(); return p; }
+  // Plany z takimi samymi ćwiczeniami jak trening: ten sam zbiór nazw (bez wielkości liter, kolejności, serii i ciężarów).
+  const nameSet = (ex) => Array.from(new Set((ex || []).map((x) => String(x.name || '').trim().toLocaleLowerCase('pl')).filter(Boolean))).sort();
+  function planDups(ex) {
+    const k = nameSet(ex); if (!k.length) return [];
+    return plans().filter((p) => { const q = nameSet(p.ex); return q.length === k.length && q.every((n, i) => n === k[i]); });
+  }
+
+  window.Train = { plans, plan, planUpsert, planRemove, planDups, load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf,
     linked, polQ, polFree, polQAdd, polLink, polUnlink, polSkip, polAuto };
 })();

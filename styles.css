@@ -1378,3 +1378,29 @@ a.dcard { color: var(--text); }
 .sumtxt .l { font-size: 10.5px; letter-spacing: .12em; font-weight: 600; text-transform: uppercase; }
 .sumtxt .v { font-family: var(--display); font-size: 24px; font-weight: 700; }
 .sumtxt .s { font-size: 12px; line-height: 1.3; color: var(--muted); }
+
+/* ---------- v48 (makieta v222–v228): kafelki funkcji modułów, Plan treningu ---------- */
+.ftiles { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.dfn.ftile { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 12px; min-height: 96px; min-width: 0; }
+.dfn.ftile .dico { width: 40px; height: 40px; border-radius: 12px; }
+.dfn.ftile .dico svg { width: 22px; height: 22px; }
+.dfn.ftile .t { width: 100%; min-width: 0; font-family: var(--display); font-size: 16px; font-weight: 600; line-height: 1.25; word-break: break-word; }
+.hometop .hdrbtns { gap: 4px; }
+.tplcard { gap: 10px; }
+.tplname { font-family: var(--display); font-size: 17px; font-weight: 600; word-break: break-word; }
+.tplpen { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--text-2); }
+.tpllines { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--line); padding-top: 8px; }
+.tplline { display: flex; gap: 8px; font-size: 13px; }
+.tplline span:first-child { flex: 1; min-width: 0; }
+.tplline .d { flex: none; color: var(--muted); }
+.tpluse, .tplcopy { min-height: 48px; border-radius: 12px; background: var(--violet-bg); border: 1px solid #4A3F7A; color: #D9CCFF; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 0 12px; text-align: center; }
+.tplcopy { flex: none; border-radius: 14px; }
+.tpluse2 { flex: 1; min-width: 0; height: 52px; border-radius: 14px; background: var(--surface-2); border: 1px solid #4A3F7A; color: #D9CCFF; font-size: 14px; font-weight: 600; line-height: 1.15; padding: 0 8px; }
+.tpluse2.off { border-color: var(--line-2); color: var(--muted); }
+.tplnote { flex-direction: row; align-items: flex-start; gap: 10px; border-color: #4A3F7A; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+.tplnote svg { flex: none; color: var(--violet); margin-top: 1px; }
+.tdupwrap { z-index: 30; }
+.tdup { border-color: var(--gold); }
+.tduph { display: flex; align-items: center; gap: 8px; color: var(--gold); font-family: var(--display); font-size: 18px; font-weight: 600; }
+.tdupn { font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); word-break: break-word; }
+.tdupyes { height: 48px; border-radius: 12px; border: none; background: var(--violet); color: var(--violet-ink); font-size: 15px; font-weight: 600; }

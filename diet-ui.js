@@ -131,19 +131,19 @@
         ${p.meals.map((m) => `<button class="dmeal" data-a="dhomedish" data-slot="${esc(m.slot)}" aria-label="${esc(m.slot + ': ' + m.dish.name + '. Pokaż przepis')}">
           <div class="slot">${esc(m.slot)}</div><div class="nm">${esc(m.dish.name)}</div><div class="kc">${kcal(m.dish.kcal)}</div></button>`).join('')}
       </div>` : noPlan();
-    const fn = (href, icon, title, desc) => `<a class="dfn" href="${href}"><div class="dico">${icon}</div><div class="txt"><div class="t">${title}</div><div class="s">${desc}</div></div><div style="color:var(--dim);display:flex">${J.chev}</div></a>`;
+    const fn = (href, icon, title) => `<a class="dfn ftile" href="${href}"><div class="dico">${icon}</div><div class="t">${title}</div></a>`;   // v48: kafelki 2×n bez opisu
     const hm = U.home.detail && p.meals.find((x) => x.slot === U.home.detail);
     const detail = hm ? dishOverlay({ dish: hm.dish, slot: hm.slot, sub: 'Dziś · ' + D.dayShort(T), close: 'dhomedishclose', footer: toPlanBtn(T) }) : '';
     return `<main class="screen" style="position:relative">${topbar('Dieta')}
       <div class="dscroll" data-scroll="diet-home">
         ${card}
         <div class="eyebrow">Funkcje</div>
-        ${fn('#/diet/menus', J.book, 'Jadłospis', 'Wybór i aktywacja jadłospisu, dania i przepisy')}
-        ${fn('#/diet/plan', J.cal, 'Plan posiłków', 'Dzień, tydzień, miesiąc – zmiana dań')}
-        ${fn('#/diet/shop', J.cart, 'Lista zakupów', 'Z wybranych dni lub posiłków')}
-        ${fn('#/diet/journal', J.clip, 'Dziennik', 'Zjedzone posiłki, odstępstwa, aktywność')}
-        ${fn('#/diet/weight', J.trend, 'Waga', 'Wpisy, wykres i porównanie')}
-        ${window.BodyUI ? (() => { const t = window.BodyUI.tile(); return fn(t.href, t.icon, t.title, t.desc); })() : ''}
+        <div class="ftiles">${fn('#/diet/menus', J.book, 'Jadłospis')}
+        ${fn('#/diet/plan', J.cal, 'Plan posiłków')}
+        ${fn('#/diet/shop', J.cart, 'Lista zakupów')}
+        ${fn('#/diet/journal', J.clip, 'Dziennik')}
+        ${fn('#/diet/weight', J.trend, 'Waga')}
+        ${window.BodyUI ? (() => { const t = window.BodyUI.tile(); return fn(t.href, t.icon, t.title); })() : ''}</div>
       </div>${detail}</main>`;
   }
 

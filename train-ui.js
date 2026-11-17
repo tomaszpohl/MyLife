@@ -15,6 +15,7 @@
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"></path>',
     clock: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"></path><path d="M3.5 4.5v4h4"></path><path d="M12 8v4.5l3 1.5"></path>',
     trend: '<path d="M4 18 9 12l4 3 7-9"></path><path d="M15 6h5v5"></path>',
+    plan: '<rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4h6v3H9zM9 12h6M9 16h4"></path>',   // v48: Plan treningu (kartka z listą)
     rep: '<path d="M17 2l3 3-3 3"></path><path d="M4 11V9a4 4 0 0 1 4-4h12"></path><path d="M7 22l-3-3 3-3"></path><path d="M20 13v2a4 4 0 0 1-4 4H4"></path>'
   };
   const K = {
@@ -28,7 +29,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, qOpen: false, qMsg: '', pk: false, tm: 'main', cm: null, csel: '' };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, dup: null, qOpen: false, qMsg: '', pk: false, tm: 'main', cm: null, csel: '' };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -70,7 +71,8 @@
   // ---------- Trening (hub) ----------
   function viewHome() {
     const all = TR.list(), n = all.length, last = all[0];
-    const fn = (href, p, t, s) => `<a class="dfn tfn" href="${href}"><div class="dico tico">${K.big(p)}</div><div class="txt"><div class="t">${t}</div><div class="s">${s}</div></div><div style="color:var(--dim);display:flex">${K.chev}</div></a>`;
+    // v48 (makieta v223–v225): funkcje jako kafelki 2 w rzędzie (ikona i nazwa wyśrodkowane, bez opisu)
+    const fn = (href, p, t) => `<a class="dfn ftile tfn" href="${href}"><div class="dico tico">${K.big(p)}</div><div class="t">${t}</div></a>`;
     return `<main class="screen">${topbar('Trening')}
       <div class="dscroll" data-scroll="train-home">
         ${flashBar()}
@@ -79,10 +81,11 @@
             : '<div class="dcard"><div class="eyebrow">Ostatni trening</div><div class="v">—</div></div>'}</div>
         <button class="tprimary" data-a="trnew">${K.plus}<span>Dodaj trening</span></button>
         <div class="eyebrow" style="margin-top:4px">Funkcje</div>
-        ${fn('#/train/cal', P.cal, 'Aktywność fizyczna', 'Kalendarz miesięczny i wpisy treningowe')}
-        ${fn('#/train/history', P.clock, 'Historia treningów', 'Zapisane treningi i ćwiczenia')}
-        ${fn('#/train/progress', P.trend, 'Postępy', 'Największy ciężar w ćwiczeniu, wykres i tabela')}
-        ${window.TrainRecUI ? fn('#/train/recur', P.rep, 'Aktywności cykliczne', esc(window.TrainRecUI.desc())) : ''}
+        <div class="ftiles">${fn('#/train/plan', P.plan, 'Plan treningu')}
+        ${fn('#/train/cal', P.cal, 'Aktywność fizyczna')}
+        ${fn('#/train/history', P.clock, 'Historia treningów')}
+        ${fn('#/train/progress', P.trend, 'Postępy')}
+        ${window.TrainRecUI ? fn('#/train/recur', P.rep, 'Aktywności cykliczne') : ''}</div>
       </div></main>`;
   }
 
@@ -184,13 +187,13 @@
     return `<div class="tcover" role="dialog" aria-modal="true" aria-label="Konfiguracja kategorii">
         <div class="topbar" style="padding:16px 8px 0 8px"><button class="iconbtn" data-a="trcatclose" aria-label="Zamknij">${K.x || '×'}</button><h1 style="font-size:22px">Konfiguracja kategorii</h1></div>
         <div class="tcbody">
-          <div style="font-size:13px;color:var(--muted);line-height:1.4">${D ? 'Zaznacz kategorie tego treningu. Własne kategorie dodajesz i usuwasz tutaj, a kolor wybierasz z palety.' : 'Własne kategorie treningów. Sam dodajesz je i usuwasz, a kolor wybierasz z palety.'}</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.4">${D ? 'Zaznacz kategorie tego ' + (D.plan ? 'planu' : 'treningu') + '. Własne kategorie dodajesz i usuwasz tutaj, a kolor wybierasz z palety.' : 'Własne kategorie treningów. Sam dodajesz je i usuwasz, a kolor wybierasz z palety.'}</div>
           ${reg.length ? rows : '<div style="font-size:13px;color:var(--muted);line-height:1.4">Brak kategorii. Wpisz nazwę poniżej i dodaj pierwszą.</div>'}
           <div class="eyebrow" style="padding-top:6px">Kolor nowej kategorii</div>
           <div class="tcpal" role="radiogroup" aria-label="Kolor nowej kategorii">${PAL.map((x, i) => `<button role="radio" aria-checked="${x === cur}" aria-label="Kolor ${i + 1}" data-a="trcatcol" data-c="${x}"><span style="background:${x};box-shadow:0 0 0 2px ${x === cur ? 'var(--text)' : 'transparent'}"></span></button>`).join('')}</div>
           <div style="display:flex;gap:8px;padding-top:4px"><input id="tc-catname" class="tin txt" style="flex:1;min-width:0" type="text" maxlength="20" autocomplete="off" enterkeyhint="done" placeholder="Nazwa kategorii" aria-label="Nazwa nowej kategorii" value="${esc(c.name)}" data-in="train-catname"><button class="tcadd" data-a="trcatadd">Dodaj</button></div>
           ${c.err ? `<div role="alert" style="font-size:13px;color:var(--danger)">${esc(c.err)}</div>` : ''}
-          <div style="font-size:12px;color:var(--dim);line-height:1.4">Po usunięciu kategorii znika ona z treningów, które ją miały. Kolory kategorii z palety nie obejmują różu synchronizacji z Polar.</div>
+          <div style="font-size:12px;color:var(--dim);line-height:1.4">Po usunięciu kategorii znika ona ze wszystkich treningów i planów. Kolory kategorii z palety nie obejmują różu synchronizacji z Polar.</div>
         </div>
         <div class="tcfoot"><button class="primary" style="background:#5BD0E8;color:#06222A" data-a="trcatclose">Gotowe</button></div></div>`;
   }
@@ -225,6 +228,36 @@
         <div class="eyebrow" style="margin-top:2px">Wykonane ćwiczenia</div>
         ${exs}
         <a class="taddex" style="height:48px" href="#/train/edit/${w.id}">${K.pencil}<span>Edytuj trening</span></a>
+        <button class="tplcopy" data-a="trplancopy" data-id="${w.id}">${ic(20, 1.8, P.plan)}<span>Skopiuj do planu treningowego</span></button>
+      </div>${dupDialog()}</main>`;
+  }
+
+  // v48 (makieta v227): okno „Taki plan już istnieje” (plany z takimi samymi nazwami ćwiczeń)
+  function dupDialog() {
+    const d = T.dup; if (!d) return '';
+    return `<div class="modal-wrap tdupwrap"><div class="modal tdup" role="alertdialog" aria-modal="true" aria-label="Plan już istnieje">
+        <div class="tduph">${ic(20, 2, '<path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17h.01"></path>')}Taki plan już istnieje</div>
+        <div style="font-size:14px;line-height:1.45;color:var(--text-2)">${d.names.length === 1 ? 'W planach jest już plan z takimi samymi ćwiczeniami jak ten trening:' : 'W planach są już plany z takimi samymi ćwiczeniami jak ten trening:'}</div>
+        ${d.names.map((n) => `<div class="tdupn">${esc(n)}</div>`).join('')}
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px"><button class="tdupyes" data-a="trdupyes">Skopiuj mimo to</button><button class="btn2" style="height:48px" data-a="trdupno">Anuluj</button></div></div></div>`;
+  }
+
+  // ---------- v48 (makieta v222): Plan treningu – lista szablonów ----------
+  function viewPlan() {
+    const reg = TR.tags(), ps = TR.plans();
+    const line = (x) => `<div class="tplline"><span>${esc(x.name)}</span><span class="d">${esc(x.kind === 'str' ? pl(x.sets.reduce((t, q) => t + (q.n || 0), 0), 'seria', 'serie', 'serii') : fmt(x.min || 0) + ' min')}</span></div>`;
+    const card = (p) => `<div class="dcard tplcard"><div style="display:flex;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div class="tplname">${esc(p.name)}</div><div style="font-size:12px;color:var(--muted)">${pl(p.ex.length, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}</div>
+          ${p.tags.length ? `<div class="tmeta">${p.tags.map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : ''}</div>
+          <a class="tplpen" href="#/train/plan/${p.id}" aria-label="${esc('Edytuj plan ' + p.name)}">${K.pencil}</a></div>
+        ${p.ex.length ? `<div class="tpllines">${p.ex.slice(0, 4).map(line).join('')}${p.ex.length > 4 ? `<div style="font-size:12px;color:var(--dim)">+ ${p.ex.length - 4} więcej</div>` : ''}</div>` : ''}
+        <button class="tpluse" data-a="trplanuse" data-id="${p.id}">${ic(20, 2, '<path d="M8 5v14l11-7z"></path>')}<span>Użyj jako trening</span></button></div>`;
+    return `<main class="screen">${topbar('Plan treningu')}
+      <div class="dscroll" data-scroll="train-plan">${flashBar()}
+        <div style="font-size:13px;line-height:1.4;color:var(--muted)">Szablony treningów: skonfiguruj ćwiczenia raz i używaj ich jako nowego treningu. Plan nie ma daty i nie trafia do historii, dopóki nie użyjesz go jako treningu.</div>
+        <button class="tprimary" data-a="trplannew">${K.plus}<span>Nowy plan</span></button>
+        <div class="eyebrow" style="margin-top:4px">Zapisane plany · ${ps.length}</div>
+        ${ps.length ? ps.map(card).join('') : '<div class="dcard" style="font-size:14px;line-height:1.4;color:var(--muted)">Brak planów. Dotknij „Nowy plan”, żeby zapisać pierwszy szablon.</div>'}
       </div></main>`;
   }
 
@@ -358,17 +391,27 @@
   // ---------- Formularz treningu ----------
   const blankIv = () => ({ work: '', rest: '', rounds: '' });
   const blankEx = () => ({ name: '', kind: 'str', bw: false, sets: [{ n: '3', kg: '', reps: '10' }], min: '', iv: false, ivs: [blankIv()], watts: '', km: '' });
+  // Ćwiczenie zapisane → pola formularza (tekst) i z powrotem (v48: wspólne dla treningu i planu).
+  const exToDraft = (x) => ({ name: x.name, kind: x.kind, bw: x.kind === 'str' && !!x.bw, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: x.bw ? '' : fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
+    min: x.kind === 'car' && !x.iv ? fmt(x.min) : '', iv: !!x.iv, ivs: x.iv && x.ivs && x.ivs.length ? x.ivs.map((v) => ({ work: String(v.work), rest: String(v.rest), rounds: String(v.rounds) })) : [blankIv()], watts: x.watts ? String(x.watts) : '', km: x.km ? fmt(x.km) : '' });
+  const exOut = (D) => D.ex.map((x) => (x.kind === 'str'
+    ? { name: x.name.trim(), kind: 'str', bw: !!x.bw, sets: x.sets.map((s) => ({ n: num(s.n), kg: x.bw ? 0 : num(s.kg), reps: num(s.reps) })) }
+    : (() => { const iv = !!x.iv, list = iv ? x.ivs.map((v) => ({ work: num(v.work), rest: num(v.rest), rounds: num(v.rounds) })) : [];
+        return { name: x.name.trim(), kind: 'car', min: iv ? TR.ivMinutes(list) : num(x.min), iv, ivs: list, watts: String(x.watts || '') !== '' ? num(x.watts) : null, km: String(x.km || '') !== '' ? Math.round(num(x.km) * 10) / 10 : null }; })()));
   function draftFor(arg) {
     if (arg && arg !== 'new') {
       const w = TR.get(arg); if (!w) return null;
-      return { id: w.id, d: w.d, name: w.name, tags: (w.tags || []).slice(), tagIn: '', src: w.src || '', sport: w.sport || '', pid: w.pid || '', pol: w.pol || null, ex: w.ex.map((x) => ({ name: x.name, kind: x.kind, bw: x.kind === 'str' && !!x.bw, sets: x.kind === 'str' ? x.sets.map((s) => ({ n: String(s.n), kg: x.bw ? '' : fmt(s.kg), reps: String(s.reps) })) : [{ n: '3', kg: '', reps: '10' }],
-        min: x.kind === 'car' && !x.iv ? fmt(x.min) : '', iv: !!x.iv, ivs: x.iv && x.ivs && x.ivs.length ? x.ivs.map((v) => ({ work: String(v.work), rest: String(v.rest), rounds: String(v.rounds) })) : [blankIv()], watts: x.watts ? String(x.watts) : '', km: x.km ? fmt(x.km) : '' })) };
+      return { id: w.id, d: w.d, name: w.name, tags: (w.tags || []).slice(), tagIn: '', src: w.src || '', sport: w.sport || '', pid: w.pid || '', pol: w.pol || null, ex: w.ex.map(exToDraft) };
     }
     return { id: null, d: C.todayKey(), name: '', tags: [], tagIn: '', src: '', pid: '', pol: null, ex: [blankEx()] };
   }
+  // v48: nowy trening z planu (data dziś; plan bez zmian) i formularz planu (nowy, z istniejącego albo kopia treningu z historii)
+  const trainFromPlan = (p) => ({ id: null, d: C.todayKey(), name: p.name, tags: (p.tags || []).slice(), tagIn: '', src: '', pid: '', pol: null, ex: p.ex.length ? p.ex.map(exToDraft) : [blankEx()], fromPlan: p.name });
+  const planDraft = (p, fromDay) => ({ plan: true, pid: p && p.id ? p.id : null, id: null, d: '', name: p ? p.name || '' : '', tags: p ? (p.tags || []).slice() : [], tagIn: '', src: '', pol: null, ex: p && p.ex.length ? p.ex.map(exToDraft) : [blankEx()], fromDay: fromDay || null });
   const inRange = (t, lo, hi, int) => { const v = num(t); return v !== null && v >= lo && v <= hi && (!int || Math.floor(v) === v); };
   function check(D) {
-    const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(D.d) && D.d <= C.todayKey() && D.d >= '2020-01-01';
+    const dateOk = D.plan || (/^\d{4}-\d{2}-\d{2}$/.test(D.d) && D.d <= C.todayKey() && D.d >= '2020-01-01');
+    const nameOk = !D.plan || D.name.trim() !== '';   // v48: nazwa planu wymagana
     const ex = D.ex.map((x) => {
       const r = { name: x.name.trim() !== '' };
       if (x.kind === 'str') {
@@ -385,7 +428,7 @@
       }
       return r;
     });
-    return { dateOk, ex, ok: dateOk && D.ex.length > 0 && ex.every((r) => r.ok) };
+    return { dateOk, nameOk, ex, ok: dateOk && nameOk && D.ex.length > 0 && ex.every((r) => r.ok) };
   }
   // Czas łącznie z interwałów (rundy × (praca + odpoczynek)), gdy jest co liczyć.
   function ivTotal(x) {
@@ -399,9 +442,22 @@
     return 'Razem: ' + pl(ns, 'seria', 'serie', 'serii') + (vol > 0 ? ' · objętość ' + fmt(vol) + ' kg' : '');
   }
   function viewEdit(arg) {
-    if (!T.draft || String(T.draft.id || 'new') !== String(arg || 'new')) { T.draft = draftFor(arg); T.tried = false; T.confirm = false; }
+    if (!T.draft || T.draft.plan || String(T.draft.id || 'new') !== String(arg || 'new')) { T.draft = draftFor(arg); T.tried = false; T.confirm = false; }
     const D = T.draft;
     if (!D) return `<main class="screen">${topbar('Nie ma takiego treningu')}</main>`;
+    return editForm(D);
+  }
+  // v48 (makieta v222): formularz planu – jak formularz treningu, bez daty; nazwa planu wymagana.
+  function viewPlanEdit(arg) {
+    if (!T.draft || !T.draft.plan || String(T.draft.pid || 'new') !== String(arg || 'new')) {
+      const p = arg && arg !== 'new' ? TR.plan(arg) : null;
+      T.draft = arg && arg !== 'new' && !p ? null : planDraft(p); T.tried = false; T.confirm = false;
+    }
+    const D = T.draft;
+    if (!D) return `<main class="screen">${topbar('Nie ma takiego planu')}</main>`;
+    return editForm(D);
+  }
+  function editForm(D) {
     const ck = check(D), bad = (b) => (T.tried && b ? ' bad' : '');
     const err = (show, text, key) => `<div class="terr" role="alert" data-err="${key}"${show ? '' : ' hidden'}>${text}</div>`;
     const exs = D.ex.map((x, i) => {
@@ -452,8 +508,15 @@
               ${err(T.tried && !r.kmOk, 'Dystans: 0,1–999,9 km albo zostaw puste.', 'k' + i)}</div>`}
         </div>`;
     }).join('');
-    return `<main class="screen">${topbar(D.id ? 'Edytuj trening' : 'Nowy trening')}
-      <div class="dscroll" data-scroll="train-edit">
+    const P2 = D.plan;
+    const head = P2 ? `<div class="dcard" style="gap:10px"><div style="font-size:12px;line-height:1.4;color:var(--muted)">Plan to szablon treningu bez daty. Zapisz go na później albo od razu użyj jako nowego treningu – ćwiczenia, serie i ciężary przepiszą się do formularza treningu.</div>
+          <div style="display:flex;flex-direction:column;gap:4px"><label for="p-name" style="font-size:14px">Nazwa planu *</label>
+            <input id="p-name" class="tin txt${bad(!ck.nameOk)}" type="text" maxlength="40" autocomplete="off" value="${esc(D.name)}" placeholder="np. Trening A – klatka" data-in="train-wname">
+            ${err(T.tried && !ck.nameOk, 'Nazwa planu jest wymagana.', 'pname')}</div>
+          ${tagBlock(D)}</div>` : '';
+    return `<main class="screen">${topbar(P2 ? (D.pid ? 'Edytuj plan' : 'Nowy plan') : D.id ? 'Edytuj trening' : 'Nowy trening')}
+      <div class="dscroll" data-scroll="${P2 ? 'train-planedit' : 'train-edit'}">
+        ${P2 ? head : `${D.fromPlan ? `<div class="dcard tplnote" role="note">${ic(18, 1.8, P.plan)}<span>${esc('Ćwiczenia z planu „' + D.fromPlan + '”. Ustaw datę i popraw ciężary lub powtórzenia – plan zostaje bez zmian.')}</span></div>` : ''}
         <div class="dcard" style="gap:10px"><div class="bfrow"><div style="flex:1;min-width:0;font-size:14px">Data treningu</div>
             ${A.dateBtn(D.d, 'trdate', '', 'Data treningu')}</div>
           ${err(T.tried && !ck.dateOk, 'Podaj poprawną datę (nie późniejszą niż dziś).', 'date')}
@@ -465,25 +528,28 @@
             <div class="s">Możesz zmienić nazwę, ćwiczenia i kategorie – kolejna synchronizacja nie nadpisze Twoich zmian.</div></div>` : ''}
           ${D.src !== 'polar' && D.pol && D.pol.pid ? `<div class="tpolinfo"><div class="h" style="display:flex;align-items:center;gap:6px;color:var(--polar)">${POLI}<span>Dane z Polar Flow dołączone</span></div>
             <div class="s">${esc('Dane tylko do odczytu: ' + nv(D.pol.kcal) + ' kcal · tętno śr./maks. ' + nv(D.pol.hrAvg) + '/' + nv(D.pol.hrMax) + ' · obciążenie treningowe ' + nv(D.pol.load))}</div>
-            <div class="s">Dane z zegarka są tylko do odczytu. Odłączysz je w „Trening z dnia”.</div></div>` : ''}</div>
+            <div class="s">Dane z zegarka są tylko do odczytu. Odłączysz je w „Trening z dnia”.</div></div>` : ''}</div>`}
         <div class="eyebrow" style="margin-top:2px">Ćwiczenia</div>
         ${exs}
         <button class="taddex" data-a="trexadd">${K.plus}<span>Dodaj ćwiczenie</span></button>
         ${err(T.tried && !D.ex.length, 'Dodaj co najmniej jedno ćwiczenie.', 'noex')}
-        ${D.id ? (T.confirm
-          ? `<div class="dcard" role="alert" style="border-color:#6A2F36;gap:10px"><div style="font-size:14px">Usunąć ten trening wraz z ćwiczeniami?</div>
-              <div style="display:flex;gap:8px"><button class="btn2" style="flex:1" data-a="trdelno">Anuluj</button><button class="tdelyes" data-a="trdelyes">Tak, usuń</button></div></div>`
-          : `<button class="tdel" data-a="trdelask">${K.trash}<span>Usuń trening</span></button>`) : ''}
+        ${(P2 ? D.pid : D.id) ? (T.confirm
+          ? `<div class="dcard" role="alert" style="border-color:#6A2F36;gap:10px"><div style="font-size:14px">${P2 ? 'Usunąć ten plan? Zapisane treningi nie zmienią się. Tej operacji nie można cofnąć.' : 'Usunąć ten trening wraz z ćwiczeniami?'}</div>
+              <div style="display:flex;gap:8px"><button class="btn2" style="flex:1" data-a="trdelno">Anuluj</button><button class="tdelyes" data-a="${P2 ? 'trpdelyes' : 'trdelyes'}">Tak, usuń</button></div></div>`
+          : `<button class="tdel" data-a="trdelask">${K.trash}<span>${P2 ? 'Usuń plan' : 'Usuń trening'}</span></button>`) : ''}
       </div>
-      <div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 18px" data-a="navback">Anuluj</button>
-        <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>
+      ${P2 ? `<div class="footbar" style="gap:8px"><button class="btn2" style="height:52px;padding:0 14px" data-a="navback">Anuluj</button>
+        <button id="trpuse" class="tpluse2${ck.ok ? '' : ' off'}" data-a="trpluse">Użyj jako trening</button>
+        <button id="trpsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1;min-width:0;font-size:15px" data-a="trpsave">Zapisz plan</button></div>`
+      : `<div class="footbar" style="gap:10px"><button class="btn2" style="height:52px;padding:0 18px" data-a="navback">Anuluj</button>
+        <button id="trsave" class="tprimary${ck.ok ? '' : ' off'}" style="flex:1" data-a="trsave">Zapisz trening</button></div>`}
       ${catOverlay()}</main>`;
   }
   // v38 (makieta v190): pole „Kategorie” – przycisk z wybranymi kategoriami otwiera „Konfigurację kategorii” z polami wyboru.
   function tagBlock(D) {
     const reg = TR.tags();
     return `<div class="ttags"><div style="font-size:14px">Kategorie <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></div>
-        <button class="tcfield" data-a="trcatopen" data-m="edit" aria-haspopup="dialog" aria-label="Wybierz kategorie treningu"><span class="ttagrow" style="flex:1;min-width:0">${D.tags.length ? D.tags.map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('') : '<span style="font-size:14px;color:var(--muted)">Wybierz kategorie</span>'}</span><span style="flex:none;color:var(--muted);display:flex">${K.chev}</span></button></div>`;
+        <button class="tcfield" data-a="trcatopen" data-m="edit" aria-haspopup="dialog" aria-label="${D.plan ? 'Wybierz kategorie planu' : 'Wybierz kategorie treningu'}"><span class="ttagrow" style="flex:1;min-width:0">${D.tags.length ? D.tags.map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('') : '<span style="font-size:14px;color:var(--muted)">Wybierz kategorie</span>'}</span><span style="flex:none;color:var(--muted);display:flex">${K.chev}</span></button></div>`;
   }
 
   // v30 (makieta 05.11.2026, v165): podpowiedzi nazwy ćwiczenia (do 5) z nazw z tego formularza i z zapisanych treningów;
@@ -512,7 +578,7 @@
   function live() {
     const D = T.draft; if (!D) return;
     const ck = check(D), q = (s) => document.querySelector(s);
-    const b = q('#trsave'); if (b) b.classList.toggle('off', !ck.ok);
+    ['#trsave', '#trpsave', '#trpuse'].forEach((x) => { const b = q(x); if (b) b.classList.toggle('off', !ck.ok); });
     D.ex.forEach((x, i) => {
       const s = q('[data-sum="' + i + '"]'); if (s) { const t = sumTxt(x); s.textContent = t; s.hidden = !t; }
       const tt = q('[data-total="' + i + '"]'); if (tt) { const t = ivTotal(x); tt.textContent = 'Czas łącznie: ' + t; tt.hidden = !t; }
@@ -520,7 +586,7 @@
     if (!T.tried) return;
     const setBad = (sel, b2) => { const el = q(sel); if (el) el.classList.toggle('bad', b2); };
     const showErr = (k, on) => { const el = q('[data-err="' + k + '"]'); if (el) el.hidden = !on; };
-    setBad('#t-date', !ck.dateOk); showErr('date', !ck.dateOk);
+    setBad('#t-date', !ck.dateOk); showErr('date', !ck.dateOk); setBad('#p-name', !ck.nameOk); showErr('pname', !ck.nameOk);
     D.ex.forEach((x, i) => {
       const r = ck.ex[i];
       setBad('#ex-' + i + '-name', !r.name); showErr('n' + i, !r.name);
@@ -567,13 +633,38 @@
       const cur = D.id ? TR.get(D.id) : null;
       const extra = D.src === 'polar' ? { src: 'polar', pid: D.pid, pol: D.pol, sport: D.sport || '' }   // v36: trening z Polar zostaje oznaczony
         : (cur && TR.linked(cur) ? { pol: cur.pol } : {});   // v39: zapis zachowuje dołączone dane z Polar
-      TR.upsert(Object.assign({ id: D.id, d: D.d, name: D.name.trim(), tags: D.tags.slice(), ex: D.ex.map((x) => (x.kind === 'str'
-        ? { name: x.name.trim(), kind: 'str', bw: !!x.bw, sets: x.sets.map((s) => ({ n: num(s.n), kg: x.bw ? 0 : num(s.kg), reps: num(s.reps) })) }
-        : (() => { const iv = !!x.iv, list = iv ? x.ivs.map((v) => ({ work: num(v.work), rest: num(v.rest), rounds: num(v.rounds) })) : [];
-            return { name: x.name.trim(), kind: 'car', min: iv ? TR.ivMinutes(list) : num(x.min), iv, ivs: list, watts: String(x.watts || '') !== '' ? num(x.watts) : null, km: String(x.km || '') !== '' ? Math.round(num(x.km) * 10) / 10 : null }; })())) }, extra));
+      TR.upsert(Object.assign({ id: D.id, d: D.d, name: D.name.trim(), tags: D.tags.slice(), ex: exOut(D) }, extra));
       T.flash = { text: (D.id ? 'Zapisano zmiany treningu z ' : 'Zapisano trening z ') + dl(D.d) + '.', fresh: true };
       T.draft = null; A.back();
     },
+    // v48 (makieta v222–v227): Plan treningu
+    trplannew: () => { T.draft = null; A.go('#/train/plan/new'); },
+    trplanuse: (el) => { const p = TR.plan(el.dataset.id); if (!p) return; T.draft = trainFromPlan(p); T.tried = false; A.go('#/train/edit/new'); },
+    trpluse: () => {
+      const D = T.draft; if (!D || !D.plan) return;
+      if (!check(D).ok) { T.tried = true; R(); const f = document.querySelector('.terr:not([hidden])'); if (f) f.scrollIntoView({ block: 'center' }); return; }
+      T.draft = trainFromPlan({ name: D.name.trim(), tags: D.tags, ex: exOut(D) }); T.tried = false; A.replace('#/train/edit/new');
+    },
+    trpsave: () => {
+      const D = T.draft; if (!D || !D.plan) return;
+      if (!check(D).ok) { T.tried = true; R(); const f = document.querySelector('.terr:not([hidden])'); if (f) f.scrollIntoView({ block: 'center' }); return; }
+      const p = TR.planUpsert({ id: D.pid, name: D.name.trim(), tags: D.tags.slice(), ex: exOut(D) });
+      T.flash = { text: (D.pid ? 'Zapisano zmiany planu „' : 'Zapisano plan „') + p.name + '”.', fresh: true };
+      const fromDay = D.fromDay; T.draft = null;
+      if (fromDay) A.replace('#/train/plan'); else A.back();
+    },
+    trpdelyes: () => {
+      const D = T.draft, p = D && D.plan && TR.planRemove(D.pid); if (!p) return;
+      T.flash = { text: 'Usunięto plan „' + p.name + '”.', fresh: true }; T.draft = null; T.confirm = false; A.back();
+    },
+    trplancopy: (el) => {
+      const w = TR.get(el.dataset.id); if (!w) return;
+      const d = TR.planDups(w.ex);
+      if (d.length) { T.dup = { wid: w.id, names: d.map((p) => p.name) }; R(); const f = document.querySelector('[data-a=trdupyes]'); if (f) f.focus(); return; }
+      copyToPlan(w);
+    },
+    trdupyes: () => { const w = T.dup && TR.get(T.dup.wid); T.dup = null; if (w) copyToPlan(w); else R(); },
+    trdupno: () => { T.dup = null; R(); },
     trdelask: () => { T.confirm = true; R(); },
     trdelno: () => { T.confirm = false; R(); },
     trdelyes: () => {
@@ -632,6 +723,11 @@
       c.name = ''; c.col = null; c.err = ''; R();
     }
   };
+  // v48 (makieta v226): kopia treningu z historii jako nowy plan (bez danych z zegarka); Wróć/Anuluj wracają do „Trening z dnia”.
+  function copyToPlan(w) {
+    T.draft = planDraft({ name: w.name || '', tags: w.tags || [], ex: w.ex }, w.id); T.draft.pid = null; T.tried = false; T.confirm = false;
+    A.go('#/train/plan/new');
+  }
   // v36: odświeżenie samej listy Historii podczas pisania (pole zachowuje fokus i klawiaturę).
   function liveHist() { const l = document.querySelector('[data-thlist]'); if (l) l.innerHTML = histCards(); }
 
@@ -647,13 +743,14 @@
       if (r.arg === 'history') return viewHistory();
       if (r.arg === 'cal') return viewCal();
       if (r.arg === 'progress') return viewProgress();
+      if (r.arg === 'plan') return r.arg2 ? viewPlanEdit(r.arg2) : viewPlan();
       if (r.arg === 'edit') return viewEdit(r.arg2);
       if (r.arg === 'day') return viewDay(r.arg2);
       return viewHome();
     },
     // Dolny pasek: Trening · Historia · Postępy; formularz bez paska.
-    navKey: (r) => (r.arg === 'edit' ? null : ['cal', 'history', 'progress', 'recur'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
-    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['cal', '#/train/cal', 'Kalendarz', P.cal], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend], ['recur', '#/train/recur', 'Aktywności', P.rep]],
+    navKey: (r) => (r.arg === 'edit' || (r.arg === 'plan' && r.arg2) ? null : ['plan', 'cal', 'history', 'progress', 'recur'].indexOf(r.arg) >= 0 ? r.arg : 'home'),
+    navItems: [['home', '#/train', 'Trening', P.dumbbell], ['plan', '#/train/plan', 'Plan', P.plan], ['cal', '#/train/cal', 'Kalendarz', P.cal], ['history', '#/train/history', 'Historia', P.clock], ['progress', '#/train/progress', 'Postępy', P.trend], ['recur', '#/train/recur', 'Aktywności', P.rep]],
     icon: P.dumbbell,
     onInput(el, k) {
       if (window.TrainRecUI && window.TrainRecUI.onInput(el, k)) return;
@@ -680,6 +777,7 @@
     onEscape() {
       if (window.TrainRecUI && window.TrainRecUI.onEscape()) return true;
       if (T.cat) { T.cat = null; return true; }
+      if (T.dup) { T.dup = null; return true; }
       if (T.tdd) { T.tdd = false; return true; }
       if (T.sg != null) { T.sg = null; T.sugg = []; return true; }
       if (T.confirm) { T.confirm = false; return true; }
@@ -691,8 +789,8 @@
       T.dd = false; T.confirm = false; T.sg = null; T.sugg = [];
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
-      if (!(r.name === 'train' && r.arg === 'edit')) T.draft = null;
-      T.cat = null; T.tdd = false;
+      if (!(r.name === 'train' && (r.arg === 'edit' || (r.arg === 'plan' && r.arg2)))) T.draft = null;
+      T.cat = null; T.tdd = false; T.dup = null;
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tq = ''; T.hideP = false; }   // filtr Historii do wyjścia z niej
       if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; T.tm = 'main'; }
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.qOpen = false; }
