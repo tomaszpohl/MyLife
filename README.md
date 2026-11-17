@@ -173,7 +173,7 @@ Aplikacja internetowa musi być raz udostępniona pod adresem **https**, żeby A
 Podmień pliki pod **tym samym adresem**. Zadania zostaną: aplikacja sama usunie z nich godziny i przypomnienia. Dotychczasowa kolejność dnia (wg dawnych godzin) zostanie zachowana, dopóki nie zmienisz jej uchwytem. Nazwa pod ikoną zmieni się na MyLife po ponownym uruchomieniu. Czasem trzeba odinstalować i zainstalować skrót, zrób wtedy najpierw kopię.
 
 ### Jak sprawdzić, czy telefon ma nową wersję
-Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v50 · 17.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
+Ustawienia → karta „Przechowywanie danych” → wiersz **Wersja aplikacji** (np. „v50.1 · 17.11.2026”). Po wgraniu nowych plików GitHub Pages może przez kilka minut podawać poprzednie; od v12 aplikacja zawsze pyta serwer o świeże pliki, a gdy pobierze nową wersję, sama się przeładowuje. Jeśli wersja się nie zmienia, zamknij aplikację i otwórz ją ponownie po kilku minutach.
 
 ### Test na komputerze
 W folderze `mylife` uruchom `python -m http.server 8000` i otwórz `http://localhost:8000` (w Chrome: narzędzia deweloperskie → widok telefonu).
@@ -219,6 +219,7 @@ Tło `#0A0E13` · karty `#11171F` · linie `#202B38` · akcent `#5BD0E8` · teks
 Fonty: Space Grotesk (nagłówki) + IBM Plex Sans (treść).
 
 ## Historia zmian
+- **v50.1 (17.11.2026)**: poprawka – ikona domu zawsze wraca na ekran główny (także w aplikacji zainstalowanej na telefonie).
 - **v50 (17.11.2026)**: etykiety „Plan treningu” / „Rozliczenia” przy wpisach w planie dnia; kolejność aktywności cyklicznych w Planie dnia; widoczny uchwyt podzadań; link „Zobacz podział wydatków →” w Wyniku finansowym; poprawione pola Planera wydatków; wygląd Planu posiłków, Trening z dnia i Rozliczenia grupowego jak w makiecie.
 - **v49 (17.11.2026)**: „Zaplanuj trening” z planu (wpis w planie dnia otwierający plan), ostatnie wyniki ćwiczeń w formularzu treningu, kolejność pól serii: serie → powtórzenia → ciężar.
 - **v48 (17.11.2026)**: Plan treningu (szablony, „Użyj jako trening”, kopiowanie treningu do planu z ostrzeżeniem o takim samym planie, pozycja „Plan” w dolnym pasku Treningu); funkcje modułów Dieta, Finanse, Trening i Rozliczenia jako kafelki po dwa w rzędzie.

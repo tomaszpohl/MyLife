@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v50 · 17.11.2026';
+  const APP_VERSION = 'v50.1 · 17.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -282,11 +282,21 @@
     if (nav.length >= 2) { history.back(); return; }
     navReplace(parentOf(curHash()));
   }
+  // v50.1: powrót na ekran główny. Skok w historii (history.go) zachowuje „wstecz” telefonu, ale w aplikacji zainstalowanej
+  // na ekranie głównym (zwłaszcza iOS) potrafi nic nie zrobić albo zatrzymać się na innym ekranie, gdy historia przeglądarki
+  // rozjedzie się z zapamiętanym stosem `nav`. Dlatego po krótkiej chwili sprawdzamy wynik i w razie potrzeby przechodzimy wprost.
+  let homeWait = null;   // { timer } – czekamy na wynik skoku history.go
+  function homeDirect() { if (homeWait) { clearTimeout(homeWait.timer); homeWait = null; } if (curHash() !== '#/') { nav = [curHash()]; navReplace('#/'); } }
+  // Wywoływane przy każdej zmianie adresu: skok trafił na ekran główny – koniec; trafił gdzie indziej – przejście wprost.
+  function homeCheck() { if (!homeWait) return; if (curHash() === '#/') { clearTimeout(homeWait.timer); homeWait = null; } else homeDirect(); }
   function home() {
     if (curHash() === '#/') return;
-    const j = nav.indexOf('#/');
-    if (j >= 0) history.go(j - (nav.length - 1));
-    else navReplace('#/');
+    const j = nav.indexOf('#/'), d = j >= 0 ? j - (nav.length - 1) : 0;
+    if (d < 0 && history.length > -d) {
+      if (homeWait) clearTimeout(homeWait.timer);
+      homeWait = { timer: setTimeout(homeDirect, 600) };   // skok nic nie zrobił
+      history.go(d);
+    } else homeDirect();
   }
 
   // ---------- Renderowanie ----------
@@ -1464,6 +1474,7 @@
   window.addEventListener('online', () => { if (window.GCal) window.GCal.schedule(1000); });
   window.addEventListener('hashchange', () => {
     navSync();
+    if (homeWait) { homeCheck(); if (curHash() !== '#/' && navMode === 'replace') return; }   // v50.1: wynik skoku „domek”
     const r = route();
     if (r.name !== 'plan') S.sheet = null;
     S.del = null; S.bk = null; S.dp = null; S.sdel = null;
