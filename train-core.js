@@ -208,9 +208,24 @@
     e.tags.forEach((t) => { if (db.tags.indexOf(t) < 0) db.tags.push(t); });
     if (e.id && plan(e.id)) db.plans.list = db.plans.list.map((x) => (x.id === e.id ? e : x));
     else { e.id = db.plans.next++; db.plans.list.push(e); }
-    save(); return e;
+    save();
+    // v49: zmiana nazwy planu aktualizuje tytuły zaplanowanych treningów w planie dnia
+    planTasks(e.id).filter((t) => t.title !== e.name).forEach((t) => { t.title = e.name; window.Core.upsert(t); });
+    return e;
   }
-  function planRemove(id) { const p = plan(id); if (!p) return null; db.plans.list = db.plans.list.filter((x) => x.id !== p.id); save(); return p; }
+  function planRemove(id) {
+    const p = plan(id); if (!p) return null; db.plans.list = db.plans.list.filter((x) => x.id !== p.id); save();
+    planTasks(p.id).forEach((t) => window.Core.remove(t.id));   // v49: usunięcie planu usuwa jego wpisy w planie dnia
+    return p;
+  }
+  // v49 (makieta v229): „Zaplanuj trening” – zadanie jednorazowe w planie dnia (bez godziny) z polem `tplan`; jeden wpis planu na dzień.
+  const planTasks = (pid) => (window.Core ? window.Core.all().filter((t) => t.tplan === pid).map((t) => JSON.parse(JSON.stringify(t))) : []);
+  function schedule(pid, k) {
+    const p = plan(pid); if (!p || !window.Core) return null;
+    if (planTasks(p.id).some((t) => t.date === k)) return { dup: true, plan: p };
+    const t = window.Core.blankTask(k); t.title = p.name; t.tplan = p.id;
+    return { dup: false, plan: p, task: window.Core.upsert(t) };
+  }
   // Plany z takimi samymi ćwiczeniami jak trening: ten sam zbiór nazw (bez wielkości liter, kolejności, serii i ciężarów).
   const nameSet = (ex) => Array.from(new Set((ex || []).map((x) => String(x.name || '').trim().toLocaleLowerCase('pl')).filter(Boolean))).sort();
   function planDups(ex) {
@@ -218,6 +233,6 @@
     return plans().filter((p) => { const q = nameSet(p.ex); return q.length === k.length && q.every((n, i) => n === k[i]); });
   }
 
-  window.Train = { plans, plan, planUpsert, planRemove, planDups, load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf,
+  window.Train = { plans, plan, planUpsert, planRemove, planDups, schedule, planTasks, load, save, list, get, upsert, remove, restore, stats, volOf, ivMinutes, norm, daysSinceLast, progress, exNames, known, exportData, importData, summary, recDb, tags, polSeen, tagColors, tagAdd, tagRemove, sportOf,
     linked, polQ, polFree, polQAdd, polLink, polUnlink, polSkip, polAuto };
 })();

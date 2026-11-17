@@ -35,13 +35,15 @@
       const t = x.task, sc = C.subCount(t, T), parts = [];
       if (t.time) parts.push(t.time);
       if (t.g && t.g.src === 'g') parts.push('z kalendarza');
+      const tp = t.tplan && window.Train && window.Train.plan(t.tplan);   // v49: zaplanowany trening – wiersz otwiera plan treningu
+      if (tp) parts.push('Plan treningu · zaplanowany trening');
       if (sc.total) parts.push('Podzadania: ' + sc.done + ' z ' + sc.total);
       else if (C.isRecurring(t) && !(t.g && t.g.src === 'g')) parts.push(C.repeatLabel(t));
       // v47 (makieta v220): kółko przed zadaniem odhacza je (te same dane co Plan dnia); zadania o zwrocie potwierdza się w Planie dnia
       const debt = !!(t.debt && window.Settle && window.Settle.debtById && window.Settle.debtById(t.debt));
       const lbl = debt ? 'Zadanie o zwrocie – potwierdź w planie dnia: ' + t.title : (x.done ? 'Odznacz zadanie: ' : 'Oznacz jako zrobione: ') + t.title;
       return `<div class="tdrow tdrowx${x.done ? ' done' : ''}"><button class="tdchk${debt ? ' lock' : ''}" data-a="tdtask" data-id="${esc(t.id)}" data-k="${esc(x.k)}" aria-pressed="${x.done}"${debt ? ' aria-disabled="true"' : ''} aria-label="${esc(lbl)}"><span class="tddot" style="${x.done ? '' : 'border-color:var(--accent)'}">${x.done ? CHECK : ''}</span></button>
-        <button class="tdlink" data-a="tdplan" aria-label="${esc((x.done ? 'Zrobione: ' : 'Do zrobienia: ') + t.title + '. Otwórz plan dnia')}"><span class="tdtxt"><span class="t">${esc(t.title)}</span>${parts.length ? `<span class="s">${esc(parts.join(' · '))}</span>` : ''}</span><span class="tdchev">${CHEV}</span></button></div>`;
+        <button class="tdlink" data-a="${tp ? 'tdtplan' : 'tdplan'}"${tp ? ` data-id="${tp.id}"` : ''} aria-label="${esc((x.done ? 'Zrobione: ' : 'Do zrobienia: ') + t.title + (tp ? '. Otwórz plan treningu' : '. Otwórz plan dnia'))}"><span class="tdtxt"><span class="t">${esc(t.title)}</span>${parts.length ? `<span class="s">${esc(parts.join(' · '))}</span>` : ''}</span><span class="tdchev">${CHEV}</span></button></div>`;
     }).join('');
     const more = list.length - MAX_T;
     return `<section class="tdsec" style="border-color:var(--accent-line, #2A6F80)">
@@ -111,6 +113,7 @@
     tdtask: (el) => { if (el.getAttribute('aria-disabled') === 'true') return; C.toggleDone(el.dataset.id, el.dataset.k); A.render(); },
     tdmeal: (el) => { window.Diet.markMeal(C.todayKey(), el.dataset.slot, el.dataset.v); A.render(); },
     tdplan: () => { A.S.sel = C.todayKey(); A.go('#/plan/day'); },
+    tdtplan: (el) => A.go('#/train/plan/' + el.dataset.id),
     tddiet: () => { location.hash = '#/diet'; },
     tdacts: () => { location.hash = '#/train/cal'; },   // makieta: wiersz aktywności → „Aktywność fizyczna”
     tdtrain: () => { location.hash = '#/train'; },

@@ -29,7 +29,7 @@
     search: ic(20, 2, '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>'),
     big: (p) => ic(26, 1.8, p)
   };
-  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, dup: null, qOpen: false, qMsg: '', pk: false, tm: 'main', cm: null, csel: '' };
+  const T = { draft: null, tried: false, confirm: false, flash: null, sel: null, day: null, dd: false, tabOpen: false, sg: null, sugg: [], q: '', tq: '', hideP: false, pview: 'ex', ptag: null, tday: null, tdd: false, cat: null, dup: null, smsg: null, qOpen: false, qMsg: '', pk: false, tm: 'main', cm: null, csel: '' };
 
   // ---------- Formatowanie ----------
   const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -251,11 +251,13 @@
           ${p.tags.length ? `<div class="tmeta">${p.tags.map((t) => `<span class="ttag" style="--tc:${tagCol(reg, t)}">${esc(t)}</span>`).join('')}</div>` : ''}</div>
           <a class="tplpen" href="#/train/plan/${p.id}" aria-label="${esc('Edytuj plan ' + p.name)}">${K.pencil}</a></div>
         ${p.ex.length ? `<div class="tpllines">${p.ex.slice(0, 4).map(line).join('')}${p.ex.length > 4 ? `<div style="font-size:12px;color:var(--dim)">+ ${p.ex.length - 4} więcej</div>` : ''}</div>` : ''}
-        <button class="tpluse" data-a="trplanuse" data-id="${p.id}">${ic(20, 2, '<path d="M8 5v14l11-7z"></path>')}<span>Użyj jako trening</span></button></div>`;
+        <button class="tpluse" data-a="trplanuse" data-id="${p.id}">${ic(20, 2, '<path d="M8 5v14l11-7z"></path>')}<span>Użyj jako trening</span></button>
+        <button class="tplsched" data-a="trsched" data-id="${p.id}" aria-haspopup="dialog">${ic(20, 1.8, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17M12 13v4M10 15h4"></path>')}<span>Zaplanuj trening</span></button></div>`;
     return `<main class="screen">${topbar('Plan treningu')}
       <div class="dscroll" data-scroll="train-plan">${flashBar()}
         <div style="font-size:13px;line-height:1.4;color:var(--muted)">Szablony treningów: skonfiguruj ćwiczenia raz i używaj ich jako nowego treningu. Plan nie ma daty i nie trafia do historii, dopóki nie użyjesz go jako treningu.</div>
         <button class="tprimary" data-a="trplannew">${K.plus}<span>Nowy plan</span></button>
+        ${T.smsg ? `<div class="tplmsg" role="status"><span>${esc(T.smsg.text)}</span><button data-a="trschedday" data-k="${T.smsg.k}">Zobacz w planie dnia</button></div>` : ''}
         <div class="eyebrow" style="margin-top:4px">Zapisane plany · ${ps.length}</div>
         ${ps.length ? ps.map(card).join('') : '<div class="dcard" style="font-size:14px;line-height:1.4;color:var(--muted)">Brak planów. Dotknij „Nowy plan”, żeby zapisać pierwszy szablon.</div>'}
       </div></main>`;
@@ -466,10 +468,10 @@
         const q = r.sets[j];
         return `<div class="tsetwrap"><div class="tset">
             <input class="tin n${bad(!q.n)}" type="text" inputmode="numeric" maxlength="2" value="${esc(s.n)}" placeholder="0" data-in="train-n" data-i="${i}" data-j="${j}" aria-label="Liczba serii, rząd ${j + 1}">
-            <input class="tin kg${bad(!q.kg)}" type="text" inputmode="decimal" maxlength="6" value="${x.bw ? '' : esc(s.kg)}" placeholder="${x.bw ? '—' : '0'}" data-in="train-kg" data-i="${i}" data-j="${j}" aria-label="Ciężar w kg, rząd ${j + 1}"${x.bw ? ' disabled' : ''}>
             <input class="tin r${bad(!q.reps)}" type="text" inputmode="numeric" maxlength="3" value="${esc(s.reps)}" placeholder="0" data-in="train-reps" data-i="${i}" data-j="${j}" aria-label="Powtórzenia w serii, rząd ${j + 1}">
+            <input class="tin kg${bad(!q.kg)}" type="text" inputmode="decimal" maxlength="6" value="${x.bw ? '' : esc(s.kg)}" placeholder="${x.bw ? '—' : '0'}" data-in="train-kg" data-i="${i}" data-j="${j}" aria-label="Ciężar w kg, rząd ${j + 1}"${x.bw ? ' disabled' : ''}>
             <button class="iconbtn soft" data-a="trsetdel" data-i="${i}" data-j="${j}" aria-label="Usuń rząd ${j + 1}">${K.x}</button></div>
-            ${err(T.tried && !(q.n && q.kg && q.reps), (x.bw ? 'Serie 1–99, powtórzenia 1–999.' : 'Serie 1–99, ciężar 0–999 kg, powtórzenia 1–999.'), 's' + i + '-' + j)}</div>`;
+            ${err(T.tried && !(q.n && q.kg && q.reps), (x.bw ? 'Serie 1–99, powtórzenia 1–999.' : 'Serie 1–99, powtórzenia 1–999, ciężar 0–999 kg.'), 's' + i + '-' + j)}</div>`;
       }).join('') : '';
       const sum = sumTxt(x);
       return `<div class="dcard tex">
@@ -477,13 +479,14 @@
               <label for="ex-${i}-name" style="font-size:12px;color:var(--muted)">Nazwa ćwiczenia *</label>
               <input id="ex-${i}-name" class="tin txt${bad(!r.name)}" type="text" maxlength="50" autocomplete="off" value="${esc(x.name)}" placeholder="np. Przysiad ze sztangą" data-in="train-name" data-i="${i}" aria-autocomplete="list" aria-controls="sugg-${i}">
               <div class="tsugg" id="sugg-${i}" role="listbox" aria-label="Podpowiedzi ćwiczeń" data-sugg="${i}" hidden></div>
-              ${err(T.tried && !r.name, 'Nazwa ćwiczenia jest wymagana.', 'n' + i)}</div>
+              ${err(T.tried && !r.name, 'Nazwa ćwiczenia jest wymagana.', 'n' + i)}
+              ${D.plan ? '' : (() => { const h = lastHtml(D, i); return `<div class="tlast" data-last="${i}"${h ? '' : ' hidden'}>${h}</div>`; })()}</div>
             <button class="bdico del" style="margin-top:20px;flex:none" data-a="trexdel" data-i="${i}" aria-label="Usuń ćwiczenie ${esc(x.name || String(i + 1))}">${K.trash}</button></div>
           <div class="tkind" role="radiogroup" aria-label="Rodzaj ćwiczenia"><button role="radio" class="${isStr ? 'on' : ''}" aria-checked="${isStr}" data-a="trkind" data-i="${i}" data-v="str">Siłowe</button><button role="radio" class="${isStr ? '' : 'on'}" aria-checked="${!isStr}" data-a="trkind" data-i="${i}" data-v="car">Kondycyjne</button></div>
           ${isStr ? `<div style="display:flex;flex-direction:column;gap:6px">
               <button class="tbw" role="checkbox" aria-checked="${!!x.bw}" data-a="trbw" data-i="${i}"><span class="bx${x.bw ? ' on' : ''}" aria-hidden="true">${x.bw ? K.check : ''}</span><span>Ciężar własny <span style="color:var(--muted);font-size:12px">(opcjonalnie)</span></span></button>
               ${x.bw ? '<div style="font-size:12px;line-height:1.4;color:var(--muted);margin-top:-2px">Ćwiczenie z masą ciała – bez ciężaru, nie jest uwzględniane w postępie.</div>' : ''}
-              <div class="tsethead" aria-hidden="true"><span style="width:58px">SERIE</span><span style="flex:1">CIĘŻAR (KG)</span><span style="width:76px">POWT.</span><span style="width:44px"></span></div>
+              <div class="tsethead" aria-hidden="true"><span style="width:58px">SERIE</span><span style="width:76px">POWT.</span><span style="flex:1">CIĘŻAR (KG)</span><span style="width:44px"></span></div>
               ${sets}
               <button class="taddset" data-a="trsetadd" data-i="${i}">${K.plus}<span>Dodaj serię</span></button>
               <div class="tsum" data-sum="${i}"${sum ? '' : ' hidden'}>${esc(sum)}</div></div>`
@@ -554,6 +557,30 @@
 
   // v30 (makieta 05.11.2026, v165): podpowiedzi nazwy ćwiczenia (do 5) z nazw z tego formularza i z zapisanych treningów;
   // fragment nazwy bez wielkości liter i polskich znaków, najpierw dopasowania od początku; bez nazwy identycznej z wpisaną.
+  // v49 (makieta v229–v230): „Ostatnie wyniki” – najnowszy inny trening (data nie późniejsza niż edytowana) z ćwiczeniem o tej samej nazwie.
+  function lastFor(D, x) {
+    const k = String(x.name || '').trim().toLocaleLowerCase('pl'); if (!k) return null;
+    let best = null, bx = null;
+    TR.list().forEach((w) => {
+      if (D.id && w.id === D.id) return;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(D.d) && w.d > D.d) return;
+      const e = (w.ex || []).find((q) => String(q.name || '').trim().toLocaleLowerCase('pl') === k); if (!e) return;
+      if (!best || w.d > best.d || (w.d === best.d && w.id > best.id)) { best = w; bx = e; }
+    });
+    return best ? { w: best, x: bx } : null;
+  }
+  function lastHtml(D, i) {
+    const r = lastFor(D, D.ex[i]); if (!r) return '';
+    const x = r.x, lines = x.kind === 'str'
+      ? (x.sets || []).map((q) => pl(q.n || 0, 'seria', 'serie', 'serii') + ' · ' + q.reps + ' powt. · ' + (x.bw ? 'ciężar własny' : fmt(q.kg) + ' kg'))
+      : [(x.min ? fmt(x.min) + ' min · ' : '') + (x.watts ? 'Średnia moc: ' + x.watts + ' W' : 'Brak zapisanej średniej mocy')];
+    if (!lines.length) return '';
+    return `<div class="h">OSTATNIE WYNIKI · ${C.dmy ? esc(C.dmy(r.w.d)) : esc(r.w.d)}</div>${lines.map((l) => `<div>${esc(l)}</div>`).join('')}`;
+  }
+  function liveLast(i) {
+    const el = document.querySelector('[data-last="' + i + '"]'), D = T.draft; if (!el || !D) return;
+    const h = lastHtml(D, i); el.innerHTML = h; el.hidden = !h;
+  }
   function suggFor(i) {
     const D = T.draft; if (!D || !D.ex[i]) return [];
     const qn = norm(D.ex[i].name.trim()); if (!qn) return [];
@@ -665,6 +692,17 @@
     },
     trdupyes: () => { const w = T.dup && TR.get(T.dup.wid); T.dup = null; if (w) copyToPlan(w); else R(); },
     trdupno: () => { T.dup = null; R(); },
+    // v49 (makieta v229): „Zaplanuj trening” – kalendarz od dziś, wpis z nazwą planu w planie dnia
+    trsched: (el) => {
+      const p = TR.plan(el.dataset.id); if (!p) return;
+      T.smsg = null;
+      A.datePick({ value: C.todayKey(), min: C.todayKey(), title: 'Zaplanuj trening', sub: p.name, onPick: (k) => {
+        const r = TR.schedule(p.id, k); if (!r) return;
+        const day = A.calFmt(k);
+        T.smsg = { k, text: r.dup ? 'Plan „' + p.name + '” jest już zaplanowany na ' + day + '.' : 'Zaplanowano „' + p.name + '” na ' + day + '. Wpis z nazwą planu jest w planie dnia – dotknięcie otwiera ten plan.' };
+      } });
+    },
+    trschedday: (el) => { A.S.sel = el.dataset.k; T.smsg = null; A.go('#/plan/day'); },
     trdelask: () => { T.confirm = true; R(); },
     trdelno: () => { T.confirm = false; R(); },
     trdelyes: () => {
@@ -761,7 +799,7 @@
       const i = +el.dataset.i, j = +el.dataset.j, x = D.ex[i];
       const clean = (dec, max) => { el.value = el.value.replace(dec ? /[^0-9,.]/g : /[^0-9]/g, '').slice(0, max); return el.value; };
       if (k === 'train-wname') D.name = el.value.slice(0, 40);
-      else if (k === 'train-name') { x.name = el.value.slice(0, 50); T.sg = i; showSugg(i); }
+      else if (k === 'train-name') { x.name = el.value.slice(0, 50); T.sg = i; showSugg(i); if (!D.plan) liveLast(i); }
       else if (k === 'train-n') x.sets[j].n = clean(false, 2);
       else if (k === 'train-kg') x.sets[j].kg = clean(true, 6);
       else if (k === 'train-reps') x.sets[j].reps = clean(false, 3);
@@ -790,7 +828,7 @@
       if (r.name === 'train' && r.arg === 'progress') { T.sel = null; T.day = null; }   // v25: Postępy zawsze od najnowszego wyniku
       if (window.TrainRecUI) window.TrainRecUI.onRoute(r);
       if (!(r.name === 'train' && (r.arg === 'edit' || (r.arg === 'plan' && r.arg2)))) T.draft = null;
-      T.cat = null; T.tdd = false; T.dup = null;
+      T.cat = null; T.tdd = false; T.dup = null; T.smsg = null;
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.q = ''; T.tq = ''; T.hideP = false; }   // filtr Historii do wyjścia z niej
       if (!(r.name === 'train' && ['progress', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.pview = 'ex'; T.ptag = null; T.tday = null; T.tm = 'main'; }
       if (!(r.name === 'train' && ['history', 'day', 'edit'].indexOf(r.arg) >= 0)) { T.qOpen = false; }

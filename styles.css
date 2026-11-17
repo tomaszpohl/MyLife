@@ -1404,3 +1404,14 @@ a.dcard { color: var(--text); }
 .tduph { display: flex; align-items: center; gap: 8px; color: var(--gold); font-family: var(--display); font-size: 18px; font-weight: 600; }
 .tdupn { font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); word-break: break-word; }
 .tdupyes { height: 48px; border-radius: 12px; border: none; background: var(--violet); color: var(--violet-ink); font-size: 15px; font-weight: 600; }
+
+/* ---------- v49 (makieta v229–v231): Zaplanuj trening, ostatnie wyniki ---------- */
+.tplsched { min-height: 48px; border-radius: 12px; background: #10303A; border: 1px solid #1F5A6B; color: var(--accent, #5BD0E8); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 0 12px; }
+.tplmsg { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border-radius: 14px; background: #10303A; border: 1px solid #1F5A6B; padding: 10px 12px; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+.tplmsg button { background: none; border: none; padding: 6px 0; min-height: 32px; color: var(--accent, #5BD0E8); font-weight: 600; font-size: 13px; }
+.dphead { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
+.dpht { font-family: var(--display); font-size: 17px; font-weight: 600; }
+.dphs { font-size: 13px; color: var(--muted); word-break: break-word; }
+.tlast { display: flex; flex-direction: column; gap: 3px; border-radius: 12px; background: var(--bg); border: 1px solid #4A3F7A; padding: 8px 12px; font-size: 13px; }
+.tlast .h { font-size: 11px; letter-spacing: 0.1em; color: var(--violet); font-weight: 600; }
+.tlast[hidden] { display: none; }

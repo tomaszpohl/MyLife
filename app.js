@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v48 · 17.11.2026';
+  const APP_VERSION = 'v49 · 17.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -146,7 +146,7 @@
   const calFmt = (k) => (/^\d{4}-\d{2}-\d{2}$/.test(String(k)) ? DSH[C.parse(k).getDay()] + ', ' + C.dmy(k) : 'Wybierz datę');
   function datePick(o) {
     const v = /^\d{4}-\d{2}-\d{2}$/.test(String(o.value)) ? o.value : (o.max && C.todayKey() > o.max ? o.max : C.todayKey());
-    S.dp = { y: +v.slice(0, 4), m: +v.slice(5, 7) - 1, sel: o.value || '', min: o.min || '', max: o.max || '', cb: o.onPick };
+    S.dp = { y: +v.slice(0, 4), m: +v.slice(5, 7) - 1, sel: o.value || '', min: o.min || '', max: o.max || '', cb: o.onPick, title: o.title || '', sub: o.sub || '' };   // v49: opcjonalny tytuł i podpis okna
     render();
   }
   const dateBtn = (k, act, data, label) => `<button type="button" class="dpbtn" data-a="${act}"${data || ''} aria-haspopup="dialog" aria-label="${esc((label ? label + ': ' : '') + calFmt(k))}"><span>${esc(calFmt(k))}</span>${svg(18, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')}</button>`;
@@ -160,7 +160,8 @@
       cells += `<button class="dpc${k === P.sel ? ' sel' : ''}${k === T ? ' today' : ''}" data-a="dppick" data-k="${k}"${off ? ' disabled' : ''} aria-label="${esc(calFmt(k))}"${k === P.sel ? ' aria-pressed="true"' : ''}><span>${d}</span></button>`;
     }
     const prevOff = P.min && first <= P.min, nextOff = P.max && mk + '-' + C.pad(dim) >= P.max;
-    return `<div class="dpwrap"><div class="dpbox" role="dialog" aria-modal="true" aria-label="Wybierz datę">
+    return `<div class="dpwrap"><div class="dpbox" role="dialog" aria-modal="true" aria-label="${esc(P.title || 'Wybierz datę')}">
+      ${P.title ? `<div class="dphead"><div class="dpht">${esc(P.title)}</div>${P.sub ? `<div class="dphs">${esc(P.sub)}</div>` : ''}</div>` : ''}
       <div class="dpnav"><button class="dparr" data-a="dpnav" data-d="-1" aria-label="Poprzedni miesiąc"${prevOff ? ' disabled' : ''}>${I.prev}</button>
         <div class="dpt">${C.MONTH_NOM[P.m]} ${P.y}</div>
         <button class="dparr" data-a="dpnav" data-d="1" aria-label="Następny miesiąc"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
@@ -889,7 +890,12 @@
     },
     undo: () => { if (S.undo) { if (S.undo.fn) S.undo.fn(); else C.restore(S.undo.snap); S.undo = null; render(); } },
     new: () => { S.draft = null; go('#/task/new'); },
-    edit: (el) => { S.draft = null; S.editK = el.dataset.k || null; go('#/task/' + el.dataset.id); },
+    edit: (el) => {
+      // v49 (makieta v229): zaplanowany trening (zadanie z `tplan`) otwiera swój plan treningu
+      const t = C.get ? C.get(el.dataset.id) : null;
+      if (t && t.tplan && window.Train && window.Train.plan(t.tplan)) { go('#/train/plan/' + t.tplan); return; }
+      S.draft = null; S.editK = el.dataset.k || null; go('#/task/' + el.dataset.id);
+    },
     cancel: () => { S.draft = null; back(); },
     navback: () => back(),
     navhome: () => home(),
