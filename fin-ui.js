@@ -46,7 +46,7 @@
   };
 
   // ---------- Wspólne ----------
-  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1${title.length > 18 ? ' style="font-size:19px;min-width:0"' : ''}>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
+  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
   const wd = (n) => n + ' ' + C.plural(n, 'wydatek', 'wydatki', 'wydatków');
   const dot = (c) => `<span class="fdot" style="background:${c}"></span>`;
   const seg = (items, cur, act) => `<div class="seg" role="tablist">${items.map(([v, l]) => `<button role="tab" class="${cur === v ? 'on' : ''}" aria-selected="${cur === v}" data-a="${act}" data-v="${v}">${l}</button>`).join('')}</div>`;
@@ -142,7 +142,7 @@
   function cushDesc() { const tg = F.cushTarget(), sm = F.cushSum(); return tg > 0 ? 'Realizacja ' + pf(sm / tg * 100) + ' · ' + F.money(sm) + ' z ' + F.money(tg) : 'Ustaw cel poduszki'; }
 
   // ---------- Planer wydatków (v27, makieta FinPlan 03.11.2026) ----------
-  // Plan miesięczny wpisywany dla każdej aktywnej kategorii wydatków; plan roku = suma planów miesięcy (decyzja właściciela).
+  // Plan miesięczny i (od v52, makieta) osobny plan roku wpisywane dla każdej aktywnej kategorii wydatków.
   // Okresy: wstecz bez limitu, do grudnia przyszłego roku (decyzja właściciela).
   function planDesc() {
     const T = today(), v = F.planView(ym(T));
@@ -188,8 +188,8 @@
     const fmtP = (n) => (n > 0 ? n.toFixed(2).replace('.', ',') : '');
     const rows = v.rows.map((r) => {
       const ov = r.spent > r.plan, c = ov ? 'var(--danger)' : okC, pc = r.plan > 0 ? r.spent / r.plan * 100 : (r.spent > 0 ? 100 : 0);
-      const field = isY || r.locked
-        ? `<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN${isY && !r.locked ? ' ROKU' : ''}</span><div class="fpval">${r.plan > 0 ? F.money(r.plan) : '—'}</div></div>`
+      const field = r.locked
+        ? `<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN</span><div class="fpval">${r.plan > 0 ? F.money(r.plan) : '—'}</div></div>`
         : `<label style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span class="fplab">PLAN (ZŁ)</span><input class="finput amt fpin" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${fmtP(r.plan)}" data-in="fin-plan" data-cat="${esc(r.id)}" aria-label="${esc('Plan: ' + r.name)}" autocomplete="off"></label>`;
       const grip = r.locked ? '<span class="fpgrip ph" aria-hidden="true"></span>' : `<button class="fpgrip" data-pgrip="${esc(r.id)}" aria-label="${esc('Zmień kolejność: ' + r.name)}" aria-describedby="fp-help"${nq ? ' hidden' : ''}>${I.grip}</button>`;
       return `<div class="dcard fprow" style="gap:10px" data-pid="${esc(r.id)}"${r.locked ? ' data-locked="1"' : ''} data-pn="${esc(window.FinImport.norm(r.name))}"${vis(r) ? '' : ' hidden'}>
@@ -201,24 +201,24 @@
     }).join('');
     return `<main class="screen" style="position:relative">${topbar('Planer wydatków')}
       <div class="dscroll" data-scroll="fin-plan">
-        ${seg([['month', 'Miesiąc'], ['year', 'Rok']], P.scope, 'fpscope')}
+        ${seg([['month', 'Miesiąc'], ['year', 'Rok']], P.scope, 'fpscope').replace('class="seg"', 'class="seg tall"')}
         <div class="navrow"><button class="iconbtn soft boxed" data-a="fpprev" aria-label="Poprzedni okres">${I.prev}</button>
-          <div class="big">${esc(title)}</div>
+          <div class="big l">${esc(title)}</div>
           <button class="iconbtn soft boxed" data-a="fpnext" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>
         <div class="dcard" style="gap:8px;border-color:${over ? '#6A2F36' : '#2B5A3C'}">
           <div class="eyebrow">${esc(isY ? 'Rok ' + P.y : title)}</div>
           <div style="font-family:var(--display);font-size:28px;font-weight:700;color:${col}">${over ? 'Ponad plan o ' + F.money(F.r2(v.spent - v.plan)) : 'Zostało ' + F.money(v.left)}</div>
           <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, tp))}" aria-label="Wykorzystanie planu"><span style="width:${Math.min(100, Math.round(tp * 10) / 10)}%;background:${col}"></span></div>
           <div style="font-size:13px;color:var(--muted)">Wydano ${F.money(v.spent)} z ${F.money(v.plan)}${v.plan > 0 ? ' · ' + pf(tp) : ' · brak planu'}</div>
-          ${isY ? '<div style="font-size:12px;line-height:1.4;color:var(--dim)">Plan roku to suma planów miesięcznych – zmieniasz go w widoku Miesiąc.</div>' : ''}</div>
+</div>
         ${isY ? '' : P.confirm ? `<div class="fpconfirm" role="alertdialog" aria-label="Zastąpienie planu">
             <div style="font-size:14px;line-height:1.45">Plan miesiąca ${esc(curLbl)} zostanie zastąpiony planem z miesiąca: ${esc(prevLbl)}. Zastąpić?</div>
             <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="fpcopyno">Anuluj</button><button class="fpreplace" data-a="fpcopyok">Zastąp plan</button></div></div>`
           : prevHas ? `<button class="btn2" style="min-height:44px" data-a="fpcopy">${esc('Skopiuj z poprzedniego miesiąca (' + prevLbl + ')')}</button>`
           : `<button class="btn2 off" style="min-height:44px" disabled>${esc('Brak planu w poprzednim miesiącu (' + prevLbl + ')')}</button>`}
         ${P.msg ? `<div role="status" style="font-size:13px;color:${P.err ? '#F2D9A0' : okC}">${esc(P.msg)}</div>` : ''}
-        <div class="eyebrow" style="padding:4px 2px 0">Kategorie wydatków</div>
         <div class="fsearch fpsearch">${J.search}<input type="text" maxlength="24" aria-label="Szukaj kategorii" placeholder="Szukaj kategorii…" value="${esc(P.q || '')}" data-in="fin-planq" autocomplete="off"><button class="fpclear" data-a="fpqclear" aria-label="Wyczyść wyszukiwanie"${P.q ? '' : ' hidden'}>${I.close}</button></div>
+        <div class="eyebrow" style="padding:4px 2px 0">Kategorie wydatków</div>
         <div id="fp-help" class="fphint" style="font-size:12px;line-height:1.4;color:var(--dim)">${nq ? esc('Pokazano ' + nVis + ' z ' + cnt + ' kategorii. Podsumowanie dotyczy wszystkich kategorii.') : 'Przeciągnij uchwyt, aby zmienić kolejność – dotyczy wszystkich miesięcy i roku.'}</div>
         <div class="para fpnone"${nq && !nVis ? '' : ' hidden'} style="padding:6px 2px">Brak pasujących kategorii.</div>
         <div class="fplist">${rows}</div>
@@ -245,7 +245,7 @@
       return `<div class="dcard" style="gap:8px">
         <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
           <button class="iconbtn soft boxed" data-a="fgedit" data-id="${g.id}" aria-label="${esc('Edytuj cel ' + g.name)}">${J.pen}</button></div>
-        <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font-size:15px"><b style="font-family:var(--display)">${F.money(g.saved)}</b> <span style="color:var(--muted);font-size:13px">z ${F.money(g.target)}</span></div><b style="font-family:var(--display);font-size:18px;color:${col}">${pf(p)}</b></div>
+        <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font-size:14px;color:#C9D3DF">${F.money(g.saved)} <span style="color:var(--muted)">z ${F.money(g.target)}</span></div><b style="font-family:var(--display);font-size:18px;color:${col}">${pf(p)}</b></div>
         <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, p))}" aria-label="${esc('Realizacja celu ' + g.name)}"><span style="width:${Math.min(100, Math.round(p * 10) / 10)}%;background:${col}"></span></div>
         <div style="font-size:13px;color:${done ? okC : 'var(--muted)'}">${note}</div>
         ${g.asset ? `<div style="display:flex;align-items:center;gap:8px"><span class="fbadge goal">Cel</span><span style="font-size:12px;color:var(--muted);min-width:0;word-break:break-word">${esc('Powiązany z Majątkiem: ' + g.asset.name + '. Kwotę zmienisz tu albo w Majątku.')}</span></div>` : ''}</div>`;
@@ -332,7 +332,7 @@
       </div></div>`;
     }
     if (!V.tab) V.tab = 'stat';
-    const tabs = `<div class="seg small gold" role="radiogroup" aria-label="Widok inwestycji">${[['stat', 'Statystyki'], ['roi', 'ROI'], ['hist', 'Historia wpłat']].map(([v, l]) => `<button role="radio" aria-checked="${V.tab === v}" class="${V.tab === v ? 'on' : ''}" data-a="fvtab" data-v="${v}">${l}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg small gold tint big" role="radiogroup" aria-label="Widok inwestycji">${[['stat', 'Statystyki'], ['roi', 'ROI'], ['hist', 'Historia wpłat']].map(([v, l]) => `<button role="radio" aria-checked="${V.tab === v}" class="${V.tab === v ? 'on' : ''}" data-a="fvtab" data-v="${v}">${l}</button>`).join('')}</div>`;
     if (V.tab !== 'stat') return `<main class="screen" style="position:relative">${topbar('Inwestycje')}
       <div class="dscroll" data-scroll="fin-inv">${tabs}${V.tab === 'roi' ? invRoi() : invHist(CO)}</div>${modal}${V.rd ? invRoiDlg() : ''}</main>`;
     return `<main class="screen" style="position:relative">${topbar('Inwestycje')}
@@ -340,13 +340,13 @@
         <button class="primary gold" style="flex:none" data-a="fvnew">${J.plusL}<span>Dodaj inwestycję</span></button>
         <div class="dcard" style="gap:10px">
           <div class="eyebrow">Statystyki</div>
-          ${seg([['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold"')}
+          ${seg([['y', 'Rok'], ['f', 'Od daty']], V.mode, 'fvmode').replace('class="seg"', 'class="seg small gold tint"')}
           ${V.mode !== 'f' ? `<div class="navrow">
               <button class="iconbtn soft boxed" data-a="fvnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
               <div class="big">${esc(String(V.yr))}</div>
               <button class="iconbtn soft boxed" data-a="fvnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
             : `<div class="ffield"><span class="eyebrow">Od dnia</span>${A.dateBtn(V.from, 'fvfrom', '', 'Od dnia')}</div>`}
-          <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
+          <div style="text-align:left;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px;color:var(--muted)">${esc(label)}</div><div class="fbig" style="color:var(--gold)">${F.money(total)}</div>
             <div style="font-size:12px;color:var(--muted)">${per.length} ${C.plural(per.length, 'wpis', 'wpisy', 'wpisów')}${gk.length ? ' · ' + gk.length + ' ' + C.plural(gk.length, 'cel', 'cele', 'celów') : ''}</div></div>
           ${per.length ? `<div style="display:flex;justify-content:center;padding:6px 0"><div class="fpie" role="img" aria-label="${esc('Wykres kołowy: ' + legend.map((l) => l.name + ' ' + l.pct).join(', '))}" style="background:conic-gradient(${stops.join(', ')})"><div><span>RAZEM</span><b>${F.money(total)}</b></div></div></div>
             <div class="flegend">${legend.map((l) => `<div>${dot(l.color)}<span style="flex:1;min-width:0">${esc(l.name)}</span><span style="text-align:right"><b>${l.amt}</b><small>${l.pct}</small></span></div>`).join('')}</div>`
@@ -365,9 +365,9 @@
     const list = F.invIn(a, b), tot = F.r2(list.reduce((t, e) => t + e.amt, 0));
     const rows = list.slice().reverse().sort((x, y) => (x.d < y.d ? 1 : x.d > y.d ? -1 : 0));
     return `<div class="dcard" style="gap:12px"><div class="eyebrow">Historia wpłat</div>
-        ${seg([['m', 'Miesiąc'], ['y', 'Rok'], ['f', 'Od daty']], m, 'fvhmode').replace('class="seg"', 'class="seg small gold"')}
-        ${m !== 'f' ? `<div class="navrow"><button class="iconbtn soft" data-a="fvhnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button><div class="big">${esc(per)}</div>
-            <button class="iconbtn soft" data-a="fvhnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
+        ${seg([['m', 'Miesiąc'], ['y', 'Rok'], ['f', 'Od daty']], m, 'fvhmode').replace('class="seg"', 'class="seg small gold tint"')}
+        ${m !== 'f' ? `<div class="navrow"><button class="iconbtn soft boxed" data-a="fvhnav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button><div class="big">${esc(per)}</div>
+            <button class="iconbtn soft boxed" data-a="fvhnav" data-d="1" aria-label="Następny okres"${nextOff ? ' disabled' : ''}>${I.next}</button></div>`
           : `<div class="ffield"><span class="eyebrow">Od dnia</span>${A.dateBtn(V.hfrom, 'fvhfrom', '', 'Od dnia')}</div>`}
         <div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:var(--muted)">${esc(lab)}</div><div class="fbig" style="color:var(--gold);font-size:26px">${F.money(tot)}</div><div style="font-size:12px;color:var(--muted)">${list.length} ${C.plural(list.length, 'wpis', 'wpisy', 'wpisów')}</div></div></div>
       ${list.length ? `<div class="dcard tight" style="padding-bottom:6px"><div class="dhead"><div class="eyebrow">Wpisy w okresie</div></div>${rows.map((e) => invRow(e, CO)).join('')}</div>`
@@ -445,7 +445,7 @@
             ${!cats.length ? '<div style="font-size:13px;color:#F2D9A0;line-height:1.4">Nie masz jeszcze własnych kategorii. Dotknij „zmień” i dodaj pierwszą.</div>' : ''}
             ${catDropdown(cats, d.cat)}
           </div>
-          ${ed ? '' : de ? `<div style="display:flex;gap:10px"><button class="btn2" style="flex:1;font-weight:600" data-a="fdecancel">Anuluj edycję</button><button class="fnow${canAdd ? '' : ' off'}" data-a="fdesave">Zapisz zmiany</button></div>`
+          ${ed ? `<button class="primary${canAdd ? '' : ' dim'}" style="flex:none" data-a="feditsave">Zapisz zmiany</button>` : de ? `<div style="display:flex;gap:10px"><button class="btn2" style="flex:1;font-weight:600" data-a="fdecancel">Anuluj edycję</button><button class="fnow${canAdd ? '' : ' off'}" data-a="fdesave">Zapisz zmiany</button></div>`
             : `<div style="display:flex;gap:10px"><button class="btn2 ${canAdd ? 'accent' : 'off'}" style="flex:1;font-weight:600" data-a="fadddraft">Dodaj do listy</button><button class="fnow${canAdd ? '' : ' off'}" data-a="faddnow">Dodaj wydatek</button></div>`}
           <div style="font-size:12px;color:${Ad.err ? 'var(--danger)' : 'var(--dim)'}"${Ad.err ? ' role="alert"' : ''}>${Ad.err ? 'Wpisz kwotę i wybierz kategorię.' : de ? 'Edytujesz pozycję z listy „Do zapisania”. Wymagane są kwota i kategoria.' : ed ? 'Wymagane są kwota i kategoria. Zmiana daty przeniesie wydatek do innego dnia.' : 'Wymagane są kwota i kategoria. „Dodaj wydatek” zapisuje ten jeden od razu, a „Dodaj do listy” zbiera kilka wydatków do zapisania razem.'}</div>
           ${Ad.msg ? okbox(Ad.msg) : ''}
@@ -453,8 +453,7 @@
         ${n && !ed ? `<div class="dcard tight"><div class="dhead"><div class="eyebrow">Do zapisania</div><div style="font-size:13px;font-weight:600">Razem: ${F.money(tot)}</div></div>
           ${Ad.drafts.map((e, i) => { const c = F.catOf(e.cat), on = de && Ad.de === i; return `<div class="frow fdrow${on ? ' on' : ''}">${dot(c.color)}<button class="fdedit" data-a="fdeedit" data-i="${i}" aria-label="${esc('Edytuj pozycję z listy: ' + (e.desc || c.name) + ', ' + F.money(e.amt))}"><span class="ft"><span>${esc(e.desc || c.name)}</span><span>${esc(F.dlabel(e.date) + ' · ' + c.name)}</span></span><b>${F.money(e.amt)}</b><span class="pen" aria-hidden="true">${J.pen || '✎'}</span></button><button class="iconbtn soft" data-a="fdraftdel" data-i="${i}" aria-label="Usuń z listy: ${esc(e.desc || c.name)}">${J.x}</button></div>`; }).join('')}</div>` : ''}
       </div>
-      <div class="footbar">${ed ? `<button class="primary${canAdd ? '' : ' dim'}" data-a="feditsave">Zapisz zmiany</button>`
-        : `<button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button>`}</div>
+      ${ed ? '' : `<div class="footbar"><button class="primary" data-a="faddsave"${n ? '' : ' disabled'}>${n ? 'Zapisz wszystkie (' + n + ' · ' + F.money(tot) + ')' : 'Zapisz wszystkie'}</button></div>`}
     </div>`;
   }
 
@@ -536,7 +535,7 @@
       const end = b > T ? T : b, nDays = Math.max(1, C.diffDays(a, end) + 1);
       body = `${seg([['day', 'Dzień'], ['week', 'Tydzień'], ['month', 'Miesiąc'], ['range', 'Zakres']], E.period, 'feperiod')}
         ${okbox(E.msg)}
-        <button class="fcatbtn" data-a="fcatsopen" aria-haspopup="dialog"><span>Kategorie: <b>${F.catMode() === 'custom' ? 'Własne' : 'Domyślne'}</b></span><span style="color:var(--accent);font-weight:600">zmień</span></button>
+        <button class="fcatbtn" data-a="fcatsopen" aria-haspopup="dialog"><span>Kategorie: <b>${F.catMode() === 'custom' ? 'Własne' : 'Domyślne'}</b></span><span style="color:var(--accent);font-weight:600">Zmień</span></button>
         ${E.period !== 'range' ? `<div class="dcard" style="padding:4px 6px"><div class="navrow">
             <button class="iconbtn soft" data-a="fenav" data-d="-1" aria-label="Poprzedni okres">${I.prev}</button>
             <div style="font-family:var(--display);font-size:16px;font-weight:600;text-align:center">${esc(label)}</div>
@@ -585,9 +584,9 @@
           <div style="position:relative;width:${Wd}px;height:${Ht}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${y(g)}px"></div>`).join('')}
             <svg width="${Wd}" height="${Ht}" viewBox="0 0 ${Wd} ${Ht}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${H.map((h, i) => x(i).toFixed(1) + ',' + y(h.net).toFixed(1)).join(' ')}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+            ${tip ? A.chartTip(x(si), y(tip.net), Wd, esc(F.dlabelY(tip.d)), F.money(tip.net), 'var(--gold)') : ''}
             ${H.map((h, i) => `<button class="wdot${si === i ? ' on' : ''}${i === n - 1 ? ' last' : ''}" style="left:${x(i) - 14}px;top:${y(h.net) - 14}px" data-a="fwtip" data-i="${i}" aria-label="${esc(F.dlabelY(h.d) + ': ' + F.money(h.net))}"><span></span></button>`).join('')}
           </div></div>
-        ${tip ? `<div class="wtip" role="status"><div>${esc(F.dlabelY(tip.d))}</div><div style="font-family:var(--display);font-weight:600;color:var(--text)">${F.money(tip.net)}</div></div>` : ''}
         <div style="font-size:11px;color:var(--muted)">${esc(F.dlabel(H[0].d))}</div></div>`;
     }
     const sec = (key, label, extra, inner) => `<div class="dcard tight" style="padding-bottom:4px">
@@ -668,7 +667,7 @@
       const field = (lab, key, val, mode, ph) => `<label class="ffield"><span style="font-size:13px;color:var(--muted)">${lab}</span><input class="finput amt" type="text" inputmode="${mode}" maxlength="${key === 'n' ? 3 : key === 'pct' ? 5 : 12}" value="${esc(val)}" placeholder="${ph || ''}" data-in="fin-c${key}" autocomplete="off"></label>`;
       if (D.t === 'goal') {
         const m = num(D.m), n = parseInt(D.n, 10), ok = m > 0 && n >= 1 && n <= 120;
-        modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="Cel poduszki">
+        modal = `<div class="modal-wrap"><div class="modal" style="border-color:var(--line-2)" role="dialog" aria-modal="true" aria-label="Cel poduszki">
           <div style="font-family:var(--display);font-size:18px;font-weight:600">Cel poduszki</div>
           ${field('Kwota miesięczna (zł)', 'm', D.m, 'decimal', 'np. 7000')}
           ${field('Na ile miesięcy ma wystarczyć', 'n', D.n, 'numeric', '6')}
@@ -754,7 +753,7 @@
       if (!ad.date) ad.date = addDate;   // v28: data z kalendarza (domyślnie dziś / ostatni dzień oglądanego okresu)
       modal = `<div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-label="${ed ? 'Edytuj przychód' : 'Nowy przychód'}">
         <div style="font-family:var(--display);font-size:18px;font-weight:600">${ed ? 'Edytuj przychód' : 'Nowy przychód'}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:13px;color:var(--muted)">Data</span>${A.dateBtn(ad.date, 'frdate', '', 'Data przychodu')}</div>
+        <div class="ffield" style="gap:6px"><span class="eyebrow">Data</span>${A.dateBtn(ad.date, 'frdate', '', 'Data przychodu')}</div>
         <div class="fchips" role="radiogroup" aria-label="Kategoria przychodu">${F.ICATS.map((c) => `<button role="radio" class="fchip${ad.cat === c.id ? ' on' : ''}" aria-checked="${ad.cat === c.id}" data-a="fraddcat" data-v="${c.id}">${dot(c.color)}${esc(c.name)}</button>`).join('')}</div>
         <input class="finput" type="text" maxlength="60" aria-label="Opis przychodu" placeholder="Opis (opcjonalnie)" value="${esc(ad.desc)}" data-in="fin-idesc" autocomplete="off">
         <div style="display:flex;align-items:center;gap:8px"><input class="finput amt" type="text" inputmode="decimal" maxlength="10" aria-label="Kwota przychodu" placeholder="Kwota" value="${esc(ad.amt)}" data-in="fin-iamt" autocomplete="off"><span style="color:var(--muted)">zł</span></div>
@@ -1170,7 +1169,7 @@
     if (k === 'fin-plan') {   // zapis planu po zatwierdzeniu pola (jak w makiecie)
       const t = String(el.value).trim(), v = t === '' ? 0 : cnum(t), P = U.plan;
       if (v === null) { P.msg = 'Podaj poprawną kwotę planu.'; P.err = true; A.render(); return; }
-      F.planSet(P.ym, el.dataset.cat, v); P.msg = ''; P.err = false; A.render(); return;
+      F.planSet(P.scope === 'year' ? String(P.y) : P.ym, el.dataset.cat, v); P.msg = ''; P.err = false; A.render(); return;
     }
     if (k !== 'fin-xlsx') return;
     const f = el.files && el.files[0]; el.value = '';

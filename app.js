@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v51 · 17.11.2026';
+  const APP_VERSION = 'v52 · 18.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -302,7 +302,15 @@
   // ---------- Renderowanie ----------
   const scrollMem = {};
   let renderedDay = null, renderedHash = null;
+  // v52: render wywołany w trakcie podmiany widoku (np. „change” przy utracie fokusu pola) – odkładany na koniec bieżącego
+  let rendering = false, renderAgain = false;
   function render() {
+    if (rendering) { renderAgain = true; return; }
+    rendering = true;
+    try { renderNow(); } finally { rendering = false; }
+    if (renderAgain) { renderAgain = false; render(); }
+  }
+  function renderNow() {
     renderedDay = C.todayKey();
     app.querySelectorAll('[data-scroll]').forEach((el) => { scrollMem[el.dataset.scroll] = el.scrollTop; if (el.dataset.autoend) { scrollMem[el.dataset.scroll + ':x'] = el.scrollLeft; scrollMem[el.dataset.scroll + ':w'] = el.scrollWidth; } });
     // v25: wykresy przewijane w poziomie – po wejściu na ekran zawsze od najnowszego końca (pozycja pamiętana tylko na tym samym ekranie)
@@ -335,6 +343,9 @@
     });
     const nb = app.querySelector('.navbar'), on = nb && nb.querySelector('.nb.on');
     if (on && nb.scrollWidth > nb.clientWidth) nb.scrollLeft = on.offsetLeft - (nb.clientWidth - on.offsetWidth) / 2;
+    // v52: długi tytuł, który nie mieści się w jednej linii – 18 px (jak w makiecie)
+    // jak w makiecie: tytuł od 15 znaków przy pełnym nagłówku (lupa i zębatka) albo tytuł, który się zawija
+    app.querySelectorAll('.topbar h1').forEach((h) => { if ((h.textContent.trim().length >= 15 && h.parentElement.querySelector('a[href="#/settings"]')) || h.getBoundingClientRect().height > 34) h.classList.add('fit'); });
   }
   let toastTimer;
   function toast(msg) {
@@ -355,7 +366,7 @@
       </div>${gearLink('margin-top:-8px')}</div>
       ${window.TodayUI ? window.TodayUI.homeCard() : ''}
       ${window.SummaryUI ? window.SummaryUI.homeCard() : ''}
-      <div class="eyebrow" style="margin-top:4px">Moduły</div>
+      <div class="eyebrow">Moduły</div>
       <div class="modules grid2">
         <a class="module active" href="#/plan/${S.lastPlan}">
           <div class="ico" style="background:var(--accent-bg);color:var(--accent)">${svg(22, 1.8, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path><path d="m9 15 2 2 4-4"></path>')}</div>
@@ -681,7 +692,7 @@
         <div class="field"><label class="eyebrow" for="tytul">Tytuł</label>
           <input id="tytul" class="title-input" type="text" autocomplete="off" placeholder="Co masz do zrobienia?" value="${esc(d.title)}" data-in="title"></div>
         <div class="group">
-          <button type="button" class="datecard dcbtn" data-a="fdate" aria-haspopup="dialog" aria-label="${esc('Data zadania: ' + calFmt(d.date) + '. Zmień dzień')}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div></div>
+          <button type="button" class="datecard dcbtn" data-a="fdate" aria-haspopup="dialog" aria-label="${esc('Data zadania: ' + calFmt(d.date) + '. Zmień dzień')}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;text-align:left"><div class="eyebrow">${C.isRecurring(d) ? 'Data (początek)' : 'Data'}</div><div class="v">${esc(relDate(d.date))}</div></div>
             <span class="dcchg">Zmień dzień${svg(16, 2, '<rect x="3.5" y="5" width="17" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path>')}</span></button>
         </div>
         <div class="panel tmcard">
@@ -1451,7 +1462,12 @@
 
   // ---------- Start ----------
   C.load();
-  window.App = { I, svg, esc, datePick, dateBtn, calFmt, gearLink, srchBtn, navBtns, homeBtn, back, home, go, replace: navReplace, render, toast, route, actions, S, downloadBlob, longDay };
+  // v52: dymek wykresu przy zaznaczonym punkcie (jak w makiecie) – nad punktem, a gdy brak miejsca – pod nim
+  function chartTip(x, y, w, l1, l2, col) {
+    const tw = 150, left = Math.max(0, Math.min(w - tw, x - tw / 2)), top = y - 58 >= 0 ? y - 58 : y + 16;
+    return `<div class="wtip pt" role="status" style="left:${left.toFixed(1)}px;top:${top.toFixed(1)}px;width:${tw}px;--tc:${col || 'var(--accent)'}"><div>${l1}</div><div class="v">${l2}</div></div>`;
+  }
+  window.App = { chartTip, I, svg, esc, datePick, dateBtn, calFmt, gearLink, srchBtn, navBtns, homeBtn, back, home, go, replace: navReplace, render, toast, route, actions, S, downloadBlob, longDay };
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   if (window.BodyUI) { window.BodyUI.init(window.App); }

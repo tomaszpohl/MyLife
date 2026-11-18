@@ -80,7 +80,7 @@
     const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a) + (PS() ? polTxt(a) : ''))}</span></div></div>
       <button class="iconbtn tcpen" data-a="tcedit" data-id="${a.id}" aria-label="Edytuj aktywność ${esc(a.name)}">${K.pencil}</button></div>`).join('');
     return `<button class="tprimary" data-a="tcnew">${K.plus}<span>Dodaj aktywność</span></button>
-      <div class="eyebrow" style="margin-top:4px">Na dziś · ${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</div>
+      <div class="eyebrow" style="margin-top:4px">Na dziś · <span style="text-transform:none">${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</span></div>
       ${rows || '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak aktywności zaplanowanych na dziś.</div></div>'}
       <div class="eyebrow" style="margin-top:8px">Wszystkie aktywności</div>
       ${acts || '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak aktywności. Dodaj pierwszą, np. Spacer, i ustaw powtarzanie. Pojawi się w planerze dnia.</div></div>'}`;
@@ -118,7 +118,7 @@
       <label class="ffield"><span class="eyebrow">Czas trwania (min) <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span><input class="finput${c.durOk ? '' : ' bad'}" type="text" inputmode="numeric" maxlength="3" placeholder="np. 40" value="${esc(d.dur)}" data-in="train-cdur" autocomplete="off"></label>
       ${polSection(d)}
       <div class="ffield"><span class="eyebrow">Powtarzanie</span>
-        <button class="select${d.rep ? ' open tv' : ''}" data-a="tcrep" aria-haspopup="listbox" aria-expanded="${d.rep}"><span>${NAMES[d.type]}</span><span class="frot${d.rep ? ' up' : ''}" style="display:flex">${K.down}</span></button>
+        <button class="select${d.rep ? ' open tv' : ''}" data-a="tcrep" aria-haspopup="listbox" aria-expanded="${d.rep}"><span>${NAMES[d.type]}</span><span style="color:var(--muted);display:flex;font-size:14px">${d.rep ? '▴' : '▾'}</span></button>
         ${d.rep ? `<div class="bdlist" role="listbox" aria-label="Powtarzanie">${Object.keys(NAMES).map((k) => `<button role="option" class="bdopt tv${d.type === k ? ' on' : ''}" aria-selected="${d.type === k}" data-a="tctype" data-v="${k}"><span>${NAMES[k]}</span>${d.type === k ? `<span style="display:flex;color:var(--violet)">${K.check}</span>` : ''}</button>`).join('')}</div>` : ''}
         <div class="rep" data-tcpv style="font-size:13px">${K.rep}<span>${esc(c.preview)}</span></div></div>
       ${custom ? `<div class="tccustom">
@@ -139,7 +139,7 @@
   }
   function view() {
     const tab = (v, l) => `<button role="tab" aria-selected="${U.tab === v}" class="${U.tab === v ? 'on' : ''}" data-a="tctab" data-v="${v}">${l}</button>`;
-    return `<main class="screen" style="position:relative"><div class="topbar">${A.navBtns()}<h1 style="font-size:20px;min-width:0">Aktywności cykliczne</h1>${A.gearLink('margin-left:auto')}</div>
+    return `<main class="screen" style="position:relative"><div class="topbar">${A.navBtns()}<h1>Aktywności cykliczne</h1>${A.gearLink('margin-left:auto')}</div>
       <div style="padding:10px 16px 0;flex:none"><div class="seg tv" role="tablist">${tab('list', 'Aktywności')}${tab('stats', 'Statystyki')}</div></div>
       <div class="dscroll" data-scroll="train-rec">${U.tab === 'list' ? viewList() : viewStats()}</div>
       ${U.dlg ? viewDlg() : ''}</main>`;

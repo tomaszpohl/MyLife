@@ -74,7 +74,7 @@
     // v48 (makieta v223–v225): funkcje jako kafelki 2 w rzędzie (ikona i nazwa wyśrodkowane, bez opisu)
     const fn = (href, p, t) => `<a class="dfn ftile tfn" href="${href}"><div class="dico tico">${K.big(p)}</div><div class="t">${t}</div></a>`;
     return `<main class="screen">${topbar('Trening')}
-      <div class="dscroll" data-scroll="train-home">
+      <div class="dscroll" data-scroll="train-home" style="padding-top:12px">
         ${flashBar()}
         <div class="tstats"><a class="dcard" href="#/train/history" aria-label="Liczba treningów: ${n}. Zobacz historię treningów"><div class="eyebrow">Liczba treningów</div><div class="v">${n}</div></a>
           ${last ? `<a class="dcard" href="#/train/day/${last.id}" aria-label="Ostatni trening: ${esc(dl(last.d))}. Zobacz ćwiczenia"><div class="eyebrow">Ostatni trening</div><div class="v">${esc(dl(last.d).replace(/^[^,]+, /, ''))}</div></a>`
@@ -181,7 +181,7 @@
     const rows = reg.map((t) => {
       const col = tagCol(reg, t), cnt = pl(all.filter((w) => (w.tags || []).indexOf(t) >= 0).length, 'trening', 'treningi', 'treningów');
       const del = `<button class="iconbtn soft tcdel" data-a="trcatdel" data-t="${esc(t)}" aria-label="${esc('Usuń kategorię ' + t)}">${K.x || '×'}</button>`;
-      if (D) { const on = D.tags.indexOf(t) >= 0; return `<div class="tcrow"><button class="tccheck" role="checkbox" aria-checked="${on}" data-a="trcattog" data-t="${esc(t)}"><span class="box" style="border-color:${col};background:${on ? col : 'transparent'}">${on ? '✓' : ''}</span><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(t)}</span><span style="flex:none;font-size:12px;color:var(--muted)">${cnt}</span></button>${del}</div>`; }
+      if (D) { const on = D.tags.indexOf(t) >= 0; return `<div class="tcrow"><button class="tccheck" role="checkbox" aria-checked="${on}" data-a="trcattog" data-t="${esc(t)}"><span class="box" style="border-color:${col};background:${on ? col : 'transparent'}">${on ? '✓' : ''}</span><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(t)}</span></button>${del}</div>`; }
       return `<div class="tcrow"><span style="flex:none;width:10px;height:10px;border-radius:5px;background:${col}"></span><span style="flex:1;min-width:0;font-size:15px;word-break:break-word">${esc(t)}</span><span style="flex:none;font-size:12px;color:var(--muted)">${cnt}</span>${del}</div>`;
     }).join('');
     return `<div class="tcover" role="dialog" aria-modal="true" aria-label="Konfiguracja kategorii">
@@ -284,7 +284,7 @@
   // ---------- Postępy ----------
   // v37 (makieta v185/v186): przełącznik Ćwiczenie · Wg znacznika (stan nie jest pamiętany po wyjściu z ekranu)
   function viewProgress() {
-    const tabs = `<div class="seg tv" role="radiogroup" aria-label="Widok postępów">${[['ex', 'Ćwiczenie'], ['tag', 'Wg kategorii']].map(([v, l]) => `<button role="radio" aria-checked="${T.pview === v}" class="${T.pview === v ? 'on' : ''}" data-a="trpview" data-v="${v}">${l}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg tv tint" role="radiogroup" aria-label="Widok postępów">${[['ex', 'Ćwiczenie'], ['tag', 'Wg kategorii']].map(([v, l]) => `<button role="radio" aria-checked="${T.pview === v}" class="${T.pview === v ? 'on' : ''}" data-a="trpview" data-v="${v}">${l}</button>`).join('')}</div>`;
     return `<main class="screen">${topbar('Postępy')}
       <div class="dscroll" data-scroll="train-prog">${tabs}${T.pview === 'tag' ? progTag() : progEx()}</div></main>`;
   }
@@ -307,7 +307,7 @@
     const val = (w) => (tm !== 'main' ? w.pol[pk] : hasVol ? vol(w) : mins(w)), unit = tm === 'kcal' ? ' kcal' : tm === 'hr' ? ' bpm' : hasVol ? ' kg' : ' min';
     const lbl = tm === 'kcal' ? ['OSTATNI (KALORIE)', 'Kalorie z Polar', 'kcal (Polar)', 'KALORIE'] : tm === 'hr' ? ['OSTATNI (ŚR. TĘTNO)', 'Średnie tętno z Polar', 'bpm (Polar)', 'ŚR. TĘTNO']
       : hasVol ? ['OSTATNI (SUMA CIĘŻARU)', 'Suma ciężaru', 'kg (suma ciężaru)', 'SUMA CIĘŻARU'] : ['OSTATNI (CZAS)', 'Czas kondycji', 'min (czas)', 'CZAS'];
-    const tmSeg = `<div class="seg tv tmseg" role="radiogroup" aria-label="Miara">${[['main', 'Ciężar / czas'], ['kcal', 'Kalorie'], ['hr', 'Śr. tętno']].map(([v, l]) => `<button role="radio" aria-checked="${tm === v}" class="${tm === v ? 'on' : ''}" data-a="trtm" data-v="${v}">${l}</button>`).join('')}</div>`
+    const tmSeg = `<div class="seg tv tint tmseg" role="radiogroup" aria-label="Miara">${[['main', 'Ciężar / czas'], ['kcal', 'Kalorie'], ['hr', 'Śr. tętno']].map(([v, l]) => `<button role="radio" aria-checked="${tm === v}" class="${tm === v ? 'on' : ''}" data-a="trtm" data-v="${v}">${l}</button>`).join('')}</div>`
       + (tm !== 'main' ? `<div style="font-size:12px;line-height:1.4;color:var(--polar)">Liczone tylko treningi z danymi z Polar: ${ws.length} z ${ws0.length}. Dane z zegarka dołączasz w „Trening z dnia” albo automatycznie po synchronizacji.</div>` : '');
     const n = ws.length, prev = n > 1 ? val(ws[n - 2]) : 0, last = n ? val(ws[n - 1]) : 0, g = Math.round((last - prev) * 100) / 100;   // v51 (makieta v236): ZMIANA = ostatni − poprzedni
     const si = T.tday != null && ws.some((w) => w.id === T.tday) ? ws.findIndex((w) => w.id === T.tday) : n - 1;
@@ -323,9 +323,9 @@
           <div class="wscroll" tabindex="0" aria-label="${esc('Wykres treningów z kategorią ' + sel + ', przewijany w poziomie')}" data-scroll="train-tchart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
             ${grid.map((v) => `<div class="wgrid" style="top:${py(v)}px"></div>`).join('')}
             <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${ws.map((w, i) => px(i).toFixed(1) + ',' + py(val(w)).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+            ${A.chartTip(px(si), py(val(sw)), W, esc(dl(sw.d)), esc(grp(val(sw)) + unit), col)}
             ${ws.map((w, i) => `<button class="wdot tgd${i === si ? ' on' : ''}" style="left:${(px(i) - 14).toFixed(1)}px;top:${(py(val(w)) - 14).toFixed(1)}px;--tc:${col}" data-a="trtday" data-id="${w.id}" aria-label="${esc(dl(w.d) + ': ' + grp(val(w)) + unit)}"><span></span></button>`).join('')}
           </div></div>
-          <div class="wtip" role="status"><div>${esc(dl(sw.d))}</div><div style="font-family:var(--display);font-weight:600;color:${col}">${esc(grp(val(sw)) + unit)}</div></div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(dl(ws[0].d).replace(/^[^,]+, /, ''))}</span><span>${esc(dl(ws[n - 1].d).replace(/^[^,]+, /, ''))}</span></div></div></div>`;
     }
     const mx = Math.max(1, ...ws.map(val));
@@ -369,9 +369,9 @@
           <div class="wscroll" tabindex="0" aria-label="${card ? 'Wykres średniej mocy' : 'Wykres największego ciężaru'}, przewijany w poziomie" data-scroll="train-chart" data-autoend="1"><div style="position:relative;width:${W}px;height:${H}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${py(g)}px"></div>`).join('')}
             <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${rows.map((r, i) => px(i).toFixed(1) + ',' + py(r.kg).toFixed(1)).join(' ')}" fill="none" stroke="var(--violet)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+            ${A.chartTip(px(si), py(sel.kg), W, esc(dl(sel.d)), esc(vt(sel.kg) + (card ? ' · ' : ' × ') + rt(sel)), 'var(--violet)')}
             ${rows.map((r, i) => `<button class="wdot${i === si ? ' on' : ''}${r.kg === best ? ' best' : ''}" style="left:${(px(i) - 14).toFixed(1)}px;top:${(py(r.kg) - 14).toFixed(1)}px" data-a="trday" data-id="${r.id}" aria-label="${esc(dl(r.d) + ': ' + vt(r.kg))}"><span></span></button>`).join('')}
           </div></div>
-          <div class="wtip" role="status"><div>${esc(dl(sel.d))}</div><div style="font-family:var(--display);font-weight:600;color:var(--violet)">${esc(vt(sel.kg) + (card ? ' · ' : ' × ') + rt(sel))}</div></div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(dl(rows[0].d).replace(/^[^,]+, /, ''))}</span><span>${esc(dl(rows[n - 1].d).replace(/^[^,]+, /, ''))}</span></div></div>`;
     }
     const tab = rows.map((r, i) => {

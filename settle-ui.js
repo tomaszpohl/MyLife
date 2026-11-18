@@ -29,7 +29,7 @@
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
   const num = (t) => { const v = parseFloat(String(t).replace(/\s/g, '').replace(',', '.')); return isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0; };
   const okDate = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= C.todayKey();
-  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1${title.length > 18 ? ' style="font-size:19px;min-width:0"' : ''}>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
+  const topbar = (title) => `<div class="topbar">${A.navBtns()}<h1>${esc(title)}</h1>${A.gearLink('margin-left:auto')}</div>`;
   const fn = (href, p, t) => `<a class="dfn ftile sfn" href="${href}"><div class="dico sico">${K.big(p)}</div><div class="t">${t}</div></a>`;   // v48: kafelki 2×n bez opisu
   const confirmBox = (text, no, yes, yesLabel, data) => `<div class="fconfirm" role="alert"><div>${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="${no}">${yesLabel === 'Usuń' ? 'Anuluj' : 'Nie'}</button><button class="btn-del" style="height:44px;font-size:14px" data-a="${yes}"${data || ''}>${yesLabel}</button></div></div>`;
 
@@ -138,9 +138,9 @@
       const tot = g.pays.reduce((a, x) => a + x.amt, 0);
       return `<div class="mwrap" data-id="${g.id}"><div class="mrev" aria-hidden="true">${K.trash}<span class="lbl">Usuń</span></div>
         <div class="mcard sgcard" data-mswipe="settle"><a class="sglink" draggable="false" href="#/settle/group/${g.id}" aria-label="${esc('Otwórz rozliczenie: ' + g.name)}">
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div class="sname">${esc(g.name)}</div>
-            <div style="font-size:12px;color:var(--muted)">${pl(g.people.length, 'osoba', 'osoby', 'osób')} · ${pl(g.pays.length, 'płatność', 'płatności', 'płatności')}</div>
-            <div style="font-size:12px;color:var(--text-2);word-break:break-word">${esc(g.people.join(', '))}</div></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><div class="sname" style="font-size:18px">${esc(g.name)}</div>
+            <div style="font-size:13px;color:var(--muted)">${pl(g.people.length, 'osoba', 'osoby', 'osób')} · ${pl(g.pays.length, 'płatność', 'płatności', 'płatności')}</div>
+            <div style="font-size:12px;color:var(--dim);word-break:break-word">${esc(g.people.join(', '))}</div></div>
           <b class="ssum recv" style="font-size:16px">${money(Math.round(tot * 100) / 100)}</b><span style="color:var(--dim);display:flex">${K.chev}</span></a></div></div>`;
     }).join('');
     let modal = '';
@@ -164,7 +164,7 @@
     return `<main class="screen" style="position:relative">${topbar('Rozliczenia grupowe')}
       <div class="dscroll" data-scroll="settle-groups">
         <button class="sprimary" data-a="sgnew">${K.plus}<span>Nowe rozliczenie</span></button>
-        ${rows ? '<div style="font-size:12px;color:var(--muted);text-align:center">Przeciągnij rozliczenie w prawo, aby je usunąć.</div>' + rows
+        ${rows ? '<div style="font-size:12px;color:var(--dim);margin-top:-4px">Przeciągnij rozliczenie w prawo, aby je usunąć.</div>' + rows
           : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak rozliczeń. Utwórz pierwsze: podaj nazwę i uczestników.</div></div>'}
       </div>${modal}</main>`;
   }
@@ -204,7 +204,7 @@
         <div class="ffield"><span class="eyebrow">Kto płacił</span><div class="schips" role="radiogroup" aria-label="Kto płacił">${D.people.map((p, i) => `<button role="radio" aria-checked="${D.who === p}" class="schip pick${D.who === p ? ' on' : ''}" data-a="spwho" data-i="${i}">${esc(p)}</button>`).join('')}</div></div>
         <label class="ffield"><span class="eyebrow">Ile (zł)</span><input class="finput amt" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${esc(D.amt)}" data-in="settle-pamt" autocomplete="off"></label>
         <label class="ffield"><span class="eyebrow">Za co</span><input class="finput" type="text" maxlength="60" placeholder="np. nocleg, paliwo" value="${esc(D.what)}" data-in="settle-pwhat" autocomplete="off"></label>
-        <div class="ffield"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="eyebrow">Na kogo dzielony jest wydatek</span><button class="slink" data-a="spforall">${all ? 'Odznacz wszystkich' : 'Zaznacz wszystkich'}</button></div>
+        <div class="ffield"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="eyebrow">Na kogo dzielony jest wydatek</span><button class="sallbtn" data-a="spforall">${all ? 'Odznacz wszystkich' : 'Zaznacz wszystkich'}</button></div>
           <div class="schips" role="group" aria-label="Na kogo dzielony jest wydatek">${D.people.map((p, i) => `<button role="checkbox" aria-checked="${!!D.forSel[p]}" class="schip pick sfor${D.forSel[p] ? ' on' : ''}" data-a="spfor" data-i="${i}"><span aria-hidden="true" class="mk">${D.forSel[p] ? '✓' : ''}</span>${esc(p)}</button>`).join('')}</div>
           <div data-sfor style="font-size:12px;color:var(--muted)">${esc(k.note)}</div></div>
         <div class="ffield"><span class="eyebrow">Kiedy</span>${A.dateBtn(D.date, 'spdate', '', 'Data płatności')}</div>
@@ -215,7 +215,7 @@
       <div class="dscroll" data-scroll="settle-group">
         <div style="font-family:var(--display);font-size:22px;font-weight:600;word-break:break-word">${esc(g.name)}</div>
         <div class="tstats"><div class="dcard"><div class="eyebrow">Razem</div><div class="v" style="font-size:19px;color:var(--ok)">${money(c.totalC / 100)}</div></div><div class="dcard"><div class="eyebrow">Płatności</div><div class="v" style="font-size:19px">${g.pays.length}</div></div></div>
-        <a class="sprimary" href="#/settle/calc/${g.id}">${K.calc}<span>Pokaż wyliczenie</span></a>
+        <a class="sprimary" href="#/settle/calc/${g.id}">${A.svg(26, 1.8, '<path d="M7 7h10l-1.5 11h-7L7 7Z"></path><path d="M12 7V4"></path>')}<span>Pokaż wyliczenie</span></a>
         <div class="eyebrow" style="margin-top:4px">Uczestnicy</div>
         <div class="dcard" style="gap:10px">
           <div class="schips">${g.people.map((p, i) => `<span class="schip">${esc(p)}${!SE.personUsed(g, p) && g.people.length > 2 ? `<button data-a="sppdel" data-i="${i}" aria-label="${esc('Usuń uczestnika ' + p)}">${K.x}</button>` : ''}</span>`).join('')}</div>
@@ -223,7 +223,7 @@
           <div style="font-size:12px;line-height:1.4;color:var(--muted)">Uczestnika powiązanego z płatnościami nie można usunąć. Przy każdej płatności zaznaczasz, na kogo dzielony jest wydatek (po równo).</div></div>
         <div class="eyebrow" style="margin-top:4px">Płatności</div>
         <button class="fsecbtn sfsec spadd" data-a="spnew">${K.plus}<span>Dodaj płatność</span></button>
-        ${pays ? '<div style="font-size:12px;color:var(--muted);text-align:center">Przeciągnij płatność w prawo, aby ją usunąć.</div>' + pays : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak płatności. Dodaj, kto, ile, kiedy i za co zapłacił.</div></div>'}
+        ${pays ? pays : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak płatności. Dodaj, kto, ile, kiedy i za co zapłacił.</div></div>'}
         ${U.dc ? confirmBox('Usunąć rozliczenie wraz z wszystkimi płatnościami?', 'sgdno', 'sgdyes', 'Usuń') : '<button class="btn-del" style="height:48px;font-size:15px;flex:none" data-a="sgdask">Usuń całe rozliczenie</button>'}
       </div>${modal}</main>`;
   }
@@ -234,8 +234,8 @@
     const card = (list, kind) => {
       if (!list.length) return '';
       const recv = kind === 'recv', pend = list.filter((x) => !x.moved).length;
-      return `<div class="dcard smove ${recv ? 'recv' : 'owe'}" style="gap:8px">
-        <div class="sname" style="font-size:16px;color:${recv ? 'var(--ok)' : 'var(--owe)'}">${recv ? 'Są dla Ciebie należności' : 'Twoje zobowiązania'}</div>
+      return `<div class="dcard smove ${recv ? 'recv' : 'owe'}" style="gap:10px">
+        <div style="font-size:15px;font-weight:600;color:var(--text)">${recv ? 'Są dla Ciebie należności' : 'Twoje zobowiązania'}</div>
         ${list.map((x) => `<div class="smvrow"><span style="flex:1;min-width:0;word-break:break-word">${esc(recv ? x.who : 'dla: ' + x.who)}</span>${x.inst ? '<span class="smvd">rozliczono ✓</span>' : x.moved ? '<span class="smvd">przeniesiono ✓</span>' : ''}<b>${money(x.c / 100)}</b></div>`).join('')}
         ${pend ? `<button class="sprimary ${recv ? '' : 'owe'}" style="height:48px;font-size:15px" data-a="scmove" data-v="${kind}">${recv ? 'Przenieś do należności' : 'Przenieś do zobowiązań'}</button>
           <div style="font-size:12px;line-height:1.4;color:var(--muted)">${recv ? 'Powstaną wpisy w Należnościach: kto – uczestnik, kwota – z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza.' : 'Najpierw zapytamy, czy rozliczasz się natychmiast (wtedy powstanie jeden wydatek, bez zobowiązań). W przeciwnym razie powstaną wpisy w Zobowiązaniach (komu – uczestnik, kwota z wyliczenia, za co – rozliczenie grupowe, data – dzisiejsza), a przez nie pozycje w Finanse · Majątek.'}</div>`

@@ -28,7 +28,7 @@
   const freeColors = () => { const used = db.cats.custom.map((c) => c.color); return PAL.filter((p) => used.indexOf(p) < 0); };
   const nextColor = () => freeColors()[0] || PAL[db.cats.custom.length % PAL.length];
 
-  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {}, order: [] }, invRet: { links: [] } });
+  const empty = () => ({ version: 1, exp: [], inc: [], worth: { items: [], hist: [] }, cats: { mode: 'default', custom: [] }, cush: { monthly: 0, months: 6, items: [] }, goals: [], inv: [], invGoals: [], plan: { m: {}, y: {}, order: [] }, invRet: { links: [] } });
   let db = empty();
   const id = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -46,7 +46,10 @@
     d.cush = Object.assign({ monthly: 0, months: 6, items: [] }, d.cush || {});
     ['goals', 'inv', 'invGoals'].forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });   // v19: cele i inwestycje
     d.invRet = { links: (d.invRet && Array.isArray(d.invRet.links)) ? d.invRet.links : [] };   // v37: zwrot z inwestycji (aktywo ↔ cele)
-    d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {}, order: (d.plan && Array.isArray(d.plan.order)) ? d.plan.order : [] };   // v27: planer wydatków (plany miesięczne); v28: kolejność kategorii
+    const hadY = !!(d.plan && d.plan.y && typeof d.plan.y === 'object');
+    d.plan = { m: (d.plan && d.plan.m && typeof d.plan.m === 'object') ? d.plan.m : {}, y: hadY ? d.plan.y : {}, order: (d.plan && Array.isArray(d.plan.order)) ? d.plan.order : [] };
+    // v52 (makieta FinPlan): osobny plan roku wpisywany dla kategorii. Przy pierwszym uruchomieniu plan roku = suma dotychczasowych planów miesięcy (bez utraty wartości).
+    if (!hadY) Object.keys(d.plan.m).forEach((k) => { const y = k.slice(0, 4), b = d.plan.m[k] || {}; d.plan.y[y] = d.plan.y[y] || {}; Object.keys(b).forEach((cid) => { d.plan.y[y][cid] = Math.round(((d.plan.y[y][cid] || 0) + b[cid]) * 100) / 100; }); });   // v27: planer wydatków (plany miesięczne); v28: kolejność kategorii
     // v10: własne kategorie z powtórzonym kolorem (stara paleta 8 kolorów) dostają pierwszy wolny kolor – decyzja właściciela.
     if (!d.cats.recolored) {
       const seen = [];
@@ -322,17 +325,15 @@
     (Object.keys(db.plan.m).length ? ', plan wydatków: ' + Object.keys(db.plan.m).length + ' ' + C.plural(Object.keys(db.plan.m).length, 'miesiąc', 'miesiące', 'miesięcy') : '');
 
   // ---------- Planer wydatków (v27, makieta FinPlan 03.11.2026) ----------
-  // db.plan.m = { 'RRRR-MM': { <id kategorii>: kwota } }. Plan roku = suma planów miesięcy (decyzja właściciela) – nie jest zapisywany.
+  // db.plan.m = { 'RRRR-MM': { <id kategorii>: kwota } }, db.plan.y = { 'RRRR': { <id kategorii>: kwota } } – od v52 plan roku wpisywany osobno (makieta).
   const planMonth = (ym) => db.plan.m[ym] || {};
-  function planYear(y) {
-    const o = {};
-    for (let m = 1; m <= 12; m++) { const b = db.plan.m[y + '-' + String(m).padStart(2, '0')] || {}; Object.keys(b).forEach((c) => { o[c] = r2((o[c] || 0) + b[c]); }); }
-    return o;
-  }
-  function planSet(ym, cid, v) {
-    const b = Object.assign({}, db.plan.m[ym] || {});
+  const planYear = (y) => (db.plan.y || {})[String(y)] || {};
+  function planSet(key, cid, v) {
+    if (!db.plan.y) db.plan.y = {};
+    const grp = String(key).length === 4 ? db.plan.y : db.plan.m;
+    const b = Object.assign({}, grp[key] || {});
     if (v > 0) b[cid] = r2(v); else delete b[cid];
-    if (Object.keys(b).length) db.plan.m[ym] = b; else delete db.plan.m[ym];
+    if (Object.keys(b).length) grp[key] = b; else delete grp[key];
     save();
   }
   // v28: jedna kolejność kategorii dla wszystkich miesięcy i roku; nowe kategorie na końcu

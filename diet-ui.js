@@ -119,7 +119,6 @@
         <div style="align-self:stretch;display:flex;flex-direction:column;gap:10px;margin-top:8px">
           <a class="primary" style="flex:none" href="#/settings">Importuj w Ustawieniach</a>
           <a class="btn2 accent" style="height:52px;font-size:16px;font-weight:600" href="#/diet/menus">Lista jadłospisów</a>
-          ${window.BodyUI ? '<a class="btn2" style="height:48px;font-size:15px" href="#/diet/body">Skład ciała</a>' : ''}
         </div>
       </div></main>`;
   }
@@ -127,7 +126,7 @@
     const T = today(), p = D.planFor(T);
     if (!p) return viewEmpty();
     const card = p ? `<div class="dcard accent">
-        <div class="dhead"><div class="eyebrow">Dziś</div><div style="font-size:12px;color:var(--muted)">${esc(D.dayShort(T))} · ${kcal(p.kcal)}</div></div>
+        <div class="dhead s"><div class="eyebrow">Dziś</div><div style="font-size:12px;color:var(--muted)">${esc(D.dayShort(T))} · ${kcal(p.kcal)}</div></div>
         ${p.meals.map((m) => `<button class="dmeal" data-a="dhomedish" data-slot="${esc(m.slot)}" aria-label="${esc(m.slot + ': ' + m.dish.name + '. Pokaż przepis')}">
           <div class="slot">${esc(m.slot)}</div><div class="nm">${esc(m.dish.name)}</div><div class="kc">${kcal(m.dish.kcal)}</div></button>`).join('')}
       </div>` : noPlan();
@@ -235,8 +234,8 @@
     }
     return `<main class="screen" style="position:relative">${topbar('Jadłospis')}
       <div class="dscroll" data-scroll="diet-menu-${mid}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font-size:13px;color:var(--muted);min-width:0">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
-          <button class="pillbtn" style="margin:0;flex:none" data-a="dmall" data-id="${mid}"><span class="pill">${allOpen ? 'Zwiń wszystko' : 'Rozwiń wszystko'}</span></button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-8px 0 -4px"><div style="font-size:13px;color:var(--muted);min-width:0">${esc(m.name)} · ${esc(D.status(m).label.toLocaleLowerCase('pl'))}</div>
+          <button class="linkbtn" data-a="dmall" data-id="${mid}">${allOpen ? 'Zwiń wszystko' : 'Rozwiń wszystko'}</button></div>
         ${days}
       </div>${detail}</main>`;
   }
@@ -274,7 +273,7 @@
       }).join('');
     } else {
       const [y, m] = P.month.split('-').map(Number);
-      navTitle = C.MONTH_NOM[m - 1] + ' ' + y; navSub = '';
+      navTitle = C.MONTH_NOM[m - 1] + ' ' + y; navSub = 'Plan na cały miesiąc';
       const first = P.month + '-01', last = P.month + '-' + C.pad(C.daysInMonth(y, m - 1));
       let cells = '';
       for (let k = C.mondayOf(first); k <= C.addDays(C.mondayOf(last), 6); k = C.addDays(k, 1)) {
@@ -283,7 +282,7 @@
         cells += `<button class="mcell ${cls}" data-a="dplanpick" data-k="${k}" aria-label="${esc(D.dateLong(k))}${p && p.changed ? ', zmieniony posiłek' : ''}"><span class="num">${C.parse(k).getDate()}</span><span class="dots">${p && p.changed ? '<i class="gold"></i>' : ''}</span></button>`;
       }
       const p = D.planFor(P.k);
-      body = `<div><div class="dow-row" aria-hidden="true"><div>PN</div><div>WT</div><div>ŚR</div><div>CZ</div><div>PT</div><div>SB</div><div>ND</div></div><div class="mgrid">${cells}</div>
+      body = `<div><div class="dow-row" aria-hidden="true"><div>PN</div><div>WT</div><div>ŚR</div><div>CZ</div><div>PT</div><div>SB</div><div>ND</div></div><div class="mgrid dpm">${cells}</div>
         <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:4px 2px"><i class="cdot"></i><span>dzień ze zmienionym posiłkiem</span></div></div>
         <div class="dcard"><div class="dhead"><div style="font-family:var(--display);font-size:16px;font-weight:600">${esc(planDayLabel(P.k))}</div></div>
           <button class="pillbtn" style="align-self:flex-start;margin:-8px 0 -6px 0" data-a="dplanday" data-k="${P.k}"><span class="pill">${J.arrow}<span>Otwórz ten dzień</span></span></button>
@@ -312,7 +311,7 @@
   function changeSheet() {
     const P = U.plan; let sheet = '';
     if (P.sheet) {
-      const opts = D.slotOptions(P.sheet.k, P.sheet.slot);
+      const all = D.slotOptions(P.sheet.k, P.sheet.slot), opts = all.filter((o) => o.id === P.sheet.cur).concat(all.filter((o) => o.id !== P.sheet.cur));   // v52: bieżący posiłek na górze listy (makieta)
       const sel = P.sheet.pick;
       const anim = P.sheet.anim ? ' anim' : ''; P.sheet.anim = false;
       sheet = `<div class="sheet-wrap${anim}"><button class="sheet-scrim" data-a="dchangeclose" aria-label="Zamknij okno zmiany posiłku"></button>
@@ -346,16 +345,16 @@
           <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-family:var(--display);font-size:18px;font-weight:600">Do kupienia</div>
             <div style="font-size:13px;color:var(--muted)">${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} z ${dayCount} ${dayCount === 1 ? 'dnia' : 'dni'}</div></div>
             <button class="shopundo${hn ? '' : ' off'}" data-a="dshopundo" aria-disabled="${!hn}" aria-label="${hn ? 'Cofnij ostatnie odhaczenie (' + hn + ' do cofnięcia)' : 'Nie ma czego cofać'}">${J.undo}<span>Cofnij (${hn})</span></button></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding-bottom:6px"><span>Kupiono ${bn} z ${items.length}</span><span>${pct}%</span></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding-bottom:6px"><span>Kupiono ${bn} z ${items.length}</span><span>${pct}%</span></div>
             <div class="bar"><div style="width:${pct}%"></div></div></div>
           ${window.Fin ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="shopxpbtn" data-a="dshxp">${I.plus || ''}<span>Dodaj wydatek</span></button>
             ${U.shop.xpMsg ? `<div class="shopxpmsg" role="status">${esc(U.shop.xpMsg)}</div>` : ''}</div>` : ''}
-          <div class="dcard tight shopsrc"><button class="shopsrch" data-a="dshopsrc" aria-expanded="${srcOpen}"><span>LISTA Z POSIŁKÓW · ${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} · ${dayCount} ${dayCount === 1 ? 'dzień' : 'dni'}</span><span style="display:flex">${srcOpen ? J.up : J.down}</span></button>
-            ${srcOpen ? src.map((d) => `<div class="shopsrcday"><div class="dl">${esc(D.dayShort(d.k))}</div>${d.meals.map((m) => `<div class="ml"><span class="sl">${esc(m.slot)}</span> – ${esc(m.name)}</div>`).join('')}</div>`).join('') : ''}</div>
-          <div class="dcard tight">${sorted.map((x) => `<button class="shoprow${bought[x.key] ? ' done' : ''}" role="checkbox" aria-checked="${!!bought[x.key]}" data-a="dbuy" data-key="${esc(x.key)}">
+          <div class="dcard tight shopsrc"><button class="shopsrch" data-a="dshopsrc" aria-expanded="${srcOpen}"><span>LISTA Z POSIŁKÓW · ${keys.length} ${C.plural(keys.length, 'posiłek', 'posiłki', 'posiłków')} · ${dayCount} ${dayCount === 1 ? 'dzień' : 'dni'}</span><span class="chev">${srcOpen ? '▴' : '▾'}</span></button>
+            ${srcOpen ? src.map((d) => `<div class="shopsrcday"><div class="dl">${esc(C.DAY_SHORT[C.parse(d.k).getDay()] + ' ' + C.dmy(d.k))}</div>${d.meals.map((m) => `<div class="ml"><span class="sl">${esc(m.slot)}</span><span class="mn">${esc(m.name)}</span></div>`).join('')}</div>`).join('') : ''}</div>
+          <div class="dcard tight shoplist">${sorted.map((x) => `<button class="shoprow${bought[x.key] ? ' done' : ''}" role="checkbox" aria-checked="${!!bought[x.key]}" data-a="dbuy" data-key="${esc(x.key)}">
             <span class="cbox">${bought[x.key] ? I.check : ''}</span><span class="nm">${esc(x.name)}</span><span class="amt"><span>${D.fmtNum(x.grams)} g</span>${x.measure ? `<span class="meas">${esc(x.measure)}</span>` : ''}</span></button>`).join('')}</div>
         </div>
-        <div class="footbar"><button class="btn2" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div>${U.shop.xp ? shopXpDialog() : ''}</main>`;
+        <div class="footbar"><button class="btn2 accent" style="flex:1;height:52px" data-a="dshopback">Zmień wybór posiłków</button></div>${U.shop.xp ? shopXpDialog() : ''}</main>`;
     }
     D.shopPrune();   // usuń zaznaczenia z dni, które już minęły
     const sel = D.shopping().sel || {};
@@ -427,7 +426,7 @@
       const allActs = D.dayActs(k);
       const mins = allActs.reduce((t, a) => t + (a.min || 0), 0), kms = allActs.reduce((t, a) => t + (a.km || 0), 0);
       const actTotal = (mins || kms) ? 'Razem ' + [mins ? mins + ' min' : '', kms ? D.fmtNum(kms) + ' km' : ''].filter(Boolean).join(' · ') : '';
-      body = `<div class="navrow">
+      body = `<div class="navrow" style="margin:-4px 0 -11px">
           <button class="iconbtn soft" data-a="djnav" data-d="-1" aria-label="Poprzedni dzień">${I.prev}</button>
           <div class="mid"><div class="big">${esc(planDayLabel(k))}</div><div class="small">${k === T ? 'Dziś' : 'Minione dni'}</div></div>
           <button class="iconbtn soft" data-a="djnav" data-d="1" aria-label="Następny dzień"${k >= T ? ' disabled' : ''}>${I.next}</button></div>
@@ -447,8 +446,8 @@
           <input class="quick" style="flex:none" type="text" aria-label="Rodzaj aktywności (wymagane)" placeholder="Rodzaj, np. spacer" value="${esc(Jn.actName)}" data-in="diet-actname">
           <div class="jadd"><input class="quick" type="text" inputmode="numeric" maxlength="3" aria-label="Czas w minutach (opcjonalnie)" placeholder="Czas (min)" value="${esc(Jn.actMin)}" data-in="diet-actmin">
             <input class="quick" type="text" inputmode="decimal" maxlength="5" aria-label="Dystans w kilometrach (opcjonalnie)" placeholder="Dystans (km)" value="${esc(Jn.actKm)}" data-in="diet-actkm">
-            <button class="plus" data-a="djactadd" aria-label="${Jn.actEdit ? 'Zapisz zmiany aktywności' : 'Dodaj aktywność'}">${Jn.actEdit ? J.check : J.plus}</button></div>
-          <div style="font-size:12px;color:${Jn.actErr ? 'var(--danger)' : 'var(--muted)'}"${Jn.actErr ? ' role="alert"' : ''}>${Jn.actErr ? 'Wpisz rodzaj aktywności – tylko on jest wymagany.' : 'Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne. Wykonane aktywności cykliczne dopisują się same jako jeden wpis sumaryczny.'}</div></div>`;
+            <button class="plus${Jn.actName.trim() ? '' : ' off'}" data-a="djactadd" aria-disabled="${!Jn.actName.trim()}" aria-label="${Jn.actEdit ? 'Zapisz zmiany aktywności' : 'Dodaj aktywność'}">${Jn.actEdit ? J.check : J.plus}</button></div>
+          <div style="font-size:12px;line-height:1.4;color:var(--dim)">Wymagany jest tylko rodzaj aktywności. Czas i dystans są opcjonalne. Wpis zmienisz ołówkiem. Wykonane aktywności cykliczne dopisują się same jako jeden wpis sumaryczny.</div></div>`;
       body += balCard(k, T);
     } else {
       const s = D.stats(Jn.from, T);
@@ -465,8 +464,8 @@
         <div class="dhead"><div class="eyebrow">Każdy posiłek</div></div>
         <div class="ddrop"><button class="select" data-a="djsort" aria-haspopup="listbox" aria-expanded="${Jn.sortOpen}"><span><span style="color:var(--muted)">Sortuj: </span>${SORTS.find((x) => x[0] === Jn.sort)[1]}</span><span style="color:var(--muted);display:flex">${Jn.sortOpen ? J.up : J.down}</span></button>
           ${Jn.sortOpen ? `<div class="options" role="listbox" aria-label="Sortowanie statystyk">${SORTS.map(([v, l]) => `<button role="option" aria-selected="${Jn.sort === v}" data-a="djsortpick" data-v="${v}"><span class="${Jn.sort === v ? 'on' : ''}">${l}</span>${Jn.sort === v ? `<span style="color:var(--accent);display:flex">${J.check}</span>` : ''}</button>`).join('')}</div>` : ''}</div>
-        ${items.length ? items.map((x) => { const tot = x.eaten + x.skipped; return `<div class="dcard tight statrow">
-            <div class="slot">${esc(x.slots.join(', '))}</div><div style="font-size:14px">${esc(x.name)}</div>
+        ${items.length ? items.map((x) => { const tot = x.eaten + x.skipped; return `<div class="dcard statrow">
+            <div style="display:flex;flex-direction:column;gap:2px"><div class="slot">${esc(x.slots.join(', '))}</div><div style="font-size:14px;line-height:1.3">${esc(x.name)}</div></div>
             <div class="sbar"><div class="e" style="width:${tot ? 100 * x.eaten / tot : 0}%"></div><div class="s" style="width:${tot ? 100 * x.skipped / tot : 0}%"></div></div>
             <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--ok)">Zjedzone: ${x.eaten}×</span><span style="color:var(--danger)">Pominięte: ${x.skipped}×</span></div></div>`; }).join('')
           : '<div class="para" style="text-align:center;padding:12px 0">Oznacz posiłki w dzienniku, a pojawią się tutaj.</div>'}`;
@@ -492,14 +491,14 @@
     const cur = parseFloat(String(W.kg).replace(',', '.'));
     const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + D.fmtNum(Math.abs(v), 1);
     let deltaText = '', deltaSub = 'pierwszy wpis';
-    if (prev && !isNaN(cur)) { const dl = Math.round((cur - prev.kg) * 10) / 10; deltaText = dl === 0 ? 'bez zmian' : sign(dl) + ' kg'; deltaSub = 'względem ' + D.dayShort(prev.k, true) + ' (' + D.fmtNum(prev.kg, 1) + ' kg)'; }
+    if (prev && !isNaN(cur)) { const dl = Math.round((cur - prev.kg) * 10) / 10; deltaText = dl === 0 ? 'bez zmian' : sign(dl) + ' kg'; deltaSub = 'względem ' + C.dmy(prev.k) + ' (' + D.fmtNum(prev.kg, 1) + ' kg)'; }
     // Wykres
     let chart = '<div class="para">Brak wpisów.</div>';
     if (list.length) {
       const min = Math.min(...list.map((x) => x.kg)), max = Math.max(...list.map((x) => x.kg));
-      const lo = Math.floor(min - 0.5), hi = Math.ceil(max + 0.5), H = 176, pad = 14, step = 56;
+      const lo = Math.floor(min - 0.5), hi = Math.ceil(max + 0.5), H = 176, pad = 14, step = 56, Y0 = 40, Y1 = 146;
       const w = Math.max(300, 28 + (list.length - 1) * step + 28);
-      const y = (kg) => pad + (H - 2 * pad) * (1 - (kg - lo) / ((hi - lo) || 1));
+      const y = (kg) => Y1 - (Y1 - Y0) * (kg - lo) / ((hi - lo) || 1);
       const pts = list.map((e, i) => [28 + i * step, y(e.kg)]);
       const grid = [hi, (hi + lo) / 2, lo];
       const ti = W.tip != null && W.tip < list.length ? W.tip : list.length - 1, tip = list[ti];   // v20: domyślnie zaznaczony ostatni pomiar
@@ -509,21 +508,21 @@
           <div style="position:relative;width:${w}px;height:${H}px">
             ${grid.map((g) => `<div class="wgrid" style="top:${y(g)}px"></div>`).join('')}
             <svg width="${w}" height="${H}" viewBox="0 0 ${w} ${H}" aria-hidden="true" style="position:absolute;inset:0"><polyline points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
-            ${pts.map((p, i) => `<button class="wdot${ti === i ? ' on' : ''}" style="left:${p[0] - 14}px;top:${p[1] - 14}px" data-a="dwtip" data-i="${i}" aria-label="${esc(D.dayShort(list[i].k, true) + ': ' + D.fmtNum(list[i].kg, 1) + ' kg')}"><span></span></button>`).join('')}
+            ${tip ? A.chartTip(pts[ti][0], pts[ti][1], w, esc(C.dmy(tip.k)) + (tip.k === T ? ' (dziś)' : ''), D.fmtNum(tip.kg, 1) + ' kg') : ''}
+            ${pts.map((p, i) => `<button class="wdot${ti === i ? ' on' : ''}" style="left:${p[0] - 14}px;top:${p[1] - 14}px" data-a="dwtip" data-i="${i}" aria-label="${esc(C.dmy(list[i].k) + ': ' + D.fmtNum(list[i].kg, 1) + ' kg')}"><span></span></button>`).join('')}
           </div></div>
-        ${tip ? `<div class="wtip" role="status"><div>${esc(D.dayShort(tip.k, true))}${tip.k === T ? ' (dziś)' : ''}</div><div style="font-family:var(--display);font-weight:600;color:var(--text)">${D.fmtNum(tip.kg, 1)} kg</div></div>` : ''}
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(D.dayShort(list[0].k, true))}</span><span>${list[list.length - 1].k === T ? 'dziś' : esc(D.dayShort(list[list.length - 1].k, true))}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(C.dmy(list[0].k))}</span><span>${list[list.length - 1].k === T ? 'dziś' : esc(C.dmy(list[list.length - 1].k))}</span></div>
       </div>`;
     }
     const first = list[0];
-    const chartSub = list.length > 1 ? 'Od ' + D.dayShort(first.k, true) + ' · ' + sign(Math.round((list[list.length - 1].kg - first.kg) * 10) / 10) + ' kg' : 'brak wcześniejszych wpisów';
+    const chartSub = list.length > 1 ? 'Od ' + C.dmy(first.k) + ' · ' + sign(Math.round((list[list.length - 1].kg - first.kg) * 10) / 10) + ' kg' : 'brak wcześniejszych wpisów';
     const hist = list.slice().reverse().map((e, i, arr) => {
       const older = arr[i + 1];
       const dl = older ? Math.round((e.kg - older.kg) * 10) / 10 : null;
       const cls = dl == null || dl === 0 ? '' : dl < 0 ? 'down' : 'up';
-      return `<div class="whist"><div style="flex:1;min-width:0">${esc(D.dayShort(e.k, true))}</div><div style="font-family:var(--display);font-weight:600">${D.fmtNum(e.kg, 1)} kg</div>
+      return `<div class="whist"><div style="flex:1;min-width:0">${esc(C.dmy(e.k))}${e.k === T ? ' (dziś)' : ''}</div><div style="font-family:var(--display);font-weight:600">${D.fmtNum(e.kg, 1)} kg</div>
         <div class="wdl ${cls}">${dl == null ? 'pierwszy' : dl === 0 ? 'bez zmian' : sign(dl) + ' kg'}</div>
-        <button class="iconbtn soft" data-a="dwdel" data-k="${e.k}" aria-label="Usuń wpis wagi z ${esc(D.dayShort(e.k, true))}">${J.trash}</button></div>`;
+        <button class="iconbtn soft wdel" data-a="dwdel" data-k="${e.k}" aria-label="Usuń wpis wagi z ${esc(C.dmy(e.k))}">${A.svg(16, 2, '<path d="M6 6l12 12M18 6 6 18"></path>')}</button></div>`;
     }).join('');
     return `<main class="screen">${topbar('Waga')}
       <div class="dscroll" data-scroll="diet-weight">
@@ -531,7 +530,7 @@
           <div class="wrow"><button class="round" data-a="dwstep" data-d="-1" aria-label="Zmniejsz o 0,1 kg">−</button>
             <div style="display:flex;align-items:baseline;gap:6px"><input class="wkg" type="text" inputmode="decimal" maxlength="5" aria-label="Waga w kilogramach" placeholder="0,0" value="${esc(W.kg)}" data-in="diet-kg"><span style="color:var(--muted)">kg</span></div>
             <button class="round" data-a="dwstep" data-d="1" aria-label="Zwiększ o 0,1 kg">+</button></div>
-          <div style="text-align:center;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">${esc(deltaText)}</div><div style="font-size:12px;color:var(--muted)">${esc(deltaSub)}</div></div>
+          <div class="wdelta"><div class="t" style="color:${deltaText && deltaText !== 'bez zmian' ? 'var(--accent)' : '#C9D3DF'}">${esc(deltaText)}</div><div class="s">${esc(deltaSub)}</div></div>
           <button class="primary" style="flex:none" data-a="dwsave"${isNaN(cur) ? ' disabled' : ''}>${todayE ? 'Zaktualizuj wpis na dziś' : 'Zapisz wagę na dziś'}</button>
           ${W.saved ? `<div class="okbox" role="status">${I.ok}<span>Zapisano wpis na dziś</span></div>` : ''}</div>
         <div class="dcard"><div class="dhead"><div class="eyebrow">Wykres</div><div style="font-size:12px;color:var(--muted)">${esc(chartSub)}</div></div>${chart}</div>
@@ -552,7 +551,7 @@
     // v9: import i eksport diety w jednej zwijanej pozycji (najpierw Import, potem Eksport), domyślnie zwinięte.
     const open = !!St.open;
     return `<section class="scard sgroup">
-        <button class="sghead" data-a="dsetgroup" aria-expanded="${open}"><span class="sgico coral">${A.svg(22, 1.8, '<path d="M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z"></path><path d="M12 7c0-1.5.7-3 2-4"></path>')}</span>
+        <button class="sghead" data-a="dsetgroup" aria-expanded="${open}"><span class="sgico coral">${A.svg(22, 1.8, '<path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path>')}</span>
           <span class="sgtxt"><span>Dieta: import i eksport</span><span>Jadłospis z pliku PDF · dziennik do .xlsx</span></span><span class="frot${open ? ' up' : ''}">${J.down}</span></button>
         ${open ? `<div class="sgbody">
           <div class="sgpart">
@@ -690,7 +689,7 @@
     dchange: (el) => {
       const k = el.dataset.k || U.plan.k, p = D.planFor(k), meal = p && p.meals.find((x) => x.slot === el.dataset.slot);
       if (!meal) return;
-      U.plan.sheet = { anim: true, k, slot: meal.slot, pick: meal.dishId, base: meal.base }; R();
+      U.plan.sheet = { anim: true, k, slot: meal.slot, pick: meal.dishId, cur: meal.dishId, base: meal.base }; R();
     },
     dchangepick: (el) => { U.plan.sheet.pick = el.dataset.dish; R(); },
     dchangeclose: () => { U.plan.sheet = null; R(); },
@@ -749,7 +748,7 @@
     djactadd: () => {
       // v7: wymagany tylko rodzaj; czas i dystans opcjonalne (puste = 0, nie są pokazywane).
       const Jn = U.journal, name = Jn.actName.trim(), min = parseInt(Jn.actMin, 10) || 0, km = parseFloat(String(Jn.actKm).replace(',', '.')) || 0;
-      if (!name) { Jn.actErr = true; R(); return; }
+      if (!name) return;   // v52: przycisk nieaktywny do czasu wpisania rodzaju (makieta)
       if (Jn.actEdit) D.updateActivity(Jn.k, Jn.actEdit, name, min, Math.round(km * 100) / 100); else D.addActivity(Jn.k, name, min, Math.round(km * 100) / 100);
       Jn.actName = Jn.actMin = Jn.actKm = ''; Jn.actErr = false; Jn.actEdit = null; R();
     },
@@ -875,7 +874,7 @@
       if (sum) sum.textContent = n ? 'Połączone zostaną ' + n + ' ' + C.plural(n, 'grupa', 'grupy', 'grup') + '.' : 'Nic nie zostanie połączone.';
     }
     else if (k === 'diet-dev') U.journal.dev = v;
-    else if (k === 'diet-actname') U.journal.actName = v;
+    else if (k === 'diet-actname') { U.journal.actName = v; const b = document.querySelector('[data-a=djactadd]'); if (b) { b.classList.toggle('off', !v.trim()); b.setAttribute('aria-disabled', String(!v.trim())); } }
     else if (k === 'diet-actmin') { el.value = v.replace(/\D/g, '').slice(0, 3); U.journal.actMin = el.value; }
     else if (k === 'diet-actkm') { el.value = v.replace(/[^\d,.]/g, '').slice(0, 5); U.journal.actKm = el.value; }
     else if (k === 'diet-kg') { el.value = v.replace(/[^\d,.]/g, '').slice(0, 5); U.weight.kg = el.value; U.weight.saved = false; }
