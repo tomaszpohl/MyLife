@@ -3,13 +3,11 @@
    Aktywność: { id, name, start: 'RRRR-MM-DD', rep: { type: 'daily'|'weekly'|'monthly'|'custom', n, unit: 'day'|'week'|'month', days: [0–6], end: 'never'|'date'|'count', until, count },
                 dur (od v31: czas trwania w min, tekst, puste = brak), done: { 'termin': 'data wykonania' } }.
    Od v36: `polar: [kody sportów Polar]` – trening z Polar w tym sporcie odhacza terminy (polarTick).
-   Planer dnia pokazuje aktywności wg powtarzania; niewykonane terminy z ostatnich 60 dni wracają (od v25) do najbliższego terminu
-   aktywności (dziś, jeśli dziś jest terminem, inaczej następny termin) jako zaległe podzadania z datą
-   (decyzja właściciela: 60 dni jak w makiecie; Tydzień i Miesiąc też pokazują aktywności). Bez godzin i przypomnień. */
+   Planer dnia pokazuje aktywności wg powtarzania (Dzień, Tydzień, Miesiąc). Od v53: termin zrealizowany albo porzucony – bez zaległych.
+   Od v53: `habit: true` – aktywność jest też nawykiem w module Nawyki (habits-core.js). Bez godzin i przypomnień. */
 (function () {
   'use strict';
   const C = window.Core, TR = window.Train;
-  const LOOK = 60;
   const DOW = ['ndz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
   const dm = (k) => { const a = k.split('-'); return a[2] + '.' + a[1] + '.' + a[0]; };
   const wk0 = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
@@ -51,38 +49,30 @@
     if (a.rep.end === 'count') { const l = lastOcc(a); if (!l || k > l) return false; }
     return !(a.skip && a.skip[k]);   // v34: termin usunięty w planie dnia – nie jest terminem (zaległe, wykonania, statystyki)
   }
-  // v25 (makieta 03.11.2026): zaległe terminy – niewykonane terminy z ostatnich 60 dni przed dziś (oraz wykonane dziś albo w dniu D,
-  // żeby po odhaczeniu zostały widoczne do końca dnia).
-  function pend(a, D) {
-    const T = C.todayKey(), lo = C.addDays(T, -LOOK), out = [];
-    for (let x = lo > a.start ? lo : a.start; x < T; x = C.addDays(x, 1)) if (occ(a, x)) { const v = a.done[x]; if (!v || v === D || v === T) out.push(x); }
-    return out;
-  }
-  // Terminy do pokazania w dniu D – tylko gdy D jest terminem aktywności (w inne dni aktywności w planerze nie ma).
-  // Zaległe terminy trafiają wyłącznie do najbliższego terminu od dziś (dziś albo następny termin); dni przeszłe i dalsze
-  // terminy pokazują tylko swój termin.
-  function dates(a, D) {
-    if (!occ(a, D)) return [];
-    const T = C.todayKey();
-    if (D < T) return [D];
-    let first = T;
-    for (let i = 0; i < 4000 && first < D && !occ(a, first); i++) first = C.addDays(first, 1);
-    return first === D ? pend(a, D).concat([D]) : [D];
-  }
-  // Liczba zaległych (niewykonanych) terminów – niezależnie od dnia.
-  const overdue = (a) => pend(a, null).filter((x) => !a.done[x]).length;
-  // Wiersze planera dla dnia k: { a, ds, done (wszystkie terminy), over (zaległe) }.
+  // v53 (makieta v266, 20.11.2026): jedna reguła – termin jest „zrealizowany” (wykonany w dniu terminu) albo „porzucony”
+  // (w dniu terminu niewykonany). Nie ma zaległych terminów: niewykonany termin nie przechodzi na kolejne dni.
+  // (do v52: zaległe z 60 dni jako podzadania z datą w najbliższym terminie)
+  const pend = () => [];
+  // Terminy do pokazania w dniu D – tylko termin tego dnia.
+  const dates = (a, D) => (occ(a, D) ? [D] : []);
+  // Porzucone terminy (minione, niewykonane) – z całej historii aktywności.
+  function overdue(a) { const T = C.todayKey(); let n = 0; for (let x = a.start; x < T; x = C.addDays(x, 1)) if (occ(a, x) && !a.done[x]) n++; return n; }
+  // Wiersze planera dla dnia k: { a, ds: [k], done }.
   function forDay(k) {
     return list().map((a) => ({ a, ds: dates(a, k) })).filter((x) => x.ds.length).map((x) => ({
-      a: x.a, ds: x.ds, done: x.ds.every((i) => !!x.a.done[i]), over: x.ds.filter((i) => i < k).length
+      a: x.a, ds: x.ds, done: x.ds.every((i) => !!x.a.done[i])
     }));
   }
+  // v53: odhaczenie zapisuje wykonanie w dniu terminu (done[termin] = termin) – wpis do Dziennika diety trafia do dnia terminu.
+  // Wcześniejsze wykonania z opóźnieniem (done[termin] > termin) zostają zrealizowane (decyzja właściciela z 20.11.2026).
   function setDone(id, ks, on) {
     const a = get(id); if (!a) return;
-    const T = C.todayKey();
-    ks.forEach((x) => { if (on) a.done[x] = T; else delete a.done[x]; });
+    a.done = a.done || {};
+    ks.forEach((x) => { if (on) a.done[x] = x; else delete a.done[x]; });
     TR.save();
   }
+  // v53 (makieta v265): „Dodaj do nawyku” – aktywność z a.habit = true pokazuje się też w module Nawyki (ten sam zapis).
+  function setHabit(id, on) { const a = get(id); if (!a) return; a.habit = !!on; TR.save(); }
   function repText(a) {
     const r = a.rep, s = C.parse(a.start);
     if (r.type === 'daily') return 'Codziennie';
@@ -138,19 +128,16 @@
     else { e.id = R.next++; e.done = e.done || {}; R.list.push(e); }
     TR.save(); return get(e.id);
   }
-  // v36 (Polar Flow, ustalenia właściciela 11.11.2026): nowy trening z Polar w sporcie `code` z dnia d (min minut) odhacza
-  // terminy aktywności z tym sportem w `a.polar` – od najstarszego niewykonanego (60 dni przed treningiem) do dnia treningu.
-  // Z czasem trwania: tyle terminów, ile pełnych czasów trwania mieści się w treningu (krótszy trening – nic); bez – jeden.
-  // Wykonanie zapisuje się z datą treningu (trafia też do wpisu w Dzienniku diety).
+  // v36 (Polar Flow): nowy trening z Polar w sporcie `code` z dnia d (min minut) odhacza aktywności z tym sportem w `a.polar`.
+  // v53 (makieta v266): tylko termin przypadający na dzień treningu (jako zrealizowany); trening krótszy niż czas trwania – nic.
   function polarTick(code, d, min) {
     const out = [];
     list().forEach((a) => {
       if (!syncOf(a) || a.polar.indexOf(code) < 0) return;   // v38: tylko aktywności z włączoną synchronizacją z Polar
       const dur = parseInt(a.dur, 10) || 0, n = dur ? Math.floor((Math.round((min || 0) * 10) / 10) / dur) : 1;
       if (n <= 0) return;
-      const lo = C.addDays(d, -LOOK), ks = [];
       a.done = a.done || {};
-      for (let x = lo > a.start ? lo : a.start; x <= d && ks.length < n; x = C.addDays(x, 1)) if (occ(a, x) && !a.done[x]) ks.push(x);
+      const ks = occ(a, d) && !a.done[d] ? [d] : [];
       if (!ks.length) return;
       ks.forEach((x) => { a.done[x] = d; });
       out.push({ id: a.id, name: a.name, n: ks.length });
@@ -168,30 +155,28 @@
     let planned = 0, done = 0, late = 0, missed = 0;
     for (let x = from; x <= T; x = C.addDays(x, 1)) {
       if (!occ(a, x)) continue;
-      const v = a.done[x];
-      if (v) { planned++; done++; if (v > x) late++; } else if (x < T) { planned++; missed++; }
+      if (a.done[x]) { planned++; done++; } else if (x < T) { planned++; missed++; }
     }
     const all = [];
     for (let x = a.start; x <= T; x = C.addDays(x, 1)) if (occ(a, x)) all.push(x);
-    // v41 (makieta v202): serie tylko z terminów wykonanych w dniu terminu (opóźnienie przerywa serię jak pominięcie);
-    // „seria teraz” od ostatniego terminu wstecz (dzisiejszy niewykonany jeszcze nie przerywa), „najdłuższa” – w oglądanym okresie.
-    const ok = (x) => !!a.done[x] && a.done[x] <= x;
+    // v41: „seria teraz” od ostatniego terminu wstecz (dzisiejszy niewykonany jeszcze nie przerywa), „najdłuższa” – w oglądanym okresie.
+    // v53: zrealizowany = wykonany (wcześniejsze wykonania z opóźnieniem liczą się jako zrealizowane); porzucony przerywa serię.
+    const ok = (x) => !!a.done[x];
     let streak = 0, best = 0, run = 0, started = false;
     all.forEach((x) => { if (x < from) return; if (ok(x)) { run++; if (run > best) best = run; } else if (x < T) run = 0; });
     for (let i = all.length - 1; i >= 0; i--) {
       const x = all[i];
       if (ok(x)) { streak++; started = true; } else if (x === T && !a.done[x] && !started) continue; else break;
     }
-    const over = overdue(a);
+    const over = missed;   // v53: kafelek „porzucone” – porzucone terminy w okresie
     // v41: ostatnie terminy – 7 dla „7 dni”, 30 dla „30 dni”, bez sekcji dla całego okresu (z całej historii aktywności)
     const dots = per === 'a' ? [] : all.slice(per === 'w' ? -7 : -30).map((x) => {
-      const v = a.done[x];
-      if (v) return { c: v > x ? 'late' : 'ok', tip: dm(x) + ': ' + (v > x ? 'wykonana z opóźnieniem' : 'wykonana w terminie') };
-      if (x < T) return { c: 'miss', tip: dm(x) + ': pominięta' };
+      if (a.done[x]) return { c: 'ok', tip: dm(x) + ': zrealizowana' };
+      if (x < T) return { c: 'miss', tip: dm(x) + ': porzucona' };
       return { c: 'today', tip: dm(x) + ': dziś, do zrobienia' };
     });
     return { planned, done, late, missed, streak, best, over, dots, dotsLabel: per === 'w' ? 'Ostatnie 7 terminów' : 'Ostatnie 30 terminów' };
   }
 
-  window.TrainRec = { list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };
+  window.TrainRec = { setHabit, list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };
 })();

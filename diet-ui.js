@@ -711,11 +711,15 @@
       D.shopSet({ sel }); R();
     },
     dshopgen: () => { D.shopPrune(); D.shopSet({ stage: 'list', bought: {}, hist: [] }); U.shop.xpMsg = ''; R(); },
-    dshxp: () => { const cats = window.Fin.activeCats(), food = cats.find((c) => c.id === 'food') || cats.find((c) => /jedzenie/i.test(c.name)) || null;
-      U.shop.xp = { amt: '', desc: 'Zakupy spożywcze', d: C.todayKey(), cat: food ? food.id : null }; U.shop.xpMsg = ''; R();
+    // v53: domyślnie Jedzenie (kategorie domyślne); przy własnych kategoriach nic nie jest wybrane – przycisk nieaktywny do wyboru
+    dshxp: () => { const F = window.Fin, cats = F.activeCats(), food = F.catMode() === 'custom' ? null : (cats.find((c) => c.id === 'food') || cats.find((c) => /jedzenie/i.test(c.name)) || null);
+      U.shop.xp = { amt: '', desc: 'Zakupy spożywcze', d: C.todayKey(), cat: food ? food.id : null, dd: false, q: '' }; U.shop.xpMsg = ''; R();
       setTimeout(() => { const i = document.querySelector('[data-in="diet-shxp-amt"]'); if (i) i.focus(); }, 30); },
     dshxpno: () => { U.shop.xp = null; R(); },
-    dshxpcat: (el) => { if (U.shop.xp) { U.shop.xp.cat = el.dataset.id; R(); } },
+    dshxpcat: (el) => { if (U.shop.xp) { U.shop.xp.cat = el.dataset.id; U.shop.xp.dd = false; U.shop.xp.q = ''; R(); } },
+    dshxpdd: () => { const X = U.shop.xp; if (!X) return; X.dd = !X.dd; X.q = ''; R(); if (X.dd) { const f = document.querySelector('[data-in="diet-shxp-catq"]'); if (f) f.focus(); } },
+    // „Kategorie: … · zmień” – jak w makiecie: Finanse · Wydatki z oknem kategorii
+    dshxpcats: () => { U.shop.xp = null; A.go('#/fin/exp'); setTimeout(() => { if (A.actions.fcatsopen) A.actions.fcatsopen(); }, 40); },
     dshxpdate: () => { const X = U.shop.xp; if (X) A.datePick({ value: X.d, max: C.todayKey(), onPick: (k) => { if (U.shop.xp) U.shop.xp.d = k; } }); },
     dshxpok: () => {
       const X = U.shop.xp; if (!X) return; const c = shopXpCheck(X); if (c.err) return;
@@ -850,11 +854,25 @@
       <label class="shxpf"><span class="eyebrow">Kwota (zł)</span><input class="finput" type="text" inputmode="decimal" maxlength="12" placeholder="0,00" value="${esc(X.amt)}" data-in="diet-shxp-amt" autocomplete="off"></label>
       <label class="shxpf"><span class="eyebrow">Opis</span><input class="finput" type="text" maxlength="60" value="${esc(X.desc)}" data-in="diet-shxp-desc" autocomplete="off"></label>
       <div class="shxpf"><span class="eyebrow">Data</span>${A.dateBtn(X.d, 'dshxpdate', '', 'Data wydatku')}</div>
-      <div role="radiogroup" aria-label="Kategoria wydatku" class="shxpf"><span class="eyebrow">Kategoria</span>
-        <div class="sxpcats">${cats.map((k) => `<button role="radio" aria-checked="${X.cat === k.id}" class="sxpcat cy${X.cat === k.id ? ' on' : ''}" data-a="dshxpcat" data-id="${esc(k.id)}"><span style="width:10px;height:10px;border-radius:5px;background:${k.color}"></span>${esc(k.name)}</button>`).join('')}</div></div>
+      <div class="shxpf" style="gap:8px"><div class="dhead" style="min-height:0"><span class="eyebrow">Kategoria</span><button class="flink" data-a="dshxpcats">Kategorie: ${F.catMode() === 'custom' ? 'Własne' : 'Domyślne'} · zmień</button></div>
+        ${!cats.length ? '<div style="font-size:13px;color:#F2D9A0;line-height:1.4">Nie masz jeszcze własnych kategorii. Dotknij „zmień” i dodaj pierwszą.</div>' : ''}
+        ${shopCatDropdown(X, cats)}</div>
       <div id="shxphint" style="font-size:13px;line-height:1.4;color:${c.err ? '#F2D9A0' : 'var(--muted)'}">${esc(c.err || 'Wydatek trafi do Finanse · Wydatki. Kwoty nie da się wyliczyć z listy (brak cen).')}</div>
       <div style="display:flex;gap:10px"><button class="btn-cancel small" data-a="dshxpno">Anuluj</button><button id="shxpok" class="primary" style="flex:1;height:48px" data-a="dshxpok"${c.err ? ' disabled' : ''}>Dodaj wydatek</button></div>
     </div></div>`;
+  }
+  // v53 (makieta – DietShopping): kategoria jako zwijana lista z wyszukiwarką, jak w Finanse · Dodaj wydatek
+  const nrm = (t) => String(t).toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function shopCatDropdown(X, cats) {
+    const sel = X.cat ? cats.find((c) => c.id === X.cat) || null : null, open = !!X.dd, q = nrm(X.q || '');
+    const list = cats.filter((c) => !q || nrm(c.name).indexOf(q) >= 0);
+    const dot = (c) => `<span style="flex:none;width:10px;height:10px;border-radius:5px;background:${c}"></span>`;
+    return `<button class="select fdd${open ? ' open' : ''}" data-a="dshxpdd" aria-haspopup="listbox" aria-expanded="${open}" aria-label="Kategoria wydatku: ${esc(sel ? sel.name : 'Wybierz kategorię')}">
+        <span style="display:flex;align-items:center;gap:10px;min-width:0">${dot(sel ? sel.color : 'transparent')}<span style="color:${sel ? 'var(--text)' : 'var(--muted)'};min-width:0">${esc(sel ? sel.name : 'Wybierz kategorię')}</span></span><span class="frot${open ? ' up' : ''}" style="color:var(--muted);display:flex">${J.down}</span></button>
+      ${open ? `<div class="fddbox">
+        <div class="fsearch"><input type="text" maxlength="24" aria-label="Szukaj kategorii" placeholder="Szukaj kategorii…" value="${esc(X.q || '')}" data-in="diet-shxp-catq" autocomplete="off"></div>
+        <div class="fddlist sxpdd" role="listbox" aria-label="Kategorie">${list.map((c) => `<button role="option" aria-selected="${c.id === X.cat}" class="fddopt${c.id === X.cat ? ' on' : ''}" data-a="dshxpcat" data-id="${esc(c.id)}">${dot(c.color)}<span style="flex:1;min-width:0">${esc(c.name)}</span>${c.id === X.cat ? `<span style="color:var(--accent);display:flex">${J.check}</span>` : ''}</button>`).join('')}
+          <div class="para sxpnone" style="padding:12px 10px"${list.length ? ' hidden' : ''}>Brak pasujących kategorii.</div></div></div>` : ''}`;
   }
   function shopXpLive() {
     const X = U.shop.xp; if (!X) return; const c = shopXpCheck(X);
@@ -866,6 +884,11 @@
     const v = el.value;
     if (k === 'diet-shxp-amt' && U.shop.xp) { el.value = v.replace(/[^\d,.]/g, '').slice(0, 12); U.shop.xp.amt = el.value; shopXpLive(); return; }
     if (k === 'diet-shxp-desc' && U.shop.xp) { U.shop.xp.desc = v.slice(0, 60); return; }
+    if (k === 'diet-shxp-catq' && U.shop.xp) {   // filtrowanie bez przerysowania (pole zachowuje fokus)
+      U.shop.xp.q = v.slice(0, 24); const q = nrm(U.shop.xp.q); let n = 0;
+      document.querySelectorAll('.sxpdd .fddopt').forEach((b) => { const ok = !q || nrm(b.textContent).indexOf(q) >= 0; b.hidden = !ok; if (ok) n++; });
+      const e = document.querySelector('.sxpnone'); if (e) e.hidden = n > 0; return;
+    }
     if (k === 'diet-ren') { U.list.draft = v; U.list.err = false; }
     else if (k === 'diet-simown') {
       const G = U.settings.sim; if (!G) return;
@@ -897,6 +920,7 @@
   }
   function onEscape() {
     if (window.BodyUI && A.route().arg === 'body' && window.BodyUI.onEscape()) return true;
+    if (U.shop.xp && U.shop.xp.dd) { U.shop.xp.dd = false; return true; }
     if (U.shop.xp) { U.shop.xp = null; return true; }
     if (U.settings.sim) { U.settings.sim = null; return true; }
     if (U.settings.parsed) { U.settings.parsed = null; return true; }

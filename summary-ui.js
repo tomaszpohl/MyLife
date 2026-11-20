@@ -1,6 +1,7 @@
 /* MyLife – „Podsumowanie miesiąca” (v47, makieta v217–v219 – Summary). Trasa #/summary, karta na ekranie głównym pod „Dziś”.
    Przełącznik miesięcy (od pierwszego miesiąca z danymi do bieżącego) i pięć kafelków liczonych na żywo z modułów:
-   wynik finansowy, statystyki aktywności cyklicznych, historia treningów, zmiana wagi, posiłki (% zjedzonych). */
+   wynik finansowy, statystyki aktywności cyklicznych, historia treningów, zmiana wagi, posiłki (% zjedzonych);
+   od v53 szósty – Statystyki nawyków (otwiera Postępy nawyków). */
 (function () {
   'use strict';
   const C = window.Core;
@@ -14,6 +15,7 @@
     arrows: '<path d="M4 8h13l-3-3"></path><path d="M20 16H7l3 3"></path>',
     dumb: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"></path>',
     trend: '<path d="M4 17l5-5 4 4 7-8"></path>',
+    habit: '<circle cx="12" cy="12" r="9"></circle><path d="m8 12.5 2.8 2.8L16 9.5"></path>',
     apple: '<path d="M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z"></path><path d="M12 7c0-1.5.7-3 2-4"></path>'
   };
   const ym = (k) => k.slice(0, 7);
@@ -27,6 +29,7 @@
     if (window.Fin) { const f = window.Fin; f.expenses().forEach((e) => ks.push(e.date)); f.incomes().forEach((e) => ks.push(e.date)); }
     if (window.Train) window.Train.list().forEach((w) => ks.push(w.d));
     if (window.TrainRec) window.TrainRec.list().forEach((a) => ks.push(a.start));
+    if (window.Habits) window.Habits.own().forEach((h) => ks.push(h.from));
     if (window.Diet) { window.Diet.weights().forEach((w) => ks.push(w.k)); const fj = window.Diet.firstJournalDay && window.Diet.firstJournalDay(); if (fj) ks.push(fj); }
     return ym(ks.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort()[0]);
   }
@@ -60,6 +63,11 @@
       const t = ea + sk;
       o.meal = { v: t ? Math.round(ea * 100 / t) + '%' : '—', sub: t ? 'Zjedzone ' + ea + ' · niezjedzone ' + sk : 'Brak oznaczonych posiłków w tym miesiącu' };
     }
+    // 6. v53 (makieta v267/268): Statystyki nawyków – zaplanowane dni nawyków w miesiącu (do dziś); dzisiejszy niewykonany jeszcze się nie liczy
+    if (window.Habits) {
+      const h = window.Habits.month(m);
+      o.hab = { v: h.planned ? Math.round(h.done * 100 / h.planned) + '%' : '—', sub: h.planned ? 'Zrealizowane ' + h.done + ' z ' + h.planned + ' · porzucone ' + h.missed : 'Brak zaplanowanych nawyków w tym miesiącu' };
+    }
     return o;
   }
   const tile = (act, color, line, icon, label, x, valColor) => `<button class="sumtile" data-a="${act}" style="border-color:${line}">
@@ -80,6 +88,7 @@
         ${s.tr ? tile('smtr', 'var(--violet)', '#4A3F7A', P.dumb, 'Historia treningów', s.tr) : ''}
         ${s.w ? tile('smw', 'var(--coral)', '#6A3A2C', P.trend, 'Zmiana wagi', s.w) : ''}
         ${s.meal ? tile('smmeal', 'var(--coral)', '#6A3A2C', P.apple, 'Posiłki', s.meal) : ''}
+        ${s.hab ? tile('smhab', 'var(--lime)', '#4A5A25', P.habit, 'Statystyki nawyków', s.hab) : ''}
       </div></main>`;
   }
   const homeCard = () => `<a class="module tdcard smcard" href="#/summary">
@@ -92,7 +101,8 @@
     smact: () => { if (window.TrainRecUI && window.TrainRecUI.statsTab) window.TrainRecUI.statsTab(); A.go('#/train/recur'); },
     smtr: () => { A.go('#/train/history'); },
     smw: () => { A.go('#/diet/weight'); },
-    smmeal: () => { A.go('#/diet/journal'); }
+    smmeal: () => { A.go('#/diet/journal'); },
+    smhab: () => { A.go('#/habits/progress'); }
   };
   function init(app) { A = app; esc = A.esc; Object.assign(A.actions, actions); }
   window.SummaryUI = { init, view, homeCard, stats, reset: () => { U.m = null; } };

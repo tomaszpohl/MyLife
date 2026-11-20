@@ -19,7 +19,7 @@
   const U = { tab: 'list', per: 'w', dlg: null };
   const NAMES = { daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc', custom: 'Własne…' };
   // v31: podpowiedź z informacją o Dzienniku diety (makieta 08.11.2026)
-  const HINT = 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana trafia do następnego terminu jako zaległe podzadanie z datą. Wykonana trafia do Dziennika diety (Aktywność fizyczna) razem z czasem trwania.';
+  const HINT = 'Aktywność pojawi się w planerze dnia w dni zgodne z powtarzaniem. Niewykonana w swoim dniu zostaje oznaczona jako porzucona (nie wraca na kolejny dzień); wykonana tego dnia – jako zrealizowana. Wykonana trafia do Dziennika diety (Aktywność fizyczna) razem z czasem trwania. Przy włączonej synchronizacji z Polar do dziennika trafiają wpisy z treningów Polar, a nie wpis tej aktywności.';   // v53 (makieta v266)
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
   // v36 (makieta v181): sporty Polar Flow powiązane z aktywnością.
   const PS = () => window.PolarSports;
@@ -39,7 +39,7 @@
     const sw = `<button class="thsw tcsync" role="switch" aria-checked="${d.sync}" data-a="tcsync"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Synchronizuj z Polar</span><span style="font-size:12px;color:var(--muted)">${d.sync ? 'Odhacza terminy z treningów Polar i dopisuje je do dziennika diety' : 'Wyłączona: wykonana aktywność wpisuje się do dziennika diety jak zwykle'}</span></span><span class="sw${d.sync ? ' on' : ''}" aria-hidden="true"><span></span></span></button>`;
     if (!d.sync) return `<div class="ffield tcpol">${sw}</div>`;
     return `<div class="ffield tcpol">${sw}<span class="eyebrow">Sporty Polar Flow <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span>
-        <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow (trening siłowy nie jest synchronizowany). Trening z zaznaczonego sportu odhacza terminy od najstarszego zaległego; przy podanym czasie trwania – tyle terminów, ile pełnych czasów trwania się w nim mieści.</div>
+        <div style="font-size:12px;line-height:1.4;color:var(--muted)">Zaznacz sporty, które odhaczają tę aktywność po synchronizacji z Polar Flow (trening siłowy nie jest synchronizowany). Trening z zaznaczonego sportu odhacza termin przypadający na dzień treningu jako zrealizowany; niewykonany w swoim dniu staje się porzucony.</div>
         ${d.pol.length ? `<div class="tcpchips">${d.pol.map((c) => `<span class="tcpchip">${esc(PS().name(c))}<button data-a="tcpol" data-c="${c}" aria-label="Usuń sport ${esc(PS().name(c))}">×</button></span>`).join('')}</div>` : ''}
         <input id="tc-polq" class="finput" type="search" autocomplete="off" placeholder="Szukaj sportu, np. spacer, bieg, rower" aria-label="Szukaj sportu Polar Flow" value="${esc(d.polQ)}" data-in="train-cpolq">
         <div class="tcplist" role="listbox" aria-multiselectable="true" aria-label="Sporty Polar Flow" data-pollist>${polOpts(d)}</div>
@@ -47,8 +47,8 @@
   }
 
   function openDlg(a) {
-    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', sync: a.sync === true || RC.syncOf(a), pol: (a.polar || []).slice(), polQ: '', rep: false, confirm: false }
-      : { id: 0, name: '', dur: '', sync: false, pol: [], polQ: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
+    U.dlg = a ? { id: a.id, name: a.name, type: a.rep.type, n: a.rep.n || 1, unit: a.rep.unit || 'week', days: (a.rep.days || []).slice(), end: a.rep.end || 'never', until: a.rep.until || '', count: String(a.rep.count || 10), dur: a.dur || '', sync: a.sync === true || RC.syncOf(a), pol: (a.polar || []).slice(), polQ: '', rep: false, confirm: false, habit: !!a.habit }
+      : { id: 0, name: '', dur: '', habit: false, sync: false, pol: [], polQ: '', type: 'daily', n: 1, unit: 'week', days: [], end: 'never', until: '', count: '10', rep: false, confirm: false };
   }
   function check(d) {
     const ex = d.id ? RC.get(d.id) : null, start = ex ? ex.start : C.todayKey(), custom = d.type === 'custom';
@@ -69,15 +69,15 @@
   function viewList() {
     const T = C.todayKey(), d = C.parse(T);
     const rows = RC.forDay(T).map((x) => {
-      const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== T;
+      const a = x.a, multi = false;   // v53: bez zaległych terminów
       return `<div class="dcard tcact">
         <div class="tcrow"><button class="tcchk" data-a="tcdone" data-id="${a.id}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}">${box(x.done)}</button>
           <div class="tcmain"><div class="tcname${x.done ? ' done' : ''}">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a))}</span></div></div>
-          ${x.over ? `<span class="tclate">zaległe: ${x.over}</span>` : ''}</div>
+</div>
         ${multi ? `<div class="tcsubs" role="group" aria-label="Podzadania: ${esc(a.name)}">${x.ds.map((k) => { const on = !!a.done[k]; return `<button class="tcsub" data-a="tcsub" data-id="${a.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RC.dm(k))}">${box(on, 1)}<span class="${on ? 'done' : ''}">${esc(a.name + ' - ' + RC.dm(k))}</span></button>`; }).join('')}</div>` : ''}
       </div>`;
     }).join('');
-    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a) + (PS() ? polTxt(a) : ''))}</span></div></div>
+    const acts = RC.list().map((a) => `<div class="dcard tcitem"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div class="tcname big">${esc(a.name)}</div><div class="rep">${K.rep}<span>${esc(RC.repText(a) + RC.durText(a) + (PS() ? polTxt(a) : '') + (a.habit ? ' · Nawyki' : ''))}</span></div></div>
       <button class="iconbtn tcpen" data-a="tcedit" data-id="${a.id}" aria-label="Edytuj aktywność ${esc(a.name)}">${K.pencil}</button></div>`).join('');
     return `<button class="tprimary" data-a="tcnew">${K.plus}<span>Dodaj aktywność</span></button>
       <div class="eyebrow" style="margin-top:4px">Na dziś · <span style="text-transform:none">${esc(C.DAY_NAME[d.getDay()].toLowerCase() + ', ' + C.dmy(T))}</span></div>
@@ -94,17 +94,17 @@
       <div class="dcard" style="border-color:#4A3F7A;gap:8px">
         <div class="dhead" style="min-height:0;align-items:baseline"><div class="eyebrow">Wykonanie ogółem</div><div style="font-family:var(--display);font-size:26px;font-weight:700;color:var(--violet)">${all}%</div></div>
         <div class="fprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${all}" aria-label="Wykonanie aktywności"><span style="width:${all}%;background:var(--violet)"></span></div>
-        <div style="font-size:13px;color:var(--muted)">Wykonano ${tp.d} z ${tp.p} zaplanowanych${tp.l ? ' · z opóźnieniem: ' + tp.l : ''}</div></div>
+        <div style="font-size:13px;color:var(--muted)">Wykonano ${tp.d} z ${tp.p} zaplanowanych${tp.p - tp.d ? ' · porzucone: ' + (tp.p - tp.d) : ''}</div></div>
       ${rows.length ? rows.map(({ a, s }) => {
         const pc = s.planned ? Math.round(s.done / s.planned * 100) : 0;
         return `<div class="dcard" style="gap:10px">
           <div class="dhead" style="min-height:0;align-items:baseline;gap:8px"><div class="tcname big">${esc(a.name)}</div><div style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--violet)">${pc}%</div></div>
           <div class="fprog small" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}" aria-label="Wykonanie: ${esc(a.name)}"><span style="width:${pc}%;background:var(--violet)"></span></div>
-          <div style="font-size:13px;color:var(--text-2)">Wykonano ${s.done} z ${s.planned}${s.late ? ' · z opóźnieniem: ' + s.late : ''}${s.missed ? ' · pominięte: ' + s.missed : ''}</div>
-          <div class="tckpi"><div><b>${s.streak}</b><span>seria teraz</span></div><div><b>${s.best}</b><span>najdłuższa seria</span></div><div><b style="color:${s.over ? 'var(--gold)' : 'var(--text)'}">${s.over}</b><span>zaległe</span></div></div>
+          <div style="font-size:13px;color:var(--text-2)">Wykonano ${s.done} z ${s.planned}${s.missed ? ' · porzucone: ' + s.missed : ''}</div>
+          <div class="tckpi"><div><b>${s.streak}</b><span>seria teraz</span></div><div><b>${s.best}</b><span>najdłuższa seria</span></div><div><b style="color:${s.over ? '#FF9C8A' : 'var(--text)'}">${s.over}</b><span>porzucone</span></div></div>
           ${s.dots.length ? `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:11px;color:var(--muted)">${s.dotsLabel}</div>
             <div class="tcdots">${s.dots.map((d) => `<span class="${d.c}" title="${esc(d.tip)}" role="img" aria-label="${esc(d.tip)}"></span>`).join('')}</div>
-            <div class="tcleg"><span><i class="ok"></i>w terminie</span><span><i class="late"></i>z opóźnieniem</span><span><i class="miss"></i>pominięta</span><span><i class="today"></i>dziś</span></div></div>` : ''}
+            <div class="tcleg"><span><i class="ok"></i>zrealizowana</span><span><i class="miss"></i>porzucona</span><span><i class="today"></i>dziś</span></div></div>` : ''}
         </div>`;
       }).join('') : '<div class="dcard"><div class="para" style="text-align:center;font-size:14px">Brak danych. Dodaj aktywność, aby zobaczyć statystyki.</div></div>'}`;
   }
@@ -116,6 +116,7 @@
         <button class="iconbtn soft" style="margin:-8px -8px -8px 0" data-a="tcclose" aria-label="Zamknij">${K.x}</button></div>
       <label class="ffield"><span class="eyebrow">Nazwa</span><input class="finput" type="text" maxlength="40" placeholder="np. Spacer" value="${esc(d.name)}" data-in="train-cname" autocomplete="off"></label>
       <label class="ffield"><span class="eyebrow">Czas trwania (min) <span style="letter-spacing:0;text-transform:none;font-weight:400">(opcjonalnie)</span></span><input class="finput${c.durOk ? '' : ' bad'}" type="text" inputmode="numeric" maxlength="3" placeholder="np. 40" value="${esc(d.dur)}" data-in="train-cdur" autocomplete="off"></label>
+      <div class="ffield"><button class="thsw tchab" role="switch" aria-checked="${!!d.habit}" data-a="tchab"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Dodaj do nawyku</span><span style="font-size:12px;color:var(--muted)">${d.habit ? 'Pojawia się też w module Nawyki; odhaczenie w jednym miejscu odznacza ten sam termin w drugim. Aktywność działa jak dotąd' : 'Wyłączone: aktywność działa tylko w treningu i planerze dnia'}</span></span><span class="sw lime${d.habit ? ' on' : ''}" aria-hidden="true"><span></span></span></button></div>
       ${polSection(d)}
       <div class="ffield"><span class="eyebrow">Powtarzanie</span>
         <button class="select${d.rep ? ' open tv' : ''}" data-a="tcrep" aria-haspopup="listbox" aria-expanded="${d.rep}"><span>${NAMES[d.type]}</span><span style="color:var(--muted);display:flex;font-size:14px">${d.rep ? '▴' : '▾'}</span></button>
@@ -167,10 +168,11 @@
     tcend: (el) => { U.dlg.end = el.dataset.v; R(); },
     tcsave: () => {
       const d = U.dlg, c = check(d); if (!c.ok) return;
-      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep, sync: !!d.sync, polar: d.sync ? d.pol.slice() : [] });
+      RC.upsert({ id: d.id || 0, name: d.name.trim(), dur: c.dur, start: c.start, rep: c.rep, sync: !!d.sync, polar: d.sync ? d.pol.slice() : [], habit: !!d.habit });
       U.dlg = null; if (!retDay()) R();
     },
     // v36: zaznaczenie / odznaczenie sportu Polar (lista i chip ×) – przewinięcie okna i listy zostaje
+    tchab: () => { const d = U.dlg; if (!d) return; const m = document.querySelector('.tcmodal'), ms = m ? m.scrollTop : 0; d.habit = !d.habit; R(); const m2 = document.querySelector('.tcmodal'); if (m2) m2.scrollTop = ms; },
     tcsync: () => { const d = U.dlg; if (!d) return; const m = document.querySelector('.tcmodal'), ms = m ? m.scrollTop : 0; d.sync = !d.sync; R(); const m2 = document.querySelector('.tcmodal'); if (m2) m2.scrollTop = ms; },
     tcpol: (el) => {
       const d = U.dlg, c = el.dataset.c; if (!d || !c || (c === 'STRENGTH_TRAINING' && d.pol.indexOf(c) < 0)) return;

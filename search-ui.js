@@ -35,11 +35,13 @@
     apple: 'M12 7c-1-2-3-3-5-2.5C4.5 5.2 3.5 8 4 11c.6 4 3.2 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.3 0 4.9-4 5.5-8 .5-3-.5-5.8-3-6.5C15 4 13 5 12 7Z M12 7c0-1.5.7-3 2-4',
     coin: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1 0-2-.5-2.5-1.5 M12 6.5V8 M12 16v1.5',
     swap: 'M7 8h13 M16 4l4 4-4 4 M17 16H4 M8 12l-4 4 4 4',
+    habit: 'M17 2l3 3-3 3 M4 11V9a4 4 0 0 1 4-4h12 M7 22l-3-3 3-3 M20 13v2a4 4 0 0 1-4 4H4 M9.5 12l2 2 3.5-3.5',
+    bell: 'M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17Z M10 21a2 2 0 0 0 4 0',
     sliders: 'M4 7h9 M17 7h3 M13 5v4h4V5z M4 17h3 M11 17h9 M7 15v4h4v-4z'
   };
   const MODS = [
     ['pulpit', 'Pulpit i Dziś', '#C9D3DF', 'sun'], ['plan', 'Plan', '#5BD0E8', 'calcheck'], ['fin', 'Finanse', '#F2B94B', 'coin'],
-    ['diet', 'Dieta', '#FF8F73', 'apple'], ['train', 'Trening', '#B9A2FF', 'dumb'], ['settle', 'Rozliczenia', '#7BE0A0', 'swap'], ['set', 'Ustawienia', '#93A1B2', 'sliders']
+    ['diet', 'Dieta', '#FF8F73', 'apple'], ['train', 'Trening', '#B9A2FF', 'dumb'], ['settle', 'Rozliczenia', '#7BE0A0', 'swap'], ['habit', 'Nawyki', '#C8E26B', 'habit'], ['set', 'Ustawienia', '#93A1B2', 'sliders']
   ];
   // [moduł, nazwa, cel (#/… albo nazwa akcji), opis, słowa kluczowe, ikona]
   const FUNCS = [
@@ -80,6 +82,10 @@
     ['set', 'Dieta: import i eksport', '!xl:diet', 'Import jadłospisu z PDF i eksport dziennika do .xlsx', 'import pdf jadłospis eksport xlsx excel dieta', 'down'],
     ['set', 'Eksport Finanse (.xlsx)', '!xl:xf', 'Wydatki, przychody i majątek do arkusza', 'eksport xlsx excel finanse', 'down'],
     ['set', 'Eksport Trening (.xlsx)', '!xl:xt', 'Treningi i postępy do arkusza', 'eksport xlsx excel trening', 'down'],
+    ['habit', 'Nawyki – dziś', '#/habits', 'Lista nawyków na wybrany dzień z odhaczaniem i serią', 'nawyki nawyk dziś odhaczanie seria codziennie', 'calcheck'],
+    ['habit', 'Nowy nawyk', '#/habits/edit/new', 'Dodaj nawyk: nazwa, dni tygodnia, kolor', 'dodaj nawyk nowy częstotliwość dni kolor', 'plus'],
+    ['habit', 'Postępy nawyków', '#/habits/progress', 'Realizacja, serie i historia nawyków w tygodniu, miesiącu i 90 dniach', 'postępy nawyki seria realizacja statystyki wykres', 'trend'],
+    ['set', 'Powiadomienia', '#/notif', 'Plan dnia: lista zadań i zadania z godziną; Nawyki: lista na początek dnia', 'powiadomienia przypomnienia suwak godzina zadania plan dnia nawyki', 'bell'],
     ['set', 'Błędy synchronizacji', '#/syncerr', 'Lista błędów Kalendarza Google i ponowienie', 'synchronizacja błędy kalendarz google', 'repeat']
   ];
   const U = { q: '', open: {} };

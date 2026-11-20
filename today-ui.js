@@ -75,7 +75,7 @@
     const R = window.TrainRec; if (!R) return '';
     const list = R.forDay(T), done = list.filter((x) => x.done).length;
     const rows = list.map((x) => row({
-      act: 'tdacts', dot: 'var(--violet)', done: x.done, title: x.a.name + (x.over ? ' (+' + x.over + ' ' + C.plural(x.over, 'zaległy', 'zaległe', 'zaległych') + ')' : ''),
+      act: 'tdacts', dot: 'var(--violet)', done: x.done, title: x.a.name,   // v53: bez „(+N zaległe)” – termin zrealizowany albo porzucony
       sub: R.syncOf(x.a) ? 'Cykliczna · uzupełni się z Polar' : 'Cykliczna · do zaliczenia w Treningu',
       right: x.a.dur ? x.a.dur + ' min' : '', aria: (x.done ? 'Zrobione: ' : 'Do zrobienia: ') + x.a.name + (x.a.dur ? ', ' + x.a.dur + ' minut' : '') + '. Otwórz aktywności'
     })).join('');

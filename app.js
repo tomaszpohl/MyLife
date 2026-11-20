@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v52 · 18.11.2026';
+  const APP_VERSION = 'v53 · 20.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -81,7 +81,7 @@
   };
   // v17: pasek przewijany poziomo (pozycje min. 60 px), aktywna pozycja wyśrodkowana; Trening ma własny pasek (fiolet).
   function navbar(mod, active) {
-    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : mod === 'settle' ? { cls: 'green', items: window.SettleUI.navItems } : NB[mod];
+    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : mod === 'settle' ? { cls: 'green', items: window.SettleUI.navItems } : mod === 'habit' ? { cls: 'lime', items: window.HabitsUI.navItems } : NB[mod];
     return `<nav class="navbar ${m.cls}" aria-label="Szybka nawigacja">${m.items.map(([k, href, label, body]) => k === active
       ? `<div class="nb on" aria-current="page">${svg(22, 1.8, body)}<span>${label}</span></div>`
       : `<a class="nb" href="${href}">${svg(22, 1.8, body)}<span>${label}</span></a>`).join('')}</nav>`;
@@ -179,16 +179,29 @@
   const actsFor = (k) => (RCx() ? RCx().forDay(k) : []);
   const actRep = (a) => `<div class="rep">${I.repeat}<span>${esc(RCx().repText(a) + RCx().durText(a))} · aktywność</span></div>`;
   function actRow(x, k) {
-    const a = x.a, multi = x.ds.length > 1 || x.ds[0] !== k, key = 'a|' + a.id + '|' + k, open = multi && !!S.subOpen[key];
-    const nd = x.ds.filter((i) => a.done[i]).length;
-    // v50: aktywność ma uchwyt kolejności jak zadanie (kolejność dnia zapisuje „a:<id>”); bez przesuwania w bok
+    const a = x.a;
+    // v50: aktywność ma uchwyt kolejności jak zadanie (kolejność dnia zapisuje „a:<id>”); bez przesuwania w bok.
+    // v53 (makieta v266): bez zaległych terminów – w dniu jest tylko termin tego dnia (zrealizowany albo – po dniu – porzucony).
     return `<div class="act-wrap row-wrap" data-act="${a.id}" data-id="a:${a.id}" data-k="${k}" data-done="${x.done ? 1 : 0}">
         <div class="row${x.done ? ' done' : ''}">
           <button class="grip actgrip" data-grip="a:${a.id}" aria-label="Zmień kolejność: ${esc(a.name)} (aktywność)" aria-describedby="grip-help">${I.grip}</button>
           <button class="body" data-a="actopen" data-id="${a.id}" aria-label="Edytuj aktywność: ${esc(a.name)}"><span class="title">${esc(a.name)}</span>${actRep(a)}</button>
-          ${multi ? `<button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} zaległe terminy: ${esc(a.name)}, wykonane ${nd} z ${x.ds.length}"><span class="cnt">${nd}/${x.ds.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>` : ''}
           <button class="check" data-a="actdone" data-id="${a.id}" data-k="${k}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name)}"><span class="box">${x.done ? I.check : ''}</span></button>
-        </div>${open ? `<div class="subpanel" role="group" aria-label="Terminy: ${esc(a.name)}">${x.ds.map((i) => { const on = !!a.done[i]; return `${i < k ? `<div class="subsw" data-subsw="${i}" data-id="${a.id}" data-k="${i}" data-kind="act">${swBg('Usuń ten termin')}` : '<div>'}<div class="subrow${on ? ' done' : ''}"><button class="subchk" data-a="actsub" data-id="${a.id}" data-k="${i}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(a.name + ' ' + RCx().dm(i))}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(a.name + ' - ' + RCx().dm(i))}</div></div></div>`; }).join('')}</div>` : ''}</div>`;
+        </div></div>`;
+  }
+  // ---------- v53 (makieta v269): zadanie „Nawyki” w Planie dnia – podzadania = nawyki z „Synchronizuj podzadania w planie dnia” ----------
+  // Odhaczanie działa w obie strony (moduł Nawyki ↔ Plan dnia); zadanie główne odhacza wszystkie. Bez przesuwania w bok,
+  // podzadania bez uchwytu, edycji i usuwania; ołówek (treść wiersza) otwiera moduł Nawyki. Kolejność dnia: id „hab”.
+  const habsFor = (k) => (window.Habits ? window.Habits.syncFor(k) : []);
+  function habRow(list, k) {
+    const H = window.Habits, nd = list.filter((h) => H.isDone(h, k)).length, done = nd === list.length, key = 'h|' + k, open = !!S.subOpen[key];
+    return `<div class="act-wrap row-wrap hab-wrap" data-id="hab" data-k="${k}" data-done="${done ? 1 : 0}">
+        <div class="row${done ? ' done' : ''}">
+          <button class="grip actgrip" data-grip="hab" aria-label="Zmień kolejność: Nawyki" aria-describedby="grip-help">${I.grip}</button>
+          <button class="body" data-a="habopen" aria-label="Otwórz moduł Nawyki"><span class="title">Nawyki</span><div class="rep">${I.repeat}<span>Codziennie · nawyki</span></div></button>
+          <button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} nawyki, wykonane ${nd} z ${list.length}"><span class="cnt">${nd}/${list.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>
+          <button class="check" data-a="habdone" data-k="${k}" aria-pressed="${done}" aria-label="${done ? 'Oznacz wszystkie nawyki jako niewykonane' : 'Oznacz wszystkie nawyki jako wykonane'}"><span class="box">${done ? I.check : ''}</span></button>
+        </div>${open ? `<div class="subpanel" role="group" aria-label="Nawyki">${list.map((h) => { const on = H.isDone(h, k); return `<div><div class="subrow hsub${on ? ' done' : ''}"><button class="subchk" data-a="habsub" data-id="${h.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(h.name)}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(h.name)}</div></div></div>`; }).join('')}</div>` : ''}</div>`;
   }
 
   // ---------- Podzadania (v13) ----------
@@ -275,6 +288,8 @@
     if (r[0] === 'train' && r[1]) return '#/train';
     if (r[0] === 'settle' && (r[1] === 'group' || r[1] === 'calc')) return r[1] === 'calc' ? '#/settle/group/' + r[2] : '#/settle/groups';
     if (r[0] === 'settle' && r[1]) return '#/settle';
+    if (r[0] === 'habits' && r[1]) return '#/habits';   // v53: Nawyki
+    if (r[0] === 'notif') return '#/settings';
     return '#/';
   }
   function navReplace(h) { if (curHash() === h) { render(); return; } navMode = 'replace'; location.replace(h); }
@@ -334,6 +349,8 @@
     else if (r.name === 'fin' && window.FinUI) html = withNavbar(window.FinUI.view(r), 'fin', window.FinUI.navKey(r));
     else if (r.name === 'train' && window.TrainUI) { const k = window.TrainUI.navKey(r); html = k ? withNavbar(window.TrainUI.view(r), 'train', k) : window.TrainUI.view(r); }
     else if (r.name === 'settle' && window.SettleUI) html = withNavbar(window.SettleUI.view(r), 'settle', window.SettleUI.navKey(r));
+    else if (r.name === 'habits' && window.HabitsUI) { const k = window.HabitsUI.navKey(r); html = k ? withNavbar(window.HabitsUI.view(r), 'habit', k) : window.HabitsUI.view(r); }   // v53: Nawyki
+    else if (r.name === 'notif' && window.NotifUI) html = window.NotifUI.view();   // v53: Powiadomienia
     else html = viewHome();
     app.innerHTML = html + (S.dp ? viewDatePicker() : '') + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
     app.querySelectorAll('[data-scroll]').forEach((el) => {
@@ -388,6 +405,10 @@
           <div class="ico" style="background:var(--green-bg);color:var(--ok)">${svg(22, 1.8, window.SettleUI.icon)}</div>
           <div class="txt"><div class="name">Rozliczenia</div><div class="desc">Długi i wspólne wydatki</div></div>
         </a>` : ''}
+        ${window.HabitsUI ? `<a class="module habit" href="#/habits">
+          <div class="ico" style="background:var(--lime-bg);color:var(--lime)">${svg(22, 1.8, window.HabitsUI.icon)}</div>
+          <div class="txt"><div class="name">Nawyki</div><div class="desc">Codzienne nawyki i postępy</div></div>
+        </a>` : ''}
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
     </main>`;
@@ -412,11 +433,11 @@
       const cls = [dk === k ? 'sel' : '', dk === today ? 'today' : ''].join(' ');
       strip += `<button class="${cls}" data-a="pick" data-k="${dk}" aria-label="${esc(dayTitle(dk))}"${dk === k ? ' aria-current="date"' : ''}><span class="d">${C.DAY_SHORT[d.getDay()]}</span><span class="n">${d.getDate()}</span></button>`;
     }
-    const items = C.forDay(k), acts = actsFor(k);
-    const n = items.filter((x) => x.done).length + acts.filter((x) => x.done).length;
+    const items = C.forDay(k), acts = actsFor(k), habs = habsFor(k), habDone = habs.length > 0 && habs.every((h) => window.Habits.isDone(h, k));
+    const n = items.filter((x) => x.done).length + acts.filter((x) => x.done).length + (habDone ? 1 : 0);
     const isMove = S.undo && S.undo.kind === 'move';
     const extra = isMove ? ' · przełożono na ' + S.undo.text : (S.undo && S.undo.text ? ' · ' + S.undo.text : '');
-    const summary = C.tasksWord(items.length + acts.length) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
+    const summary = C.tasksWord(items.length + acts.length + (habs.length ? 1 : 0)) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
     let pill = '';
     if (S.undo) pill = `<button class="pillbtn" data-a="undo" aria-label="${isMove ? 'Cofnij przełożenie zadania' : S.undo.kind === 'sub' ? 'Cofnij usunięcie podzadania' : 'Cofnij usunięcie zadania'}"><span class="pill">${I.undo}<span>Cofnij</span></span></button>`;
     else if (k !== today) pill = `<button class="pillbtn" data-a="pick" data-k="${today}"><span class="pill">${I.arrow}<span>Dziś</span></span></button>`;
@@ -436,6 +457,7 @@
     const ord = C.dayOrder(k), opos = (id) => { const i = ord.indexOf(id); return i < 0 ? Infinity : i; };
     const merged = (done) => items.filter((x) => x.done === done).map((x, i) => ({ id: x.task.id, i, html: () => taskRow(x) }))
       .concat(acts.filter((x) => !!x.done === done).map((x, i) => ({ id: 'a:' + x.a.id, i: 1000 + i, html: () => actRow(x, k) })))
+      .concat(habs.length && habDone === done ? [{ id: 'hab', i: 2000, html: () => habRow(habs, k) }] : [])
       .map((e) => Object.assign(e, { p: opos(e.id) }))
       .sort((a, b) => (a.p !== b.p ? a.p - b.p : a.i - b.i));
     const rows = merged(false).map((e) => e.html()).join('') + merged(true).map((e) => e.html()).join('');
@@ -793,6 +815,7 @@
     return `<main class="screen">
       <div class="topbar">${navBtns('Wróć', 'sback')}<h1>Ustawienia</h1>${window.SearchUI ? '<span style="margin-left:auto">' + srchBtn() + '</span>' : ''}</div>
       <div class="form tight" style="gap:14px;padding-bottom:calc(20px + var(--safe-bottom))" data-scroll="settings">
+        ${window.NotifUI ? window.NotifUI.settingsCard() : ''}
         <section class="scard">
           <div class="eyebrow">Przechowywanie danych</div>
           <div style="display:flex;align-items:flex-start;gap:12px">
@@ -807,7 +830,7 @@
             <div class="kv"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
             <div class="kv" style="padding-bottom:0"><span>Wersja aplikacji</span><span>${APP_VERSION}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse, treningi i rozliczenia. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse, treningi, rozliczenia i nawyki. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
@@ -827,8 +850,8 @@
 
   // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
   function viewBackupPicker() {
-    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train && !b.settle;
-    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening'], ['settle', 'Rozliczenia']];
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train && !b.settle && !b.habits;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening'], ['settle', 'Rozliczenia'], ['habits', 'Nawyki']];   // v53: szósty moduł – Nawyki
     return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
       <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
       ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
@@ -879,6 +902,9 @@
     actdone: (el) => { const x = actsFor(el.dataset.k).find((y) => y.a.id === +el.dataset.id); if (x) RCx().setDone(x.a.id, x.ds, !x.done); render(); },
     actsub: (el) => { const a = RCx().get(el.dataset.id); if (a) RCx().setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); render(); },
     actopen: (el) => go('#/train/recur/' + el.dataset.id),
+    habopen: () => go('#/habits'),
+    habdone: (el) => { const H = window.Habits, k = el.dataset.k, L = habsFor(k), on = !L.every((h) => H.isDone(h, k)); L.forEach((h) => H.setDone(h, k, on)); render(); },
+    habsub: (el) => { const H = window.Habits, h = H.get(el.dataset.id); if (h) H.toggle(h, el.dataset.k); render(); },
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
     subdel: (el) => {
       const t = C.get(el.dataset.id); if (!t) return;
@@ -978,7 +1004,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); if (window.PolarUI) window.PolarUI.reset(); if (window.XlsxExport) window.XlsxExport.reset(); back(); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -990,11 +1016,12 @@
         if (b.fin && window.Fin) modules.fin = window.Fin.exportData();
         if (b.train && window.Train) modules.train = window.Train.exportData();
         if (b.settle && window.Settle) modules.settle = window.Settle.exportData();
+        if (b.habits && window.Habits) modules.habits = window.Habits.exportData();
         const name = 'mylife-kopia-' + C.todayKey() + '.json';
         downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
         try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
         S.bk = null;
-        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : '', b.settle ? 'rozliczenia' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : '', b.settle ? 'rozliczenia' : '', b.habits ? 'nawyki' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
       } else {
         // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
         const f = document.getElementById('importFile'); if (f) f.click();
@@ -1002,7 +1029,7 @@
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true, settle: true }; render(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -1081,6 +1108,7 @@
         else if (k.indexOf('body-') === 0 && window.BodyUI) window.BodyUI.onInput(el, k);
         else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onInput(el, k);
         else if (k.indexOf('settle-') === 0 && window.SettleUI) window.SettleUI.onInput(el, k);
+        else if (k.indexOf('habit-') === 0 && window.HabitsUI) window.HabitsUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
         else if (k.indexOf('gcal-') === 0 && window.GCalUI) window.GCalUI.onInput(el, k);
         else if (k.indexOf('polar-') === 0 && window.PolarUI) window.PolarUI.onInput(el, k);
@@ -1096,19 +1124,20 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train, settle: S.bk.settle } : { tasks: true, diet: true, fin: true, train: true, settle: true };
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train, settle: S.bk.settle, habits: S.bk.habits } : { tasks: true, diet: true, fin: true, train: true, settle: true, habits: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
           // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
-          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train && !data.settle)) throw new Error('To nie jest kopia MyLife.');
-          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : '', want.settle && !data.settle ? 'Rozliczenia' : ''].filter(Boolean);
+          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train && !data.settle && !data.habits)) throw new Error('To nie jest kopia MyLife.');
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : '', want.settle && !data.settle ? 'Rozliczenia' : '', want.habits && !data.habits ? 'Nawyki' : ''].filter(Boolean);
           const done = [];
           if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
           if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
           if (want.fin && data.fin && window.Fin) { window.Fin.importData(data.fin); done.push('finanse: ' + window.Fin.summary()); }
           if (want.train && data.train && window.Train) { window.Train.importData(data.train); done.push('trening: ' + window.Train.summary()); }
           if (want.settle && data.settle && window.Settle) { window.Settle.importData(data.settle); done.push('rozliczenia: ' + window.Settle.summary()); }
+          if (want.habits && data.habits && window.Habits) { window.Habits.importData(data.habits); done.push('nawyki: ' + window.Habits.summary(data.habits)); }
           if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
           S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
           S.bk = null; render();
@@ -1140,6 +1169,7 @@
     if (e.key === 'Escape' && window.FinUI && window.FinUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.SettleUI && route().name === 'settle' && window.SettleUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.HabitsUI && route().name === 'habits' && window.HabitsUI.onEscape()) { render(); return; }
     if (window.SettleUI && e.target.dataset && e.target.dataset.key && window.SettleUI.onKey(e)) return;
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
@@ -1222,7 +1252,7 @@
     if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault(); e.stopPropagation();
     // v13: rozpoczęcie zmiany kolejności zwija rozwinięte podzadania (wiersze mają wtedy równą wysokość).
-    const openKeys = Object.keys(S.subOpen).filter((x) => (x.indexOf('d|') === 0 || x.indexOf('a|') === 0) && S.subOpen[x]);
+    const openKeys = Object.keys(S.subOpen).filter((x) => (x.indexOf('d|') === 0 || x.indexOf('a|') === 0 || x.indexOf('h|') === 0) && S.subOpen[x]);
     if (openKeys.length) {
       openKeys.forEach((x) => { delete S.subOpen[x]; });
       const gid = g.dataset.grip; render();
@@ -1432,6 +1462,7 @@
       const id = s.wrap.dataset.id, blocked = s.wrap.classList.contains('blocked');
       // v21: lista rozliczeń grupowych – wiersz wraca, a przeciągnięcie ≥100 px otwiera okno potwierdzenia.
       const kind = s.row.dataset.mswipe || '';
+      if (kind === 'habit') { if (!cancelled && s.dx >= 100) { s.row.style.transform = 'translateX(110%)'; setTimeout(() => window.HabitsUI.swipeDelete(id), 180); } else { s.row.style.transform = 'translateX(0)'; setTimeout(() => s.wrap.classList.remove('swiping'), 200); } return; }   // v53: Nawyki (bez okna, z „Cofnij”)
       if (kind.indexOf('settle') === 0) { s.row.style.transform = 'translateX(0)'; setTimeout(() => { s.wrap.classList.remove('swiping'); if (!cancelled && s.dx >= 100) window.SettleUI.swipeDelete(id, kind); }, 200); return; }
       if (!cancelled && s.dx >= 100 && !blocked) { s.row.style.transform = 'translateX(110%)'; setTimeout(() => window.DietUI.swipeDelete(id), 180); }
       else {
@@ -1481,6 +1512,9 @@
   if (window.SearchUI) { window.SearchUI.init(window.App); }
   if (window.SummaryUI) { window.SummaryUI.init(window.App); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
+  if (window.HabitsUI) { window.HabitsUI.init(window.App); }
+  if (window.NotifUI) { window.NotifUI.init(window.App); }
+  if (window.Notif) { window.Notif.init(); }
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
   if (window.GCal) { window.GCal.load(); }
   if (window.GCalUI) { window.GCalUI.init(window.App); }
@@ -1498,6 +1532,7 @@
     if (window.FinUI) window.FinUI.onRoute(r);
     if (window.TrainUI) window.TrainUI.onRoute(r);
     if (window.SettleUI) window.SettleUI.onRoute(r);
+    if (window.HabitsUI) window.HabitsUI.onRoute(r);
     if (r.name === 'home' && window.SummaryUI) window.SummaryUI.reset();   // v47: podsumowanie wraca na bieżący miesiąc
     window.scrollTo(0, 0); render();
   });
