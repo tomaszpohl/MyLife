@@ -84,7 +84,7 @@
     ['set', 'Eksport Trening (.xlsx)', '!xl:xt', 'Treningi i postępy do arkusza', 'eksport xlsx excel trening', 'down'],
     ['habit', 'Nawyki – dziś', '#/habits', 'Lista nawyków na wybrany dzień z odhaczaniem i serią', 'nawyki nawyk dziś odhaczanie seria codziennie', 'calcheck'],
     ['habit', 'Nowy nawyk', '#/habits/edit/new', 'Dodaj nawyk: nazwa, dni tygodnia, kolor', 'dodaj nawyk nowy częstotliwość dni kolor', 'plus'],
-    ['habit', 'Postępy nawyków', '#/habits/progress', 'Realizacja, serie i historia nawyków w tygodniu, miesiącu i 90 dniach', 'postępy nawyki seria realizacja statystyki wykres', 'trend'],
+    ['habit', 'Postępy nawyków', '#/habits/progress', 'Realizacja, serie i porzucone dni nawyków: 7 dni, 30 dni albo cały okres', 'postępy nawyki seria realizacja statystyki porzucone', 'trend'],
     ['set', 'Powiadomienia', '#/notif', 'Plan dnia: lista zadań i zadania z godziną; Nawyki: lista na początek dnia', 'powiadomienia przypomnienia suwak godzina zadania plan dnia nawyki', 'bell'],
     ['set', 'Błędy synchronizacji', '#/syncerr', 'Lista błędów Kalendarza Google i ponowienie', 'synchronizacja błędy kalendarz google', 'repeat']
   ];

@@ -93,6 +93,17 @@
     return range(first, end);
   }
 
+  // v54 (makieta v273, pkt 13): statystyki nawyku w okresie 'w' (7 dni) | 'm' (30 dni) | 'a' (cały okres) – jak statystyki aktywności cyklicznych.
+  // Liczą się tylko dni okresu; dzisiejszy niewykonany nie jest porzucony; najdłuższa seria w obrębie okresu; seria teraz – od dziś wstecz.
+  function stat(h, per) {
+    const T = C.todayKey(), lo = per === 'w' ? C.addDays(T, -6) : per === 'm' ? C.addDays(T, -29) : h.from, from = lo > h.from ? lo : h.from;
+    const all = []; for (let x = h.from, i = 0; x <= T && i < 4000; x = C.addDays(x, 1), i++) if (sched(h, x)) all.push(x);
+    let planned = 0, done = 0, missed = 0, run = 0, best = 0, streak = 0, started = false;
+    all.forEach((x) => { if (x < from) return; if (isDone(h, x)) { planned++; done++; run++; if (run > best) best = run; } else if (x < T) { planned++; missed++; run = 0; } });
+    for (let i = all.length - 1; i >= 0; i--) { const x = all[i]; if (isDone(h, x)) { streak++; started = true; } else if (x === T && !started) continue; else break; }
+    const dots = per === 'a' ? [] : all.slice(per === 'w' ? -7 : -30).map((x) => ({ k: x, st: isDone(h, x) ? 'ok' : x < T ? 'miss' : 'today' }));
+    return { planned, done, missed, streak, best, dots };
+  }
   const nameTaken = (name, exceptId) => own().some((h) => h.id !== exceptId && h.name.toLowerCase() === name.trim().toLowerCase());
   function upsert(e) {
     const name = String(e.name).trim().slice(0, 40), days = (e.days || []).map(Number).filter((x) => x >= 1 && x <= 7).sort();
@@ -130,5 +141,5 @@
   function wipe() { db = empty(); save(); }
 
   window.Habits = { KEY, ACT_COLOR, all, own, linked, get, sched, isDone, setDone, toggle, forDay, syncFor, streak, best, daysLabel, range, month,
-    nameTaken, upsert, remove, restore, unlink, relink, exportData, importData, summary, wipe, dow, reload() { db = load(); } };
+    stat, nameTaken, upsert, remove, restore, unlink, relink, exportData, importData, summary, wipe, dow, reload() { db = load(); } };
 })();

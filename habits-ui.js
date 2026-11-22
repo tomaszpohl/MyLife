@@ -24,7 +24,7 @@
     ['#3FD6A8', 'miętowy'], ['#80CBC4', 'seledynowy'], ['#D2B48C', 'beżowy'], ['#E6B8A2', 'łososiowy'], ['#FF7A90', 'malinowy'], ['#9AD1F0', 'lodowy'], ['#CFD8DC', 'srebrny'], ['#9FA8DA', 'stalowy']];
   const WD = ['', 'PN', 'WT', 'ŚR', 'CZ', 'PT', 'SB', 'ND'];
   const WDL = ['', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota', 'niedziela'];
-  const U = { sel: null, msg: '', undo: null, per: 30, f: null };
+  const U = { sel: null, msg: '', undo: null, per: 'm', f: null };
   const pl = (n, a, b, c) => n + ' ' + C.plural(n, a, b, c);
   const editHref = (h) => (h.act ? '#/train/recur/' + h.act : '#/habits/edit/' + h.id);
 
@@ -69,43 +69,36 @@
   }
 
   // ---------- Postępy nawyków ----------
+  // v54 (makieta v273, pkt 13): układ jak „Statystyki” aktywności cyklicznych – okres 7 dni / 30 dni / Cały okres,
+  // karta realizacji i karty nawyków (seria teraz, najdłuższa seria, porzucone, ostatnie terminy). Edycja nawyku – w widoku Nawyki.
   function viewProgress() {
-    const T = C.todayKey(), per = U.per, L = H.all();
-    const arr = []; for (let i = per - 1; i >= 0; i--) arr.push(C.addDays(T, -i));
-    const SQ = per === 7 ? { size: 34, gap: 6, rad: 8 } : per === 30 ? { size: 14, gap: 4, rad: 4 } : { size: 9, gap: 3, rad: 2 };
-    let ts = 0, td = 0;
+    const per = U.per, L = H.all();
+    let tp = 0, td = 0, tm = 0;
+    const DOT = { ok: ['#7BE0A0', '#7BE0A0', 'zrealizowana'], miss: ['#FF9C8A', '#FF9C8A', 'porzucona'], today: ['transparent', LIME, 'dziś, do zrobienia'] };
     const cards = L.map((h) => {
-      let s = 0, d = 0; arr.forEach((x) => { if (H.sched(h, x)) { s++; if (H.isDone(h, x)) d++; } });
-      ts += s; td += d;
-      const pct = s ? Math.round(100 * d / s) : 0;
-      const cells = arr.map((x) => { const sc = H.sched(h, x), dn = sc && H.isDone(h, x); const bg = dn ? h.color : (sc && x < T ? '#3A1A1F' : 'transparent'), bd = dn ? h.color : (sc ? (x < T ? '#FF9C8A' : '#4A5A6E') : '#202B38'); return `<span style="width:${SQ.size}px;height:${SQ.size}px;border-radius:${SQ.rad}px;background:${bg};border:1px solid ${bd}"></span>`; }).join('');
-      return `<div class="dcard hpcard"><div class="hph"><span class="dot" style="background:${h.color}"></span><span class="n">${esc(h.name)}</span><span class="p">${s ? pct + '%' : '—'}</span>
-          <a class="hpen sm" href="${editHref(h)}" aria-label="Edytuj nawyk: ${esc(h.name)}">${K.pen}</a></div>
-        <div class="hbar" aria-hidden="true"><div style="width:${pct}%;background:${h.color}"></div></div>
-        <div class="hpl"><span>${s ? d + ' z ' + s + ' zaplanowanych dni' : 'Brak zaplanowanych dni'}</span><span>Seria: ${H.streak(h)} · rekord: ${H.best(h)}</span></div>
-        <div class="hcells" role="img" aria-label="${esc(h.name + ', ostatnie ' + per + ' dni: zrobione ' + d + ' z ' + s)}" style="gap:${SQ.gap}px">${cells}</div></div>`;
+      const st = H.stat(h, per); tp += st.planned; td += st.done; tm += st.missed;
+      const pc = st.planned ? Math.round(100 * st.done / st.planned) : 0;
+      const dots = st.dots.map((d) => { const x = DOT[d.st], tip = C.dmy(d.k).slice(0, 5) + ': ' + x[2]; return `<span title="${tip}" aria-label="${tip}" style="background:${x[0]};border-color:${x[1]}"></span>`; }).join('');
+      return `<div class="dcard hpcard">
+        <div class="hph"><span class="dot" style="background:${h.color}"></span><span class="n">${esc(h.name)}</span><span class="p" style="color:${h.color}">${pc}%</span></div>
+        <div class="hbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}" aria-label="Realizacja: ${esc(h.name)}"><div style="width:${pc}%;background:${h.color}"></div></div>
+        <div class="hpl2">${st.planned ? 'Zrealizowane ' + st.done + ' z ' + st.planned + (st.missed ? ' · porzucone: ' + st.missed : '') : 'Brak zaplanowanych dni w tym okresie'}</div>
+        <div class="hk3"><div><b>${st.streak}</b><span>seria teraz</span></div><div><b>${st.best}</b><span>najdłuższa seria</span></div><div><b${st.missed ? ' style="color:#FF9C8A"' : ''}>${st.missed}</b><span>porzucone</span></div></div>
+        ${st.dots.length ? `<div class="hdots"><div class="l">${per === 'w' ? 'Ostatnie 7 dni' : 'Ostatnie 30 dni'}</div><div class="d">${dots}</div>
+          <div class="g"><span>■ <span style="color:#7BE0A0">zrealizowana</span></span><span>■ <span style="color:#FF9C8A">porzucona</span></span><span>□ dziś</span></div></div>` : ''}
+      </div>`;
     }).join('');
-    const mon = C.addDays(T, -(H.dow(T) - 1)), weeks = [];
-    for (let i = 7; i >= 0; i--) {
-      const w0 = C.addDays(mon, -7 * i); let s = 0, d = 0;
-      for (let k = 0; k < 7; k++) { const x = C.addDays(w0, k); if (x > T) break; L.forEach((h) => { if (H.sched(h, x)) { s++; if (H.isDone(h, x)) d++; } }); }
-      const p = s ? Math.round(100 * d / s) : 0;
-      weeks.push({ pct: s ? p + '%' : '—', h: Math.max(4, Math.round(p * 0.8)), bg: i === 0 ? LIME : '#5E6F2E', lbl: C.dmy(w0).slice(0, 5) });
-    }
-    const periods = [[7, '7 dni'], [30, '30 dni'], [90, '90 dni']].map(([v, l]) => `<button class="${per === v ? 'on' : ''}" data-a="hpper" data-v="${v}" aria-pressed="${per === v}">${l}</button>`).join('');
+    const all = tp ? Math.round(100 * td / tp) : 0;
+    const names = { w: 'OSTATNIE 7 DNI', m: 'OSTATNIE 30 DNI', a: 'CAŁY OKRES' };
+    const periods = [['w', '7 dni'], ['m', '30 dni'], ['a', 'Cały okres']].map(([v, l]) => `<button role="radio" class="${per === v ? 'on' : ''}" data-a="hpper" data-v="${v}" aria-checked="${per === v}">${l}</button>`).join('');
     return `<main class="screen">${top('Postępy nawyków')}
       <div class="dscroll hscroll" data-scroll="habits-progress">
-        <div class="hseg" role="group" aria-label="Okres">${periods}</div>
-        ${!L.length ? '<div class="hempty">Brak nawyków do pokazania. Dodaj nawyk w widoku „Nawyki”.</div>' : `
-        <div class="htiles"><div><div class="eyebrow">Realizacja</div><div class="v" style="color:${LIME}">${ts ? Math.round(100 * td / ts) + '%' : '—'}</div></div>
-          <div><div class="eyebrow">Zrobione</div><div class="v">${td} z ${ts}</div></div></div>
-        <div class="dcard" style="gap:10px"><div class="eyebrow">Realizacja · ostatnie 8 tygodni</div>
-          <div class="hweeks" role="img" aria-label="${esc('Realizacja w ostatnich 8 tygodniach: ' + weeks.map((w) => w.lbl + ' – ' + w.pct).join(', '))}">${weeks.map((w) => `<div><span class="p">${w.pct}</span><span class="b" style="height:${w.h}px;background:${w.bg}"></span></div>`).join('')}</div>
-          <div class="hwl" aria-hidden="true">${weeks.map((w) => `<span>${w.lbl}</span>`).join('')}</div>
-          <div style="font-size:12px;color:var(--muted)">Etykiety: poniedziałek danego tygodnia. Bieżący tydzień jest liczony do dziś.</div></div>
-        <div class="eyebrow" style="margin-top:2px">Nawyki · ostatnie ${per} dni</div>
-        ${cards}
-        <div class="hleg"><span><i style="background:${LIME}"></i>zrealizowane</span><span><i style="background:#3A1A1F;border:1px solid #FF9C8A"></i>porzucone</span><span><i style="border:1px solid #202B38"></i>bez planu</span></div>`}
+        <div class="hper" role="radiogroup" aria-label="Okres">${periods}</div>
+        ${!L.length ? '<div class="hempty">Brak danych. Dodaj nawyk w widoku „Nawyki”, aby zobaczyć statystyki.</div>' : `
+        <div class="dcard hpall"><div class="hph"><span class="eyebrow">Realizacja · ${names[per]}</span><span class="p big" style="color:${LIME}">${tp ? all + '%' : '—'}</span></div>
+          <div class="hbar big" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${all}" aria-label="Realizacja nawyków"><div style="width:${all}%;background:${LIME}"></div></div>
+          <div class="hpl2 m">${tp ? 'Zrealizowane ' + td + ' z ' + tp + ' zaplanowanych dni' + (tm ? ' · porzucone: ' + tm : '') : 'Brak zaplanowanych dni w tym okresie'}</div></div>
+        ${cards}`}
       </div></main>`;
   }
 
@@ -171,7 +164,7 @@
       if (u.act) H.relink(u.act); else H.restore(u);
       U.msg = 'Przywrócono nawyk: ' + u.name + '.'; U.undo = null; R();
     },
-    hpper: (el) => { U.per = +el.dataset.v; R(); },
+    hpper: (el) => { U.per = el.dataset.v; R(); },
     hfmode: (el) => { const f = U.f; f.mode = el.dataset.v; if (f.mode === 'days' && !f.days.length) f.days = [1, 2, 3, 4, 5]; R(); },
     hfday: (el) => { const f = U.f, v = +el.dataset.v; f.days = f.days.indexOf(v) >= 0 ? f.days.filter((x) => x !== v) : f.days.concat([v]).sort(); R(); },
     hfcol: (el) => { U.f.color = el.dataset.v; R(); },

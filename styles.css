@@ -25,7 +25,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--bg); }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }   /* v54: strona się nie przewija – tylko środek ekranu */
 body { color: var(--text); font-family: var(--body); overscroll-behavior: none; }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; color: inherit; cursor: pointer; }
@@ -34,7 +34,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-#app { max-width: 480px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+/* v54: aplikacja przypięta do krawędzi okna (bez polegania na 100dvh): górny i dolny pasek zawsze widoczne, przewija się środek */
+#app { position: fixed; top: 0; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; padding-top: env(safe-area-inset-top, 0px); }
 .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* ---------- Nagłówki ---------- */
@@ -1625,3 +1626,48 @@ a.dcard { color: var(--text); }
 .ntex .s { font-size: 13px; color: var(--muted); line-height: 1.4; }
 .ntfoot { flex: none; font-size: 12px; line-height: 1.45; color: var(--muted); padding: 0 4px; }
 @media (max-width: 360px) { .ntrow { gap: 4px; } .ntrow .v { width: 44px; } }
+
+/* ---------- v54: Miesiąc na niskim ekranie – kalendarz i lista dnia przewijane razem (przycisk „Dodaj zadanie” zostaje na dole) ---------- */
+.mscroll { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+.mscroll > .head-pad { flex: none; }
+@media (max-height: 720px) { .mscroll > .month-panel { flex: none; min-height: auto; overflow: visible; } }
+
+/* ---------- v54: kolory modułów w Planie dnia (makieta v273, pkt 12) ---------- */
+.mod-train { --mc: #B9A2FF; --mfg: #1A1230; }
+.mod-habit { --mc: #C8E26B; --mfg: #1A2208; }
+.mod-settle { --mc: #7BE0A0; --mfg: #06241A; }
+.mod-fin { --mc: #F2B94B; --mfg: #2A1F06; }
+.mod-diet { --mc: #FF8F73; --mfg: #2A0F08; }
+.row-wrap.mod > .row { border-left: 4px solid var(--mc); padding-left: 11px; }
+.row-wrap.mod .check .box { border-color: var(--mc); }
+.row-wrap.mod .row.done .check .box, .row-wrap.mod .check .box.on { background: var(--mc); border-color: var(--mc); color: var(--mfg); }
+.hab-wrap .subchk[aria-pressed="true"] .box { background: var(--mc); border-color: var(--mc); color: var(--mfg); }
+.srcpill.m-train { color: #B9A2FF; }
+.srcpill.m-habit { color: #C8E26B; }
+.srcpill.m-settle { color: #7BE0A0; }
+.srcpill.m-fin { color: #F2B94B; }
+.srcpill.m-diet { color: #FF8F73; }
+.witem .srcrow, .mitem .srcrow { display: flex; margin: 2px 0; }
+
+/* ---------- v54: Postępy nawyków jak statystyki aktywności (makieta v273, pkt 13) ---------- */
+.hper { flex: none; display: flex; gap: 8px; }
+.hper > button { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: #C9D3DF; font-size: 13px; font-weight: 600; font-family: inherit; }
+.hper > button.on { border-color: var(--lime-line); background: var(--lime-bg); color: var(--lime); }
+.dcard.hpall { border-color: var(--lime-line); gap: 8px; }
+.hpall .hph { align-items: baseline; justify-content: space-between; }
+.hph .p.big { font-size: 26px; }
+.hph .n { font-size: 17px; }
+.hph .p { font-size: 20px; }
+.hbar.big { height: 10px; border-radius: 5px; }
+.hpl2 { font-size: 13px; color: #C9D3DF; }
+.hpl2.m { color: var(--muted); }
+.hpcard { gap: 10px; }
+.hk3 { display: flex; gap: 8px; }
+.hk3 > div { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; text-align: center; display: flex; flex-direction: column; }
+.hk3 b { font-family: var(--display); font-size: 18px; font-weight: 700; }
+.hk3 span { font-size: 11px; color: var(--muted); }
+.hdots { display: flex; flex-direction: column; gap: 6px; }
+.hdots .l { font-size: 11px; color: var(--muted); }
+.hdots .d { display: flex; gap: 5px; flex-wrap: wrap; }
+.hdots .d > span { width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; border: 2px solid; }
+.hdots .g { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }

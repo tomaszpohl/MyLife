@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v53 · 20.11.2026';
+  const APP_VERSION = 'v54 · 22.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -133,8 +133,13 @@
   // v35 (makieta 11.11): ikona „Z Kalendarza Google” przy tytule; pod tytułem godzina i stan synchronizacji z Google.
   const GC = () => window.GCal;
   // v50 (makieta v232–v233): źródło wpisu – „Plan treningu” (zaplanowany trening) albo „Rozliczenia” (termin zwrotu)
-  const srcOf = (t) => (t.tplan && window.Train && window.Train.plan(t.tplan) ? ['Plan treningu', 'tp'] : t.debt ? ['Rozliczenia', 'st'] : null);
-  const srcPill = (t) => { const x = srcOf(t); return x ? `<span class="srcpill ${x[1]}">${x[0]}</span>` : ''; };
+  // v54 (makieta v273, pkt 12): zadania z innych modułów w kolorze modułu – etykieta, lewy pasek karty i pole wyboru.
+  // Rejestr modułów: fin i diet zarezerwowane (zadanie z polem mod: 'fin'|'diet' dostaje kolor i etykietę automatycznie).
+  const MODS = { train: 'Trening', habit: 'Nawyki', settle: 'Rozliczenia', fin: 'Finanse', diet: 'Dieta' };
+  const srcOf = (t) => (t.tplan && window.Train && window.Train.plan(t.tplan) ? ['Trening · plan treningu', 'train'] : t.debt ? ['Rozliczenia', 'settle'] : MODS[t.mod] ? [MODS[t.mod], t.mod] : null);
+  const modPill = (txt, mod) => `<span class="srcpill m-${mod}">${txt}</span>`;
+  const srcPill = (t) => { const x = srcOf(t); return x ? modPill(x[0], x[1]) : ''; };
+  const modCls = (t) => { const x = srcOf(t); return x ? ' mod mod-' + x[1] : ''; };
   const calMark = (t) => (GC() && GC().fromCal(t) ? `<span class="calic" role="img" aria-label="Z Kalendarza Google" title="Z Kalendarza Google">${I.calS}</span>` : '');
   function tLine(t) {
     if (!t.time) return '';
@@ -177,12 +182,13 @@
   // ---------- Aktywności cykliczne Treningu w planerze (v20) ----------
   const RCx = () => window.TrainRec;
   const actsFor = (k) => (RCx() ? RCx().forDay(k) : []);
-  const actRep = (a) => `<div class="rep">${I.repeat}<span>${esc(RCx().repText(a) + RCx().durText(a))} · aktywność</span></div>`;
+  // v54: zamiast dopisku „· aktywność” – etykieta „Trening · aktywność” w kolorze Treningu
+  const actRep = (a) => `<span class="srcrow">${modPill('Trening · aktywność', 'train')}</span><div class="rep">${I.repeat}<span>${esc(RCx().repText(a) + RCx().durText(a))}</span></div>`;
   function actRow(x, k) {
     const a = x.a;
     // v50: aktywność ma uchwyt kolejności jak zadanie (kolejność dnia zapisuje „a:<id>”); bez przesuwania w bok.
     // v53 (makieta v266): bez zaległych terminów – w dniu jest tylko termin tego dnia (zrealizowany albo – po dniu – porzucony).
-    return `<div class="act-wrap row-wrap" data-act="${a.id}" data-id="a:${a.id}" data-k="${k}" data-done="${x.done ? 1 : 0}">
+    return `<div class="act-wrap row-wrap mod mod-train" data-act="${a.id}" data-id="a:${a.id}" data-k="${k}" data-done="${x.done ? 1 : 0}">
         <div class="row${x.done ? ' done' : ''}">
           <button class="grip actgrip" data-grip="a:${a.id}" aria-label="Zmień kolejność: ${esc(a.name)} (aktywność)" aria-describedby="grip-help">${I.grip}</button>
           <button class="body" data-a="actopen" data-id="${a.id}" aria-label="Edytuj aktywność: ${esc(a.name)}"><span class="title">${esc(a.name)}</span>${actRep(a)}</button>
@@ -195,10 +201,10 @@
   const habsFor = (k) => (window.Habits ? window.Habits.syncFor(k) : []);
   function habRow(list, k) {
     const H = window.Habits, nd = list.filter((h) => H.isDone(h, k)).length, done = nd === list.length, key = 'h|' + k, open = !!S.subOpen[key];
-    return `<div class="act-wrap row-wrap hab-wrap" data-id="hab" data-k="${k}" data-done="${done ? 1 : 0}">
+    return `<div class="act-wrap row-wrap hab-wrap mod mod-habit" data-id="hab" data-k="${k}" data-done="${done ? 1 : 0}">
         <div class="row${done ? ' done' : ''}">
           <button class="grip actgrip" data-grip="hab" aria-label="Zmień kolejność: Nawyki" aria-describedby="grip-help">${I.grip}</button>
-          <button class="body" data-a="habopen" aria-label="Otwórz moduł Nawyki"><span class="title">Nawyki</span><div class="rep">${I.repeat}<span>Codziennie · nawyki</span></div></button>
+          <button class="body" data-a="habopen" aria-label="Otwórz moduł Nawyki"><span class="title">Nawyki</span><span class="srcrow">${modPill('Nawyki · podzadania', 'habit')}</span><div class="rep">${I.repeat}<span>Codziennie</span></div></button>
           <button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} nawyki, wykonane ${nd} z ${list.length}"><span class="cnt">${nd}/${list.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>
           <button class="check" data-a="habdone" data-k="${k}" aria-pressed="${done}" aria-label="${done ? 'Oznacz wszystkie nawyki jako niewykonane' : 'Oznacz wszystkie nawyki jako wykonane'}"><span class="box">${done ? I.check : ''}</span></button>
         </div>${open ? `<div class="subpanel" role="group" aria-label="Nawyki">${list.map((h) => { const on = H.isDone(h, k); return `<div><div class="subrow hsub${on ? ' done' : ''}"><button class="subchk" data-a="habsub" data-id="${h.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(h.name)}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(h.name)}</div></div></div>`; }).join('')}</div>` : ''}</div>`;
@@ -443,7 +449,7 @@
     else if (k !== today) pill = `<button class="pillbtn" data-a="pick" data-k="${today}"><span class="pill">${I.arrow}<span>Dziś</span></span></button>`;
     const taskRow = (x) => {
       const t = x.task;
-      return `<div class="row-wrap" data-id="${t.id}" data-k="${x.k}" data-done="${x.done ? 1 : 0}">
+      return `<div class="row-wrap${modCls(t)}" data-id="${t.id}" data-k="${x.k}" data-done="${x.done ? 1 : 0}">
         <div class="row-del" aria-hidden="true">${I.trash}<span class="lbl">Usuń</span></div>
         <div class="row-move" aria-hidden="true"><span class="lbl">Przełóż</span>${I.moveCal}</div>
         <div class="row${x.done ? ' done' : ''}" data-swipe>
@@ -671,7 +677,7 @@
       ? items.map((x) => `<div class="subwrap"><div class="subline"><button class="mitem${x.done ? ' done' : ''}" data-a="edit" data-id="${x.task.id}" data-k="${x.k}" aria-label="${esc(x.task.title)}${x.done ? ', wykonane' : ''}"><span class="mchk" aria-hidden="true">${x.done ? I.check : ''}</span><div class="c"><div class="tirow"><div class="ti">${esc(x.task.title)}</div>${srcPill(x.task)}${calMark(x.task)}</div>${tLine(x.task)}${repLine(x.task)}</div></button>${subToggle(x.task, x.k, 'm')}</div>${subOpenFor(x.task, x.k, 'm') ? `<div style="padding-left:32px">${subPreview(x.task, x.k)}</div>` : ''}</div>`).join('') + actList
       : '<div style="font-size:14px;color:var(--muted)">Brak zadań tego dnia.</div>';
     return `<main class="screen">${planTop()}
-      <div class="head-pad tight">${seg('month')}
+      <div class="mscroll" data-scroll="mcal"><div class="head-pad tight">${seg('month')}
         <div class="navrow">
           <button class="iconbtn soft" data-a="mshift" data-d="-1" aria-label="Poprzedni miesiąc">${I.prev}</button>
           <div class="big l" style="font-family:var(--display);font-size:20px;font-weight:600">${C.MONTH_NOM[m - 1]} ${y}</div>
@@ -685,7 +691,7 @@
         <div class="hdr"><div class="t">${esc(dayTitle(S.sel))}</div><div class="c">${nAll ? nDone + ' z ' + nAll + ' wykonane' : C.tasksWord(0)}</div></div>
         <button class="pillbtn" style="align-self:flex-start;margin:-8px 0 -10px 0" data-a="openday" data-k="${S.sel}"><span class="pill">${I.arrow}<span>Otwórz ten dzień</span></span></button>
         ${list}
-      </div></div>
+      </div></div></div>
       ${addFooter()}
     </main>`;
   }
