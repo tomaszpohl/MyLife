@@ -274,7 +274,7 @@
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font-size:15px;font-weight:600;word-break:break-word">${esc(r.name)}</div><div style="font-family:var(--display);font-size:15px;font-weight:700;color:${col}">${(r.bal > 0 ? '+' : r.bal < 0 ? '−' : '') + m(Math.abs(r.bal))}</div></div>
           <div class="sbar" role="img" aria-label="${esc(r.name + ': ' + (r.bal > 0 ? 'do odebrania ' : r.bal < 0 ? 'do dopłaty ' : 'rozliczony ') + m(Math.abs(r.bal)))}"><i></i><span style="left:${r.bal >= 0 ? 50 : 50 - half}%;width:${r.bal === 0 ? 0 : half}%;background:${col}"></span></div>
           <div class="spbars" aria-hidden="true"><div><span>zapłacił</span><i><b style="width:${Math.round(r.paid / mx2 * 100)}%;background:var(--accent)"></b></i></div><div><span>udział</span><i><b style="width:${Math.round(r.share / mx2 * 100)}%;background:#B79CFF"></b></i></div></div>
-          <div style="font-size:12px;color:var(--muted)">Zapłacił ${m(r.paid)} · jego udział ${m(r.share)}</div></div>`;
+          <div style="font-size:12px;color:var(--muted)">Zapłacił ${m(r.paid)} · jego udział ${m(r.share)}${r.settled > 0 ? ' · oddał poza grupą ' + m(r.settled) : r.settled < 0 ? ' · otrzymał poza grupą ' + m(-r.settled) : ''}</div></div>`;   // v54.1
       }).join('')}
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim)"><span>← winien dopłacić</span><span>do odebrania →</span></div></div>`;
     return `<main class="screen">${topbar('Wyliczenie')}

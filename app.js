@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v54 · 22.11.2026';
+  const APP_VERSION = 'v54.2 · 22.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -1163,7 +1163,7 @@
     S.subEdit.text = e.target.value.slice(0, 60);
     const b = app.querySelector('[data-a=subedok]'), off = !S.subEdit.text.trim(); if (b) { b.classList.toggle('off', off); b.setAttribute('aria-disabled', off); }
   });
-  app.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', (e) => {   // v54: na dokumencie – Escape działa też, gdy fokus wypadł poza #app (np. po przeciągnięciu)
     // v32: karta edycji podzadania – Enter zapisuje, Escape anuluje
     if (e.target.id === 'subedit' && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); if (e.key === 'Enter') actions.subedok(); else actions.subedno(); return; }
     if (e.key === 'Escape' && S.dp) { S.dp = null; render(); return; }

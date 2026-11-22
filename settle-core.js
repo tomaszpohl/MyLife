@@ -16,7 +16,7 @@
     const d = Object.assign(empty(), o || {});
     if (!d.debts || !Array.isArray(d.debts.list)) d.debts = { next: 1, list: [] };
     if (!d.groups || !Array.isArray(d.groups.list)) d.groups = { next: 1, list: [] };
-    d.groups.list.forEach((g) => { g.people = g.people || []; g.pays = g.pays || []; g.pnext = g.pnext || (Math.max(0, ...g.pays.map((p) => p.id)) + 1); });
+    d.groups.list.forEach((g) => { g.people = g.people || []; g.pays = g.pays || []; g.pnext = g.pnext || (Math.max(0, ...g.pays.map((p) => p.id)) + 1); migrateDone(g); });
     return d;
   }
   function load() { try { const r = localStorage.getItem(KEY); if (r) db = norm(JSON.parse(r)); } catch (e) { console.warn('Rozliczenia: nie udało się wczytać danych', e); } }
@@ -73,36 +73,60 @@
     if (!g || !n || g.people.some((x) => key(x) === key(n))) return false;
     g.people.push(n); save(); return true;
   }
-  const personUsed = (g, p) => g.pays.some((x) => key(x.who) === key(p) || (x.for || []).some((k) => key(k) === key(p)));   // v23: także osoby, na które dzielono wydatek
+  const personUsed = (g, p) => g.pays.some((x) => key(x.who) === key(p) || (x.for || []).some((k) => key(k) === key(p))) || (g.done || []).some((x) => key(x.from) === key(p) || key(x.to) === key(p));   // v23: także osoby, na które dzielono wydatek; v54.1: i z rozliczeniami
   function removePerson(id, p) { const g = group(id); if (!g || personUsed(g, p) || g.people.length <= 2) return; g.people = g.people.filter((x) => x !== p); save(); }
   function addPay(id, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays.push({ id: g.pnext++, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] }); save(); }
   // v23: edycja płatności – podmiana wpisu o tym samym id (kolejność id bez zmian).
   function updatePay(id, pid, who, amt, what, d, forList) { const g = group(id); if (!g) return; g.pays = g.pays.map((x) => (x.id === +pid ? { id: x.id, who, amt: r2(amt), what: String(what || '').trim().slice(0, 60), d, for: forList || [] } : x)); save(); }
+  // v54.1: kwoty przeniesione do Należności / Zobowiązań i rozliczone natychmiast zapisują się jako rozliczenia w g.done
+  // [{ from, to, c (grosze), kind: 'move' | 'inst', d }] i pomniejszają salda w wyliczeniu – po kolejnej płatności
+  // zostaje do przeniesienia tylko różnica (wcześniej klucze „osoba|grosze” w g.moved przestawały pasować i kwota liczyła się od nowa).
+  function migrateDone(g) {
+    if (Array.isArray(g.done)) return;
+    g.done = [];
+    const me = g.me && g.people.find((p) => key(p) === key(g.me));
+    if (me && Array.isArray(g.moved)) {
+      const inst = g.inst || [];
+      g.moved.forEach((k) => {
+        const m = /^(o\|)?(.+)\|(\d+)$/.exec(k); if (!m) return;
+        const who = g.people.find((p) => key(p) === m[2]); if (!who) return;
+        g.done.push(m[1] ? { from: me, to: who, c: +m[3], kind: inst.indexOf(k) >= 0 ? 'inst' : 'move', d: '' } : { from: who, to: me, c: +m[3], kind: 'move', d: '' });
+      });
+    }
+    delete g.moved; delete g.inst;
+  }
   // v24: „Kim jestem w tym rozliczeniu” i przeniesienie kwot z wyliczenia do Należności / Zobowiązań (klucze w g.moved chronią przed duplikatami).
   function setMe(id, who) { const g = group(id); if (!g) return; g.me = who; save(); }
   const meOf = (g) => (g.me && g.people.some((p) => key(p) === key(g.me)) ? g.me : '');
+  // Lista: najpierw rozliczone wcześniej (moved, inst – „przeniesiono ✓” / „rozliczono ✓”), potem oczekujące z bieżącego wyliczenia.
   function myTransfers(g) {
     const me = meOf(g); if (!me) return { recv: [], owe: [] };
-    const c = calc(g), moved = g.moved || [];
-    const recv = c.tr.filter((t) => key(t.to) === key(me)).map((t) => ({ who: t.from, c: t.c, k: key(t.from) + '|' + t.c }));
-    const owe = c.tr.filter((t) => key(t.from) === key(me)).map((t) => ({ who: t.to, c: t.c, k: 'o|' + key(t.to) + '|' + t.c }));
-    [recv, owe].forEach((l) => l.forEach((x) => { x.moved = moved.indexOf(x.k) >= 0; x.inst = (g.inst || []).indexOf(x.k) >= 0; }));
+    migrateDone(g);
+    const c = calc(g), done = g.done;
+    const recv = done.filter((x) => key(x.to) === key(me)).map((x) => ({ who: x.from, c: x.c, moved: true, inst: x.kind === 'inst' }))
+      .concat(c.tr.filter((t) => key(t.to) === key(me)).map((t) => ({ who: t.from, c: t.c, moved: false, inst: false })));
+    const owe = done.filter((x) => key(x.from) === key(me)).map((x) => ({ who: x.to, c: x.c, moved: true, inst: x.kind === 'inst' }))
+      .concat(c.tr.filter((t) => key(t.from) === key(me)).map((t) => ({ who: t.to, c: t.c, moved: false, inst: false })));
     return { recv, owe };
+  }
+  function markDone(g, kind, list, how) {
+    const me = meOf(g), T = C.todayKey();
+    list.forEach((x) => g.done.push(kind === 'recv' ? { from: x.who, to: me, c: x.c, kind: how, d: T } : { from: me, to: x.who, c: x.c, kind: how, d: T }));
   }
   function moveTransfers(id, kind) {
     const g = group(id); if (!g) return 0;
     const pend = myTransfers(g)[kind].filter((x) => !x.moved);
     pend.forEach((x) => addDebt(kind, x.who, x.c / 100, 'Rozliczenie grupowe: ' + g.name, C.todayKey()));
-    g.moved = (g.moved || []).concat(pend.map((x) => x.k)); save();
+    markDone(g, kind, pend, 'move'); save();
     return pend.length;
   }
   // v45 (makieta v208): rozliczenie natychmiastowe – oczekujące kwoty, które oddaję, jako jeden wydatek; bez wpisów w Zobowiązaniach.
-  // Klucze trafiają do g.moved (bez duplikatów, jak przy przenoszeniu) i do g.inst („rozliczono ✓”).
+  // Od v54.1 zapis w g.done (kind 'inst' – „rozliczono ✓”).
   function instantPending(id) { const g = group(id); if (!g) return { list: [], total: 0 }; const list = myTransfers(g).owe.filter((x) => !x.moved); return { list, total: list.reduce((a, x) => a + x.c, 0) / 100 }; }
   function settleInstant(id) {
     const g = group(id); if (!g) return [];
     const pend = myTransfers(g).owe.filter((x) => !x.moved);
-    g.moved = (g.moved || []).concat(pend.map((x) => x.k)); g.inst = (g.inst || []).concat(pend.map((x) => x.k)); save();
+    markDone(g, 'owe', pend, 'inst'); save();
     return pend;
   }
   function removePay(id, pid) { const g = group(id); if (!g) return; g.pays = g.pays.filter((p) => p.id !== +pid); save(); }
@@ -121,7 +145,10 @@
       fl.forEach((k, jj) => { owe[k] += base + (jj < rem ? 1 : 0); });
     });
     const totalC = paid.reduce((a, b) => a + b, 0);
-    const rows = g.people.map((p, i) => ({ name: p, paid: paid[i], share: owe[i], bal: paid[i] - owe[i] }));
+    // v54.1: rozliczenia poza grupą (przeniesione / natychmiastowe) działają jak przelew „from → to”
+    const sett = g.people.map(() => 0);
+    (g.done || []).forEach((x) => { const a = idx[key(x.from)], b = idx[key(x.to)]; if (a === undefined || b === undefined) return; sett[a] += x.c; sett[b] -= x.c; });
+    const rows = g.people.map((p, i) => ({ name: p, paid: paid[i], share: owe[i], settled: sett[i], bal: paid[i] - owe[i] + sett[i] }));
     const cr = rows.filter((r) => r.bal > 0).map((r) => ({ name: r.name, v: r.bal })).sort((a, b) => b.v - a.v);
     const dbt = rows.filter((r) => r.bal < 0).map((r) => ({ name: r.name, v: -r.bal })).sort((a, b) => b.v - a.v);
     const tr = [];

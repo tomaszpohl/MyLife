@@ -4,6 +4,7 @@
                 dur (od v31: czas trwania w min, tekst, puste = brak), done: { 'termin': 'data wykonania' } }.
    Od v36: `polar: [kody sportów Polar]` – trening z Polar w tym sporcie odhacza terminy (polarTick).
    Planer dnia pokazuje aktywności wg powtarzania (Dzień, Tydzień, Miesiąc). Od v53: termin zrealizowany albo porzucony – bez zaległych.
+   Od v54.2: `miss: { 'termin': true }` – termin niezrealizowany w swoim dniu (po jego upływie); taki termin nie pokazuje się w planerze.
    Od v53: `habit: true` – aktywność jest też nawykiem w module Nawyki (habits-core.js). Bez godzin i przypomnień. */
 (function () {
   'use strict';
@@ -58,17 +59,39 @@
   // Porzucone terminy (minione, niewykonane) – z całej historii aktywności.
   function overdue(a) { const T = C.todayKey(); let n = 0; for (let x = a.start; x < T; x = C.addDays(x, 1)) if (occ(a, x) && !a.done[x]) n++; return n; }
   // Wiersze planera dla dnia k: { a, ds: [k], done }.
+  // v54.2 (zgłoszenie właściciela 22.11.2026): termin niezrealizowany w swoim dniu znika z planera dnia (Dzień, Tydzień, Miesiąc –
+  // minione dni pokazują tylko zrealizowane aktywności) i jest zapisywany jako niezrealizowany: a.miss[termin] = true (closePast).
   function forDay(k) {
-    return list().map((a) => ({ a, ds: dates(a, k) })).filter((x) => x.ds.length).map((x) => ({
+    closePast();
+    const past = k < C.todayKey();
+    return list().map((a) => ({ a, ds: dates(a, k) })).filter((x) => x.ds.length && !(past && !x.ds.every((i) => !!x.a.done[i]))).map((x) => ({
       a: x.a, ds: x.ds, done: x.ds.every((i) => !!x.a.done[i])
     }));
   }
+  // Zamknięcie minionych dni: niewykonane terminy → a.miss[termin] = true (raz na dzień; od startu aktywności, najwyżej 2 lata wstecz).
+  let closedFor = '';
+  function closePast() {
+    const T = C.todayKey(); if (closedFor === T && list().every((a) => a.miss)) return; closedFor = T;   // nowe / wczytane dane bez miss – przeliczenie
+    let ch = false; const lo = C.addDays(T, -730);
+    list().forEach((a) => {
+      a.done = a.done || {}; a.miss = a.miss || {};
+      for (let x = a.start > lo ? a.start : lo; x < T; x = C.addDays(x, 1)) {
+        const m = occ(a, x) && !a.done[x];
+        if (m && !a.miss[x]) { a.miss[x] = true; ch = true; } else if (!m && a.miss[x]) { delete a.miss[x]; ch = true; }
+      }
+    });
+    if (ch) TR.save();
+  }
+  const isMissed = (a, k) => !!(a.miss && a.miss[k]);
   // v53: odhaczenie zapisuje wykonanie w dniu terminu (done[termin] = termin) – wpis do Dziennika diety trafia do dnia terminu.
   // Wcześniejsze wykonania z opóźnieniem (done[termin] > termin) zostają zrealizowane (decyzja właściciela z 20.11.2026).
   function setDone(id, ks, on) {
     const a = get(id); if (!a) return;
     a.done = a.done || {};
-    ks.forEach((x) => { if (on) a.done[x] = x; else delete a.done[x]; });
+    a.miss = a.miss || {};
+    const T = C.todayKey();
+    // v54.2: wykonanie zdejmuje znacznik „niezrealizowana” (np. trening z Polar z tego dnia pobrany później); cofnięcie minionego – znów niezrealizowana
+    ks.forEach((x) => { if (on) { a.done[x] = x; delete a.miss[x]; } else { delete a.done[x]; if (x < T && occ(a, x)) a.miss[x] = true; } });
     TR.save();
   }
   // v53 (makieta v265): „Dodaj do nawyku” – aktywność z a.habit = true pokazuje się też w module Nawyki (ten sam zapis).
@@ -126,7 +149,7 @@
     const R = TR.recDb();
     if (e.id && get(e.id)) R.list = R.list.map((x) => (x.id === e.id ? Object.assign({}, x, e) : x));
     else { e.id = R.next++; e.done = e.done || {}; R.list.push(e); }
-    TR.save(); return get(e.id);
+    closedFor = ''; TR.save(); return get(e.id);   // v54.2: zmiana terminów – ponowne zamknięcie minionych dni
   }
   // v36 (Polar Flow): nowy trening z Polar w sporcie `code` z dnia d (min minut) odhacza aktywności z tym sportem w `a.polar`.
   // v53 (makieta v266): tylko termin przypadający na dzień treningu (jako zrealizowany); trening krótszy niż czas trwania – nic.
@@ -139,7 +162,7 @@
       a.done = a.done || {};
       const ks = occ(a, d) && !a.done[d] ? [d] : [];
       if (!ks.length) return;
-      ks.forEach((x) => { a.done[x] = d; });
+      ks.forEach((x) => { a.done[x] = d; if (a.miss) delete a.miss[x]; });
       out.push({ id: a.id, name: a.name, n: ks.length });
     });
     if (out.length) TR.save();
@@ -178,5 +201,5 @@
     return { planned, done, late, missed, streak, best, over, dots, dotsLabel: per === 'w' ? 'Ostatnie 7 terminów' : 'Ostatnie 30 terminów' };
   }
 
-  window.TrainRec = { setHabit, list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };
+  window.TrainRec = { closePast, isMissed, setHabit, list, get, base, occ, pend, overdue, dates, forDay, setDone, repText, upsert, remove, stat, dm, durText, journalEntry, doneDays, skipTerm, snapAct, restoreAct, polarTick, polarEntries, syncOf };
 })();
