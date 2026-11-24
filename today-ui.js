@@ -66,7 +66,7 @@
         <button class="jbtn skip${st === 'skipped' ? ' on' : ''}" data-a="tdmeal" data-slot="${esc(m.slot)}" data-v="skipped" aria-pressed="${st === 'skipped'}" aria-label="${esc(m.slot + ': pominięte')}">${XL}</button></div>`;
     }).join('');
     return `<section class="tdsec" style="border-color:#6A3A2C">
-        ${head('tddiet', 'var(--coral)', P.apple, 'Posiłki', 'Zjedzone ' + nE + ' z ' + meals.length + (nS ? ' · pominięte ' + nS : '') + ' · ' + b.eat + ' kcal')}
+        ${head('tddiet', 'var(--coral)', P.apple, 'Posiłki', 'Zjedzone ' + nE + ' z ' + meals.length + (nS ? ' · pominięte ' + nS : '') + ' · ' + (b.eat + (b.out || 0)) + ' kcal')}
         ${meals.length ? rows : empty('Brak jadłospisu na dziś.')}
       </section>`;
   }

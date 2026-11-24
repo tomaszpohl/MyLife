@@ -142,7 +142,8 @@
         ${fn('#/diet/shop', J.cart, 'Lista zakupów')}
         ${fn('#/diet/journal', J.clip, 'Dziennik')}
         ${fn('#/diet/weight', J.trend, 'Waga')}
-        ${window.BodyUI ? (() => { const t = window.BodyUI.tile(); return fn(t.href, t.icon, t.title); })() : ''}</div>
+        ${window.BodyUI ? (() => { const t = window.BodyUI.tile(); return fn(t.href, t.icon, t.title); })() : ''}
+        ${window.ProdUI ? (() => { const t = window.ProdUI.tile(); return fn(t.href, t.icon, t.title); })() : ''}</div>
       </div>${detail}</main>`;
   }
 
@@ -391,23 +392,24 @@
   const kc = (n) => D.fmtNum(Math.abs(n), 0);
   const sgK = (n) => (n < 0 ? '−' : '') + kc(n);
   function balCard(k, T) {
-    const b = D.balance(k), Jn = U.journal, mx = Math.max(b.eat, b.burn, 1);
+    const b = D.balance(k), Jn = U.journal, ate = b.eat + (b.out || 0), mx = Math.max(ate, b.burn, 1);   // v55: Zjedzone = dania z ✓ + produkty poza jadłospisem
     const trN = (n) => C.plural(n, 'trening', 'treningi', 'treningów');
     let week = '';
     if (Jn.balWeek) {
       const rows = [];
       for (let i = 0; i < 7; i++) {
-        const d = C.addDays(T, -i), x = D.balance(d);
-        rows.push(`<button class="jbalrow${d === k ? ' on' : ''}" data-a="djbalday" data-k="${d}" aria-label="${esc('Przejdź do dnia ' + D.dayShort(d))}"><span style="flex:1;min-width:0">${esc(D.dayShort(d))}</span><span class="e">${x.eat ? kc(x.eat) : '—'}</span><span class="b">${x.burn ? kc(x.burn) : '—'}</span><span class="n">${x.has ? sgK(x.net) : '—'}</span></button>`);
+        const d = C.addDays(T, -i), x = D.balance(d), xa = x.eat + (x.out || 0);
+        rows.push(`<button class="jbalrow${d === k ? ' on' : ''}" data-a="djbalday" data-k="${d}" aria-label="${esc('Przejdź do dnia ' + D.dayShort(d))}"><span style="flex:1;min-width:0">${esc(D.dayShort(d))}</span><span class="e">${xa ? kc(xa) : '—'}</span><span class="b">${x.burn ? kc(x.burn) : '—'}</span><span class="n">${x.has ? sgK(x.net) : '—'}</span></button>`);
       }
       week = `<div class="jbalweek"><div class="jbalhead" aria-hidden="true"><span style="flex:1">Dzień</span><span class="e">Zjedz.</span><span class="b">Polar</span><span class="n">Bilans</span></div>${rows.join('')}</div>`;
     }
     return `<div class="dcard jbal"><div class="dhead"><div class="eyebrow">Bilans dnia</div>${b.has ? '<div style="font-size:12px;color:var(--muted)">kcal</div>' : ''}</div>
-        ${b.has ? `<div class="jbalv"><div><span>Zjedzone</span><b style="color:var(--coral)">${kc(b.eat)}</b></div><div><span>Spalone (Polar)</span><b style="color:var(--violet)">${kc(b.burn)}</b></div><div><span>Bilans</span><b>${sgK(b.net)}</b></div></div>
-          <div class="jbalbars" aria-hidden="true"><div><i style="width:${Math.round(100 * b.eat / mx)}%;background:var(--coral)"></i></div><div><i style="width:${Math.round(100 * b.burn / mx)}%;background:var(--violet)"></i></div></div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.4">${esc((b.nEaten ? 'Zjedzone posiłki: ' + b.nEaten + ' z ' + b.nMeals + '.' : 'Brak zaznaczonych posiłków.') + ' ' + (b.nPolar ? b.nPolar + ' ' + trN(b.nPolar) + ' Polar.' : 'Brak treningów Polar tego dnia.'))}</div>`
-          : '<div style="font-size:13px;color:var(--muted);padding:4px 0">Zaznacz zjedzone posiłki lub zsynchronizuj trening z Polar, a bilans pojawi się tutaj.</div>'}
-        <div style="font-size:12px;color:var(--dim);line-height:1.4">Bilans = kcal z zaznaczonych posiłków minus kcal spalone w treningach z Polar. Polar nie liczy podstawowej przemiany materii, więc to nie jest pełny bilans energii z całego dnia. Odstępstwa od diety nie mają kcal i nie są wliczone.</div>
+        ${b.has ? `<div class="jbalv"><div><span>Zjedzone</span><b style="color:var(--coral)">${kc(ate)}</b></div><div><span>Spalone (Polar)</span><b style="color:var(--violet)">${kc(b.burn)}</b></div><div><span>Bilans</span><b>${sgK(b.net)}</b></div></div>
+          <div class="jbalbars" aria-hidden="true"><div><i style="width:${Math.round(100 * ate / mx)}%;background:var(--coral)"></i></div><div><i style="width:${Math.round(100 * b.burn / mx)}%;background:var(--violet)"></i></div></div>
+          ${b.out ? `<div class="jbalout"><span>Poza jadłospisem (w „Zjedzone”)</span><b>+${kc(b.out)} kcal</b></div>` : ''}
+          <div style="font-size:12px;color:var(--muted);line-height:1.4">${esc((b.out ? 'Z produktów poza jadłospisem: ' + kc(b.out) + ' kcal. ' : '') + (b.nEaten ? 'Zjedzone posiłki: ' + b.nEaten + ' z ' + b.nMeals + '.' : 'Brak zaznaczonych posiłków.') + ' ' + (b.nPolar ? b.nPolar + ' ' + trN(b.nPolar) + ' Polar.' : 'Brak treningów Polar tego dnia.'))}</div>`
+          : '<div style="font-size:13px;color:var(--muted);padding:4px 0">Zaznacz zjedzone posiłki, dodaj wpis z produktu lub zsynchronizuj trening z Polar, a bilans pojawi się tutaj.</div>'}
+        <div style="font-size:12px;color:var(--dim);line-height:1.4">Bilans = kcal z zaznaczonych posiłków minus kcal spalone w treningach z Polar. Polar nie liczy podstawowej przemiany materii, więc to nie jest pełny bilans energii z całego dnia. Do „Zjedzone” wchodzą też odstępstwa dodane z produktu (poza jadłospisem). Odstępstwa wpisane samym tekstem nie mają kcal i nie są wliczone.</div>
         <button class="jbalbtn" data-a="djbalweek" aria-expanded="${!!Jn.balWeek}"><span>Ostatnie dni</span><span style="color:var(--accent);font-size:13px">${Jn.balWeek ? 'Ukryj' : 'Pokaż 7 dni'}</span></button>
         ${week}</div>`;
   }
@@ -437,9 +439,11 @@
             <button class="jbtn skip${st === 'skipped' ? ' on' : ''}" data-a="djmark" data-slot="${esc(x.slot)}" data-v="skipped" aria-pressed="${st === 'skipped'}" aria-label="${esc(x.slot)}: pominięte">${J.x}</button></div>`; }).join('')
           : '<div class="para" style="padding:8px 0">Brak jadłospisu na ten dzień.</div>'}</div>
         <div class="dcard"><div class="eyebrow">Odstępstwa od diety</div>
-          ${j.devs.length ? j.devs.map((e) => `<div class="jentry${Jn.devEdit === e.id ? ' editing' : ''}"><div style="flex:1">${esc(e.text)}</div>${penBtn('djdeved', e.id, e.text, Jn.devEdit === e.id)}<button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : '<div class="para">Brak odstępstw tego dnia.</div>'}
+          ${j.devs.length ? j.devs.map((e) => `<div class="jentry${Jn.devEdit === e.id ? ' editing' : ''}"><div style="flex:1">${esc(e.text)}</div>${penBtn('djdeved', e.id, e.text, Jn.devEdit === e.id)}<button class="iconbtn soft" data-a="djdevdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(e.text)}">${J.trash}</button></div>`).join('') : (j.prods.length ? '' : '<div class="para">Brak odstępstw tego dnia.</div>')}
+          ${window.ProdUI ? window.ProdUI.journalRows(k) : ''}
           ${Jn.devEdit ? `<div class="jedbar"><span>Edytujesz odstępstwo</span><button data-a="djdevedno">Anuluj edycję</button></div>` : ''}
-          <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="${Jn.devEdit ? 'Zapisz zmiany odstępstwa' : 'Dodaj odstępstwo'}">${Jn.devEdit ? J.check : J.plus}</button></div></div>
+          <div class="jadd"><input class="quick" type="text" aria-label="Opis odstępstwa" placeholder="Np. pizza zamiast kolacji" value="${esc(Jn.dev)}" data-in="diet-dev" data-key="diet-dev"><button class="plus" data-a="djdevadd" aria-label="${Jn.devEdit ? 'Zapisz zmiany odstępstwa' : 'Dodaj odstępstwo'}">${Jn.devEdit ? J.check : J.plus}</button></div>
+          ${window.ProdUI ? window.ProdUI.journalBtn() : ''}</div>
         <div class="dcard"><div class="dhead"><div class="eyebrow">Aktywność fizyczna</div>${actTotal ? `<div style="font-size:12px;color:var(--muted)">${actTotal}</div>` : ''}</div>
           ${allActs.length ? allActs.map((e) => { const t = D.actText(e, ' · '); if (e.auto) return `<div class="jentry"><div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 0"><div>${esc(t)}</div><div class="jauto">${J.rep}<span>${e.str ? 'Z treningu siłowego (dane z Polar Flow dołączone do treningu)' : e.polar ? 'Z treningu Polar (synchronizacja)' : 'Z aktywności cyklicznych (zmienisz w Treningu lub w planie dnia)'}</span></div></div></div>`; return `<div class="jentry${Jn.actEdit === e.id ? ' editing' : ''}"><div style="flex:1">${esc(t)}</div>${penBtn('djacted', e.id, t, Jn.actEdit === e.id)}<button class="iconbtn soft" data-a="djactdel" data-id="${e.id}" aria-label="Usuń wpis: ${esc(t)}">${J.trash}</button></div>`; }).join('') : '<div class="para">Brak aktywności tego dnia.</div>'}
           ${Jn.actEdit ? `<div class="jedbar"><span>Edytujesz aktywność</span><button data-a="djactedno">Anuluj edycję</button></div>` : ''}
@@ -479,7 +483,7 @@
     }
     return `<main class="screen" style="position:relative">${topbar('Dziennik')}
       <div class="head-pad tight"><nav class="seg" role="tablist">${tabs.map(([v, l]) => `<button role="tab" class="${Jn.tab === v ? 'on' : ''}" aria-selected="${Jn.tab === v}" data-a="djtab" data-v="${v}">${l}</button>`).join('')}</nav></div>
-      <div class="dscroll" data-scroll="diet-journal-${Jn.tab}">${body}</div>${rec}</main>`;
+      <div class="dscroll" data-scroll="diet-journal-${Jn.tab}">${body}</div>${rec}${Jn.tab === 'day' && window.ProdUI ? window.ProdUI.sheet() : ''}</main>`;
   }
 
   // ---------- Waga ----------
@@ -881,6 +885,7 @@
     if (b) b.disabled = !!c.err;
   }
   function onInput(el, k) {
+    if (k.indexOf('diet-prod-') === 0) { if (window.ProdUI) window.ProdUI.onInput(el, k); return; }
     const v = el.value;
     if (k === 'diet-shxp-amt' && U.shop.xp) { el.value = v.replace(/[^\d,.]/g, '').slice(0, 12); U.shop.xp.amt = el.value; shopXpLive(); return; }
     if (k === 'diet-shxp-desc' && U.shop.xp) { U.shop.xp.desc = v.slice(0, 60); return; }
@@ -914,12 +919,14 @@
   function onKey(e) {
     const k = e.target.dataset.key;
     if (e.key !== 'Enter') return false;
+    if (k && k.indexOf('diet-prod-') === 0) return window.ProdUI ? window.ProdUI.onKey(e) : false;
     if (k === 'diet-ren') { actions.drensave(); return true; }
     if (k === 'diet-dev') { actions.djdevadd(); return true; }
     return false;
   }
   function onEscape() {
     if (window.BodyUI && A.route().arg === 'body' && window.BodyUI.onEscape()) return true;
+    if (window.ProdUI && window.ProdUI.onEscape()) return true;
     if (U.shop.xp && U.shop.xp.dd) { U.shop.xp.dd = false; return true; }
     if (U.shop.xp) { U.shop.xp = null; return true; }
     if (U.settings.sim) { U.settings.sim = null; return true; }
@@ -940,6 +947,7 @@
     openRec = null; U.home.detail = null; U.list.edit = null; U.list.msg = ''; U.list.undo = null; U.weight.saved = false;
     if (r.name === 'diet' && r.arg === 'weight') { U.weight.kg = ''; U.weight.tip = null; }
     if (window.BodyUI) window.BodyUI.onRoute(r);
+    if (window.ProdUI) window.ProdUI.onRoute(r);
   }
 
   function view(r) {
@@ -951,6 +959,7 @@
       case 'journal': return viewJournal();
       case 'weight': return viewWeight();
       case 'body': if (window.BodyUI) return window.BodyUI.view(); return viewHome();
+      case 'products': if (window.ProdUI) return window.ProdUI.view(); return viewHome();
       default: return viewHome();
     }
   }
@@ -958,7 +967,9 @@
   window.DietUI = {
     init(app) { A = app; I = app.I; esc = app.esc; Object.assign(app.actions, actions); },
     view, settingsSections, onInput, onChange, onKey, onEscape, onRoute,
-    openSettings() { U.settings.open = true; },   // v44: wyszukiwarka funkcji
+    openSettings() { U.settings.open = true; },
+    journalDay: () => U.journal.k || today(),
+    journalToday() { U.journal.tab = 'day'; U.journal.k = today(); U.journal.rec = null; },   // v55: dzień oglądany w Dzienniku (wpisy z produktu)   // v44: wyszukiwarka funkcji
     openRecipe(k, slot) { openRec = { k, slot }; },   // v51: wywoływane z ekranu „Dziś” przed przejściem do Dziennika
     // Aktywna pozycja dolnego paska: Jadłospis także na ekranie jednego jadłospisu, Dieta na ekranie „Brak jadłospisu”.
     navKey: (r) => (r.arg === 'menus' || r.arg === 'menu' ? 'menus' : ['plan', 'shop', 'journal', 'weight', 'body'].indexOf(r.arg) >= 0 ? r.arg : 'home'),

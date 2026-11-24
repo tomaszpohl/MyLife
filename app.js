@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v54.2 · 22.11.2026';
+  const APP_VERSION = 'v55 · 24.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -848,6 +848,7 @@
         </section>
         ${window.DietUI ? window.DietUI.settingsSections() : ''}
         ${window.XlsxExport ? window.XlsxExport.settingsSections() : ''}
+        ${window.ProdUI ? window.ProdUI.settingsCard() : ''}
         ${window.GCalUI ? window.GCalUI.settingsSection() : ''}
         ${window.PolarUI ? window.PolarUI.settingsSection() : ''}
       </div>
@@ -1508,6 +1509,7 @@
   if (window.Diet) { window.Diet.load(); }
   if (window.DietUI) { window.DietUI.init(window.App); }
   if (window.BodyUI) { window.BodyUI.init(window.App); }
+  if (window.ProdUI) { window.ProdUI.init(window.App); }
   if (window.Fin) { window.Fin.load(); }
   if (window.FinUI) { window.FinUI.init(window.App); }
   if (window.Train) { window.Train.load(); }

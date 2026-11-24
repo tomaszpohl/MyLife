@@ -1,5 +1,5 @@
 /* MyLife – service worker: praca offline. */
-const VERSION = 'mylife-v54-2';
+const VERSION = 'mylife-v55';
 // Odczyt zdjęć w osobnej pamięci – nie jest pobierany od nowa przy każdej wersji (v16: Tesseract w „mylife-ocr-1”;
 // v26: PaddleOCR PP-OCRv4 + ONNX Runtime Web, ok. 27 MB, w „mylife-ocr-2” – stara pamięć jest usuwana przy aktywacji).
 const OCR_CACHE = 'mylife-ocr-2';
@@ -8,7 +8,7 @@ const OCR_FILES = ['./lib/paddle/ort.wasm.min.js', './lib/paddle/ort-wasm-simd-t
 const NOTIF_CACHE = 'mylife-notif';
 const SHELL = [
   './', './index.html', './styles.css', './core.js', './gcal.js', './gcal-ui.js', './polar.js', './polar-ui.js', './polar-sports.js', './app.js', './manifest.webmanifest',
-  './diet-pdf.js', './diet-core.js', './diet-ui.js', './body-ocr.js', './body-cam.js', './today-ui.js', './xlsx-export.js', './search-ui.js', './summary-ui.js', './body-ui.js', './ocr-worker.js', './settle-core.js', './settle-ui.js', './train-core.js', './train-rec.js', './train-rec-ui.js', './train-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js', './habits-core.js', './habits-ui.js', './notif.js', './notif-ui.js',
+  './diet-pdf.js', './diet-core.js', './diet-ui.js', './body-ocr.js', './body-cam.js', './today-ui.js', './xlsx-export.js', './search-ui.js', './summary-ui.js', './body-ui.js', './diet-prod.js', './diet-scan.js', './lib/zxing/zxing.min.js', './ocr-worker.js', './settle-core.js', './settle-ui.js', './train-core.js', './train-rec.js', './train-rec-ui.js', './train-ui.js', './fin-core.js', './fin-import.js', './fin-ui.js', './habits-core.js', './habits-ui.js', './notif.js', './notif-ui.js',
   './lib/jszip.min.js', './lib/pdf.min.mjs', './lib/pdf.worker.min.mjs',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/badge-96.png'
 ];

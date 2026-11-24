@@ -37,7 +37,8 @@
     swap: 'M7 8h13 M16 4l4 4-4 4 M17 16H4 M8 12l-4 4 4 4',
     habit: 'M17 2l3 3-3 3 M4 11V9a4 4 0 0 1 4-4h12 M7 22l-3-3 3-3 M20 13v2a4 4 0 0 1-4 4H4 M9.5 12l2 2 3.5-3.5',
     bell: 'M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17Z M10 21a2 2 0 0 0 4 0',
-    sliders: 'M4 7h9 M17 7h3 M13 5v4h4V5z M4 17h3 M11 17h9 M7 15v4h4v-4z'
+    sliders: 'M4 7h9 M17 7h3 M13 5v4h4V5z M4 17h3 M11 17h9 M7 15v4h4v-4z',
+    barcode: 'M4 6v12 M7 6v12 M11 6v12 M14 6v12 M18 6v12 M21 6v12'
   };
   const MODS = [
     ['pulpit', 'Pulpit i Dziś', '#C9D3DF', 'sun'], ['plan', 'Plan', '#5BD0E8', 'calcheck'], ['fin', 'Finanse', '#F2B94B', 'coin'],
@@ -68,6 +69,9 @@
     ['diet', 'Dziennik diety', '#/diet/journal', 'Co zjedzone, odstępstwa, aktywność i bilans dnia (kcal)', 'dziennik bilans kalorie kcal odstępstwa', 'clip'],
     ['diet', 'Waga', '#/diet/weight', 'Wpisy wagi i wykres', 'waga masa ciała kg', 'trend'],
     ['diet', 'Skład ciała', '#/diet/body', 'Pomiar ze zdjęcia wydruku lub ręcznie; dodaj wagę do monitoringu', 'skład ciała pomiar zdjęcie aparat tkanka tłuszczowa waga tanita', 'body'],
+    ['diet', 'Produkty', '#/diet/products', 'Baza produktów z kcal, szukanie w Open Food Facts i skan kodu kreskowego', 'produkty baza kalorie kcal ean kod kreskowy skaner open food facts batonik', 'barcode'],
+    ['diet', 'Dodaj z produktu', '!prod:add', 'Wpis w Dzienniku z produktu spoza jadłospisu – kcal do bilansu dnia', 'dodaj produkt odstępstwo kcal kalorie dziennik batonik przekąska', 'barcode'],
+    ['diet', 'Skanuj kod', '!prod:scan', 'Skan kodu kreskowego produktu aparatem albo wpis kodu EAN', 'skanuj kod kreskowy ean aparat skaner produkt', 'barcode'],
     ['train', 'Trening – przegląd', '#/train', 'Liczba treningów, ostatni trening i funkcje', 'trening start', 'dumb'],
     ['train', 'Nowy trening', '#/train/edit/new', 'Dodaj trening z ćwiczeniami i kategoriami', 'dodaj trening ćwiczenie serie', 'plus'],
     ['train', 'Plan treningu', '#/train/plan', 'Szablony treningów – zapisz plan i użyj go jako treningu', 'plan szablon trening ćwiczenia kopiuj', 'tplan'],
@@ -137,6 +141,8 @@
   function goFunc(f) {
     const t = f[2];
     if (t === '!new') { A.actions.new(); return; }
+    if (t === '!prod:add' && window.ProdUI) { window.ProdUI.openSheetNext(); if (window.DietUI && window.DietUI.journalToday) window.DietUI.journalToday(); A.go('#/diet/journal'); return; }
+    if (t === '!prod:scan' && window.ProdUI) { window.ProdUI.openScanNext(); A.go('#/diet/products'); return; }
     if (t.indexOf('!xl:') === 0) {
       const k = t.slice(4);
       if (k === 'diet' && window.DietUI && window.DietUI.openSettings) window.DietUI.openSettings();

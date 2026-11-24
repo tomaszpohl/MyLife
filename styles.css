@@ -1671,3 +1671,63 @@ a.dcard { color: var(--text); }
 .hdots .d { display: flex; gap: 5px; flex-wrap: wrap; }
 .hdots .d > span { width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; border: 2px solid; }
 .hdots .g { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+
+/* ---------- v55 (R15, makieta DietProducts / DietJournal): Produkty, wpisy z produktu, Open Food Facts, skaner ---------- */
+.primary.pcoral { background: var(--coral); color: #2A0F08; }
+.primary.pcoral.dim { background: var(--line); color: var(--dim); }
+.btn2.pscanbig { flex: 1; height: 52px; min-height: 52px; border-radius: 14px; color: var(--coral); font-weight: 600; }
+.dcard.prow { flex-direction: row; align-items: center; gap: 4px; padding: 12px 6px 12px 14px; }
+.dcard.prow[hidden], .pshitem[hidden], .dcard.pempty[hidden] { display: none; }
+.pmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.psrc { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.psrc.off { background: var(--accent-bg); color: var(--accent); }
+.psrc.own { background: #2A2415; color: var(--gold-text); }
+.dcard.pempty { padding: 20px 16px; text-align: center; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.plinkrow { flex: none; min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); color: var(--text); font-size: 14px; }
+.poffrow { display: flex; align-items: center; gap: 8px; min-height: 56px; padding-top: 8px; border-top: 1px solid var(--line); }
+.poffbtn { flex: none; height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--accent); font-size: 13px; font-weight: 600; font-family: inherit; }
+.poffbtn[aria-disabled="true"] { color: var(--dim); }
+.pnote2 { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.pnote { font-size: 12px; line-height: 1.4; color: var(--dim); }
+.ovh { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 600; }
+.pfld { flex: none; display: flex; flex-direction: column; gap: 6px; }
+.plab { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
+.perr { font-size: 12px; color: var(--danger); }
+.pedited { font-size: 12px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: #2A2415; color: var(--gold-text); }
+.pwarn { font-size: 13px; line-height: 1.45; padding: 12px 14px; border-radius: 12px; background: var(--bad-bg); border: 1px solid var(--bad-line); color: #FFB4A8; }
+.pscanbtn { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--coral); }
+.seg.punit { flex: none; }
+.seg.punit button { width: 52px; height: 38px; }
+.psheet .seg button.on, .prodform .seg button.on { background: var(--coral-bg); color: var(--coral); font-weight: 600; }
+.pscbox { flex: none; position: relative; height: 200px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; color: #4A3A35; }
+.pscframe { width: 78%; height: 90px; border-radius: 12px; border: 2px solid var(--coral); display: flex; align-items: center; justify-content: center; }
+.pscframe svg { width: 140px; height: 56px; }
+.pschint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+.pscgo { height: 48px; flex: none; padding: 0 16px; border-radius: 12px; border: none; background: var(--coral); color: #2A0F08; font-size: 15px; font-weight: 600; font-family: inherit; }
+.pscgo.off { background: var(--line); color: var(--dim); }
+.dcard.pscres { gap: 10px; }
+.jentry.jprod { gap: 4px; }
+.pkc { padding: 2px 8px; border-radius: 999px; background: var(--coral-bg); color: var(--coral); font-weight: 600; }
+.btn2.pjadd { margin-top: 8px; color: var(--coral); font-size: 14px; font-weight: 600; }
+.pshitem, .pshoff { flex: none; min-height: 60px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); font-family: inherit; }
+.pshoff { background: #0F1D24; border-color: #2A6F80; }
+.pneedpc { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #2A2415; border: 1px solid var(--gold-line); }
+.dcard.pres { gap: 4px; }
+.dcard.pres.ok { border-color: #4A3A35; }
+.dcard.pres .v { font-family: var(--display); font-size: 26px; font-weight: 600; color: var(--dim); }
+.dcard.pres.ok .v { color: var(--coral); }
+.jbalout { display: flex; justify-content: space-between; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--coral-bg); font-size: 13px; }
+.jbalout span { color: #FFB4A0; }
+.jbalout b { font-family: var(--display); font-weight: 600; color: var(--coral); }
+.thsw.poffsw { min-height: 56px; background: var(--bg); }
+.thsw.poffsw .sw.on { background: var(--coral); }
+.dscanframe { position: relative; width: 82%; height: 34%; max-height: 220px; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
+.dscanframe i { position: absolute; width: 30px; height: 30px; border: 4px solid var(--coral); }
+.dscanframe .tl { top: -2px; left: -2px; border-right: none; border-bottom: none; border-radius: 14px 0 0 0; }
+.dscanframe .tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-radius: 0 14px 0 0; }
+.dscanframe .bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-radius: 0 0 0 14px; }
+.dscanframe .br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-radius: 0 0 14px 0; }
+.dscanframe b { position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: rgba(255,143,115,.8); }
+.dscanman { height: 52px; padding: 0 20px; border-radius: 26px; border: none; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; font-family: inherit; }
+.dscan .bcambot { justify-content: center; }
+.pfld > .finput { flex: none; }

@@ -4,7 +4,7 @@
   'use strict';
   const C = window.Core;
   const KEY = 'mylife.diet.v1';
-  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, aliases: {}, body: [] });
+  const empty = () => ({ version: 1, menus: [], acts: [], overrides: {}, journal: {}, weights: {}, shopping: { sel: {}, bought: {}, stage: 'select' }, aliases: {}, body: [], products: { next: 1, list: [] } });
   let db = empty();
   const listeners = [];
 
@@ -18,6 +18,8 @@
   // v7: aplikacja nie przechowuje historii zaimportowanych plików; usunięte jadłospisy bez historii znikają całkiem.
   function tidy() {
     delete db.imports;
+    // v55: baza produktów (R15) – starsze dane i kopie dostają pustą bazę
+    if (!db.products || !Array.isArray(db.products.list)) db.products = { next: 1, list: [] };
     db.menus = db.menus.filter((m) => !m.deleted || db.acts.some((a) => a.menu === m.id));
   }
   function save() {
@@ -181,9 +183,10 @@
   }
 
   // ---------- Dziennik ----------
-  const jday = (k) => db.journal[k] || { meals: {}, devs: [], acts: [] };
+  const jday = (k) => { const d = db.journal[k]; return d ? (d.prods ? d : Object.assign({}, d, { prods: [] })) : { meals: {}, devs: [], acts: [], prods: [] }; };
   function jput(k, d) {
-    if (!Object.keys(d.meals).length && !d.devs.length && !d.acts.length) delete db.journal[k];
+    if (!d.prods || !d.prods.length) delete d.prods;   // v55: wpisy z produktów tylko, gdy są (stare dni bez zmian)
+    if (!Object.keys(d.meals).length && !d.devs.length && !d.acts.length && !(d.prods && d.prods.length)) delete db.journal[k];
     else db.journal[k] = d;
     save();
   }
@@ -344,6 +347,42 @@
     return Object.values(agg).map((x) => ({ key: x.key, name: x.name, grams: x.grams, measure: measureText(x.grams, x.samples) }));
   }
 
+  // ---------- v55 (R15, makieta DietProducts): baza produktów z kcal i wpisy „z produktu” w Dzienniku ----------
+  // Produkt: { id, ean, name, kcal100, unit: 'g'|'ml', pieceG (masa sztuki, opcjonalnie), src: 'off'|'own', edited, at }. Bez makroskładników (decyzja właściciela).
+  // Wpis dnia: journal[k].prods = [{ id, pid, name, qty, unit: 'szt'|'g'|'ml', kcal }] – kcal liczone przy zapisie (późniejsza zmiana produktu nie zmienia historii).
+  const prodList = () => db.products.list.slice();
+  const prodGet = (pid) => db.products.list.find((p) => p.id === pid) || null;
+  const prodByEan = (ean) => (ean ? db.products.list.find((p) => p.ean === String(ean)) || null : null);
+  const eanOk = (e) => !e || /^(\d{8}|\d{12}|\d{13})$/.test(String(e));
+  function prodUpsert(p) {
+    const P = db.products, o = { ean: String(p.ean || ''), name: String(p.name || '').trim().slice(0, 80), kcal100: Math.round(+p.kcal100 * 10) / 10, unit: p.unit === 'ml' ? 'ml' : 'g', pieceG: p.pieceG > 0 ? Math.round(+p.pieceG * 10) / 10 : null };
+    if (!o.name || !(o.kcal100 >= 0)) return null;
+    if (o.ean) { const d = P.list.find((x) => x.ean === o.ean && x.id !== p.id); if (d) return { dup: d }; }
+    let x = p.id ? prodGet(p.id) : null;
+    if (x) {
+      const changed = x.kcal100 !== o.kcal100 || x.pieceG !== o.pieceG || x.name !== o.name || x.unit !== o.unit;
+      Object.assign(x, o, { edited: x.src === 'off' ? (x.edited || changed) : false });
+    } else {
+      x = Object.assign({ id: 'p' + (P.next++), src: p.src === 'off' ? 'off' : 'own', edited: false, at: Date.now() }, o);
+      P.list.unshift(x);
+    }
+    save(); return x;
+  }
+  function prodRemove(pid) { const P = db.products, i = P.list.findIndex((x) => x.id === pid); if (i < 0) return null; const x = P.list[i]; P.list.splice(i, 1); save(); return { x, i }; }
+  function prodRestore(u) { if (!u || prodGet(u.x.id)) return; db.products.list.splice(Math.min(u.i, db.products.list.length), 0, u.x); save(); }
+  // kcal wpisu: sztuki – masa sztuki × kcal/100 × liczba; gramy / ml – kcal/100 × ilość / 100
+  function prodKcal(p, qty, unit, pieceG) {
+    const pc = pieceG || (p && p.pieceG);
+    if (!p || !(qty > 0)) return null;
+    if (unit === 'szt') return pc > 0 ? Math.round(p.kcal100 * pc / 100 * qty) : null;
+    return Math.round(p.kcal100 * qty / 100);
+  }
+  function addProd(k, e) { const d = jday(k); d.prods = d.prods.concat([{ id: id('f'), pid: e.pid, name: e.name, qty: e.qty, unit: e.unit, kcal: e.kcal }]); jput(k, d); return d.prods[d.prods.length - 1]; }
+  function updateProd(k, fid, e) { const d = jday(k); d.prods = d.prods.map((x) => (x.id === fid ? Object.assign({}, x, e, { id: x.id }) : x)); jput(k, d); }
+  function removeProd(k, fid) { const d = jday(k), i = d.prods.findIndex((x) => x.id === fid); if (i < 0) return null; const x = d.prods[i]; d.prods = d.prods.filter((y) => y.id !== fid); jput(k, d); return { k, x, i }; }
+  function restoreProd(u) { if (!u) return; const d = jday(u.k); if (d.prods.some((x) => x.id === u.x.id)) return; d.prods = d.prods.slice(); d.prods.splice(Math.min(u.i, d.prods.length), 0, u.x); jput(u.k, d); }
+  const prodText = (x) => x.name + ' · ' + fmtNum(x.qty) + (x.unit === 'szt' ? ' szt.' : ' ' + x.unit);
+
   // ---------- v43 (makieta v204): Bilans dnia – kcal zjedzonych posiłków minus kcal spalone w treningach Polar ----------
   // Zjedzone = kcal dań z jadłospisu oznaczonych ✓; Polar = pol.kcal treningów z tego dnia (także ręcznych połączonych z Polar).
   function balance(k) {
@@ -352,7 +391,9 @@
     const eat = Math.round(eatenM.reduce((t, m) => t + (m.dish.kcal || 0), 0));
     const pw = window.Train ? window.Train.list().filter((w) => w.d === k && w.pol && w.pol.kcal > 0) : [];
     const burn = Math.round(pw.reduce((t, w) => t + w.pol.kcal, 0));
-    return { eat, burn, net: eat - burn, nEaten: eatenM.length, nMeals: meals.length, nPolar: pw.length, has: eatenM.length > 0 || pw.length > 0 };
+    // v55 (R15): „Poza jadłospisem” – kcal wpisów z produktów; eat (dania z ✓) bez zmian, net = eat + out − burn
+    const out = Math.round((j.prods || []).reduce((t, x) => t + (x.kcal || 0), 0)), nOut = (j.prods || []).length;
+    return { eat, out, nOut, burn, net: eat + out - burn, nEaten: eatenM.length, nMeals: meals.length, nPolar: pw.length, has: eatenM.length > 0 || pw.length > 0 || nOut > 0 };
   }
 
   // ---------- Eksport dziennika do .xlsx (jeden arkusz, dzień po dniu) ----------
@@ -373,7 +414,7 @@
     // v31 (makieta 08.11.2026): dla każdego posiłku dwie kolumny – zjedzone (1 / 0 / puste) i nazwa posiłku; aktywności – wpisy rozdzielone średnikiem.
     const head = ['Data', 'Dzień tygodnia'];
     slots.forEach((s) => head.push(eatenHead(s), s));
-    head.push('Odstępstwa', 'Aktywności');
+    head.push('Odstępstwa', 'Poza jadłospisem (kcal)', 'Aktywności');
     const rows = [];
     for (let k = fromK; k <= toK; k = C.addDays(k, 1)) {
       const p = planFor(k), j = jday(k);
@@ -383,7 +424,8 @@
         const st = j.meals[slot];
         row.push(st === 'eaten' ? 1 : st === 'skipped' ? 0 : '', meal && meal.dish ? meal.dish.name : '');
       });
-      row.push(j.devs.map((x) => x.text).join('; '));
+      row.push(j.devs.map((x) => x.text).concat(j.prods.map((x) => prodText(x) + ' ' + x.kcal + ' kcal')).join('; '));
+      row.push(j.prods.length ? Math.round(j.prods.reduce((t, x) => t + (x.kcal || 0), 0)) : '');
       row.push(dayActs(k).map((x) => actText(x, ' ')).join('; '));
       rows.push(row);
     }
@@ -395,6 +437,10 @@
     const rng = (r, dec) => (r ? fmtNum(r[0], dec) + '–' + fmtNum(r[1], dec) : '');
     return [head].concat(bodyList().filter((e) => !fromK || (e.d >= fromK && e.d <= toK)).map((e) => [dateDots(e.d), e.t || ''].concat(BODY.map((m) => (e.v[m.id] == null ? '' : e.v[m.id]))).concat([rng(e.fatR, 0), rng(e.massR, 1)])));
   }
+  // v55: arkusz „Produkty” – baza produktów (bez makroskładników)
+  function prodRows() {
+    return [['Kod EAN', 'Nazwa', 'kcal na 100 g / 100 ml', 'Jednostka', 'Masa sztuki', 'Źródło']].concat(db.products.list.map((p) => [p.ean || '', p.name, p.kcal100, p.unit, p.pieceG == null ? '' : p.pieceG, p.src === 'off' ? 'Open Food Facts' + (p.edited ? ' (zmienione)' : '') : 'własny']));
+  }
   async function exportXlsx(fromK, toK, bodyInRange) {
     const rows = journalRows(fromK, toK);
     const colL = (i) => { let s = ''; i++; while (i) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
@@ -404,12 +450,15 @@
     // v31 (makieta 08.11.2026): arkusz „Skład ciała” domyślnie ze wszystkimi wynikami; z zakresu dziennika tylko po zaznaczeniu pola.
     const body = bodyRows(bodyInRange ? fromK : null, toK);
     const zip = new window.JSZip();
-    zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+    zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
     zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-    zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dziennik" sheetId="1" r:id="rId1"/><sheet name="Skład ciała" sheetId="2" r:id="rId3"/></sheets></workbook>');
-    zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>');
+    zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dziennik" sheetId="1" r:id="rId1"/><sheet name="Skład ciała" sheetId="2" r:id="rId3"/><sheet name="Produkty" sheetId="3" r:id="rId4"/></sheets></workbook>');
+    zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>');
     zip.file('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf/><xf fontId="1" applyFont="1"><alignment wrapText="1" vertical="top"/></xf><xf applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>');
-    zip.file('xl/worksheets/sheet1.xml', sheetXml(rows, (i) => (i === 0 ? 12 : i === 1 ? 14 : i < rows[0].length - 2 ? (i % 2 === 0 ? 11 : 30) : 40)));
+    const nh = rows[0].length;
+    zip.file('xl/worksheets/sheet1.xml', sheetXml(rows, (i) => (i === 0 ? 12 : i === 1 ? 14 : i < nh - 3 ? (i % 2 === 0 ? 11 : 30) : i === nh - 2 ? 14 : 40)));
+    const pr = prodRows();
+    zip.file('xl/worksheets/sheet3.xml', sheetXml(pr, (i) => [16, 36, 14, 10, 12, 22][i] || 14));
     zip.file('xl/worksheets/sheet2.xml', sheetXml(body, (i) => (i === 0 ? 12 : i === 1 ? 9 : 16)));
     return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
@@ -443,7 +492,8 @@
   }
   const summary = () => menus().length + ' ' + C.plural(menus().length, 'jadłospis', 'jadłospisy', 'jadłospisów') + ', ' +
     Object.keys(db.journal).length + ' ' + C.plural(Object.keys(db.journal).length, 'dzień', 'dni', 'dni') + ' w dzienniku, ' + Object.keys(db.weights).length + ' ' + C.plural(Object.keys(db.weights).length, 'wpis', 'wpisy', 'wpisów') + ' wagi, ' +
-    (db.body || []).length + ' ' + C.plural((db.body || []).length, 'pomiar', 'pomiary', 'pomiarów') + ' składu ciała';
+    (db.body || []).length + ' ' + C.plural((db.body || []).length, 'pomiar', 'pomiary', 'pomiarów') + ' składu ciała' +
+    (db.products.list.length ? ', ' + db.products.list.length + ' ' + C.plural(db.products.list.length, 'produkt', 'produkty', 'produktów') : '');
 
   window.Diet = {
     load, save, onChange: (fn) => listeners.push(fn),
@@ -454,6 +504,7 @@
     weights, setWeight, removeWeight,
     shopDays, shopping, shopSet, shopItems, shopSelected, shopPrune, shopSource, shopToggle, shopUndo,
     BODY, bodyList, bodySave, bodyRemove, bodyRestore, bodyRows,
-    balance, exportXlsx, journalRows, exportData, importData, summary
+    balance, exportXlsx, journalRows, exportData, importData, summary,
+    prodList, prodGet, prodByEan, prodUpsert, prodRemove, prodRestore, prodKcal, eanOk, addProd, updateProd, removeProd, restoreProd, prodText, prodRows
   };
 })();
