@@ -1,5 +1,5 @@
 /* MyLife – powiadomienia (v53, makieta: Notifications, design.md „20.11.2026”, decyzja właściciela: przez Worker Cloudflare).
-   Ustawienia w localStorage['mylife.notif.v1'] = { dayList, dayH, dayM, task, hab, habH, habM } (domyślnie wszystko włączone, 08:00).
+   Ustawienia w localStorage['mylife.notif.v1'] = { dayList, dayH, dayM, task, hab, habH, habM, goal (v56) } (domyślnie wszystko włączone, 08:00).
    Jak to działa (aplikacja w przeglądarce nie może sama zaplanować powiadomienia na później):
    1. Telefon układa plan na 7 dni naprzód: lista zadań dnia (o dayH:dayM, tylko gdy są zadania), każde zadanie z godziną
       (o jego godzinie), lista nawyków (o habH:habM, tylko gdy są nawyki). Pusty dzień – bez powiadomienia (decyzja 20.11.2026).
@@ -14,7 +14,7 @@
   const KEY = 'mylife.notif.v1', PKEY = 'mylife.notif.push';
   const CACHE = 'mylife-notif', PLAN = 'notif-plan.json';
   const DAYS = 7, MAXT = 150;
-  const DEF = { dayList: true, dayH: 8, dayM: 0, task: true, hab: true, habH: 8, habM: 0 };
+  const DEF = { dayList: true, dayH: 8, dayM: 0, task: true, hab: true, habH: 8, habM: 0, goal: true };   // v56: goal – przypomnienia o terminach kamieni
   let cfg = load(), ps = loadP(), timer = null, busy = false;
   const listeners = [];
 
@@ -33,7 +33,7 @@
     try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {}
     changed();
   }
-  const anyOn = () => cfg.dayList || cfg.task || cfg.hab;
+  const anyOn = () => cfg.dayList || cfg.task || cfg.hab || cfg.goal;
   const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol !== 'file:';
   const perm = () => ('Notification' in window ? Notification.permission : 'denied');
   const workerUrl = () => String((window.Polar && window.Polar.state().url) || (window.Polar && window.Polar.DEF_URL) || '').trim().replace(/\/+$/, '');
@@ -64,6 +64,11 @@
         if (H.length && t > now) out.push({ id: 'h|' + k, t, title: 'Nawyki na dziś: ' + H.length, body: names(H.map((h) => h.name)), url: '#/habits', tag: 'mylife-hab' });
       }
     }
+    // v56 (R16f, makieta Notifications): o 9:00 dzień przed terminem kamienia milowego aktywnego celu i w dniu terminu
+    if (cfg.goal && window.Goals) window.Goals.reminders(T, C.addDays(T, DAYS - 1)).forEach((r) => {
+      const t = at(r.k, 9, 0);
+      if (t > now) out.push({ id: 'g|' + r.m.id + '|' + r.k, t, title: (r.when === 'jutro' ? 'Jutro' : 'Dziś') + ' termin kamienia: ' + r.m.name, body: 'Cel: ' + r.g.name, url: '#/goals/g/' + r.g.id, tag: 'mylife-goal' + r.m.id });
+    });
     return out.sort((a, b) => a.t - b.t).slice(0, MAXT);
   }
   // Godziny do wysłania – pełne minuty, bez powtórzeń

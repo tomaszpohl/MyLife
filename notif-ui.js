@@ -17,7 +17,7 @@
   const pad = (n) => String(n).padStart(2, '0');
 
   function sw(key, on, title, sub, lime) {
-    return `<button class="ntsw${on ? ' on' : ''}${lime ? ' lime' : ''}" role="switch" aria-checked="${on}" data-a="ntsw" data-k="${key}">
+    return `<button class="ntsw${on ? ' on' : ''}${lime ? ' ' + (lime === true ? 'lime' : lime) : ''}" role="switch" aria-checked="${on}" data-a="ntsw" data-k="${key}">
       <span class="tx"><span class="t">${esc(title)}</span><span class="s">${esc(sub)}</span></span>
       <span class="tr" aria-hidden="true"><span></span></span><span class="st">${on ? 'Wł.' : 'Wył.'}</span></button>`;
   }
@@ -44,7 +44,9 @@
       d: (() => { const L = C.forDay(T).map((x) => x.task.title); return L.length ? { title: 'Plan dnia: ' + C.tasksWord(L.length), body: L.slice(0, 6).join(', ') } : { title: 'Plan dnia: 4 zadania', body: 'Przegląd samochodu, Spotkanie zespołu, Zakupy, Wizyta u dentysty' }; })(),
       h: (() => { const L = window.Habits ? window.Habits.forDay(T).map((x) => x.name) : []; return L.length ? { title: 'Nawyki na dziś: ' + L.length, body: L.slice(0, 6).join(', ') } : { title: 'Nawyki na dziś: 5', body: 'Woda 2 l, Czytanie 20 min, Spacer 30 min, Medytacja, Bez słodyczy' }; })()
     };
-    return { d: d || fb.d, t: t ? { when: f(t), title: t.title, body: t.body } : { when: '08:30', title: 'Przegląd samochodu', body: 'Zadanie z planu dnia · dziś, 08:30' }, h: h || fb.h };
+    const g = p.find((x) => x.id[0] === 'g');
+    const gx = g ? { when: C.dmy(C.key(new Date(g.t))) + ' 9:00', title: g.title, body: g.body } : { when: '14.11.2026 9:00', title: 'Jutro termin kamienia: 90 kg', body: 'Cel: Zejść do 82 kg' };
+    return { g: gx, d: d || fb.d, t: t ? { when: f(t), title: t.title, body: t.body } : { when: '08:30', title: 'Przegląd samochodu', body: 'Zadanie z planu dnia · dziś, 08:30' }, h: h || fb.h };
   }
 
   function stateCard() {
@@ -79,7 +81,11 @@
           ${sw('hab', c.hab, 'Lista nawyków na początek dnia', 'Jedno zbiorcze powiadomienie z nawykami zaplanowanymi na ten dzień.', true)}
           ${c.hab ? `<div class="ntbody">${clock('th-lbl', 'Godzina powiadomienia o nawykach', c.habH, c.habM, 'habH', 'habM')}${sample(pad(c.habH) + ':' + pad(c.habM), ex.h.title, ex.h.body)}</div>` : ''}
         </div>
-        <div class="ntfoot">Ustawienia powiadomień są zapisywane na tym telefonie. Zmiana godziny w zadaniu przesuwa jego powiadomienie. Powiadomienie o nawykach nie zależy od planu dnia. Dzień bez zadań lub bez nawyków nie ma powiadomienia zbiorczego. Godziny są planowane na 7 dni naprzód i odświeżane przy każdym otwarciu aplikacji.</div>
+        <div class="ntcard"><div class="nth"><div class="ico" style="background:#0F2E2B;color:#38D6C0">${ic(18, 1.8, '<circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.2"></circle>')}</div><div class="eyebrow">Cele</div></div>
+          ${sw('goal', c.goal, 'Przypomnienie o terminie kamienia', 'O 9:00 dzień przed terminem kamienia milowego i w dniu terminu. Ten sam mechanizm push, bez treści u pośrednika.', 'teal')}
+          ${c.goal ? `<div class="ntbody">${sample(ex.g.when, ex.g.title, ex.g.body)}</div>` : ''}
+        </div>
+        <div class="ntfoot">Ustawienia powiadomień są zapisywane na tym telefonie. Zmiana godziny w zadaniu przesuwa jego powiadomienie. Powiadomienie o nawykach nie zależy od planu dnia. Przypomnienie o kamieniu dotyczy tylko aktywnych celów. Dzień bez zadań lub bez nawyków nie ma powiadomienia zbiorczego. Godziny są planowane na 7 dni naprzód i odświeżane przy każdym otwarciu aplikacji.</div>
       </div></main>`;
   }
 

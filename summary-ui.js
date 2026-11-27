@@ -30,6 +30,7 @@
     if (window.Train) window.Train.list().forEach((w) => ks.push(w.d));
     if (window.TrainRec) window.TrainRec.list().forEach((a) => ks.push(a.start));
     if (window.Habits) window.Habits.own().forEach((h) => ks.push(h.from));
+    if (window.Goals && window.Goals.firstDay()) ks.push(window.Goals.firstDay());
     if (window.Diet) { window.Diet.weights().forEach((w) => ks.push(w.k)); const fj = window.Diet.firstJournalDay && window.Diet.firstJournalDay(); if (fj) ks.push(fj); }
     return ym(ks.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort()[0]);
   }
@@ -68,12 +69,17 @@
       const h = window.Habits.month(m);
       o.hab = { v: h.planned ? Math.round(h.done * 100 / h.planned) + '%' : '—', sub: h.planned ? 'Zrealizowane ' + h.done + ' z ' + h.planned + ' · porzucone ' + h.missed : 'Brak zaplanowanych nawyków w tym miesiącu' };
     }
+    // 7. v56 (R16f, makieta Summary): Cele – kamienie zaliczone w miesiącu i najbliższy kamień z terminem
+    if (window.Goals) {
+      const gm = window.Goals.month(m);
+      o.goal = { v: String(gm.done), sub: gm.next ? 'Najbliższy: ' + gm.next.name + ' · ' + C.dmy(gm.next.due) : 'Brak zaplanowanych kamieni' };
+    }
     return o;
   }
   const tile = (act, color, line, icon, label, x, valColor) => `<button class="sumtile" data-a="${act}" style="border-color:${line}">
       <span class="sumico" style="color:${color}">${ic(22, 1.8, icon)}</span>
       <span class="sumtxt"><span class="l" style="color:${color}">${esc(label)}</span><span class="v"${valColor ? ` style="color:${valColor}"` : ''}>${esc(x.v)}</span><span class="s">${esc(x.sub)}</span></span>
-      <span style="flex:none;color:#6F7E90;display:flex">${ic(18, 2, '<path d="m9 6 6 6-6 6"></path>')}</span></button>`;
+      <span style="flex:none;color:#8896A8;display:flex">${ic(18, 2, '<path d="m9 6 6 6-6 6"></path>')}</span></button>`;
   function view() {
     const T = C.todayKey(), cm = ym(T), fm = firstMonth();
     if (!U.m || U.m > cm) U.m = cm; if (U.m < fm) U.m = fm;
@@ -89,6 +95,7 @@
         ${s.w ? tile('smw', 'var(--coral)', '#6A3A2C', P.trend, 'Zmiana wagi', s.w) : ''}
         ${s.meal ? tile('smmeal', 'var(--coral)', '#6A3A2C', P.apple, 'Posiłki', s.meal) : ''}
         ${s.hab ? tile('smhab', 'var(--lime)', '#4A5A25', P.habit, 'Statystyki nawyków', s.hab) : ''}
+        ${s.goal ? tile('smgoal', 'var(--teal)', 'var(--teal-line)', '<circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.2"></circle>', 'Zaliczone kamienie', s.goal) : ''}
       </div></main>`;
   }
   const homeCard = () => `<a class="module tdcard smcard" href="#/summary">
@@ -102,7 +109,8 @@
     smtr: () => { A.go('#/train/history'); },
     smw: () => { A.go('#/diet/weight'); },
     smmeal: () => { A.go('#/diet/journal'); },
-    smhab: () => { A.go('#/habits/progress'); }
+    smhab: () => { A.go('#/habits/progress'); },
+    smgoal: () => { A.go('#/goals/progress'); }
   };
   function init(app) { A = app; esc = A.esc; Object.assign(A.actions, actions); }
   window.SummaryUI = { init, view, homeCard, stats, reset: () => { U.m = null; } };

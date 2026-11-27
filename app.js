@@ -4,7 +4,7 @@
   const C = window.Core;
   const app = document.getElementById('app');
   // Numer wersji widoczny w Ustawieniach (zmieniany razem z VERSION w sw.js).
-  const APP_VERSION = 'v55 · 24.11.2026';
+  const APP_VERSION = 'v56 · 27.11.2026';
 
   // ---------- Ikony (kreskowe SVG z makiety) ----------
   const svg = (w, sw, body, extra) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra || ''}>${body}</svg>`;
@@ -81,7 +81,7 @@
   };
   // v17: pasek przewijany poziomo (pozycje min. 60 px), aktywna pozycja wyśrodkowana; Trening ma własny pasek (fiolet).
   function navbar(mod, active) {
-    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : mod === 'settle' ? { cls: 'green', items: window.SettleUI.navItems } : mod === 'habit' ? { cls: 'lime', items: window.HabitsUI.navItems } : NB[mod];
+    const m = mod === 'train' ? { cls: 'violet', items: window.TrainUI.navItems } : mod === 'settle' ? { cls: 'green', items: window.SettleUI.navItems } : mod === 'habit' ? { cls: 'lime', items: window.HabitsUI.navItems } : mod === 'goal' ? { cls: 'teal', items: window.GoalsUI.navItems } : NB[mod];
     return `<nav class="navbar ${m.cls}" aria-label="Szybka nawigacja">${m.items.map(([k, href, label, body]) => k === active
       ? `<div class="nb on" aria-current="page">${svg(22, 1.8, body)}<span>${label}</span></div>`
       : `<a class="nb" href="${href}">${svg(22, 1.8, body)}<span>${label}</span></a>`).join('')}</nav>`;
@@ -135,7 +135,7 @@
   // v50 (makieta v232–v233): źródło wpisu – „Plan treningu” (zaplanowany trening) albo „Rozliczenia” (termin zwrotu)
   // v54 (makieta v273, pkt 12): zadania z innych modułów w kolorze modułu – etykieta, lewy pasek karty i pole wyboru.
   // Rejestr modułów: fin i diet zarezerwowane (zadanie z polem mod: 'fin'|'diet' dostaje kolor i etykietę automatycznie).
-  const MODS = { train: 'Trening', habit: 'Nawyki', settle: 'Rozliczenia', fin: 'Finanse', diet: 'Dieta' };
+  const MODS = { train: 'Trening', habit: 'Nawyki', goal: 'Cele', settle: 'Rozliczenia', fin: 'Finanse', diet: 'Dieta' };
   const srcOf = (t) => (t.tplan && window.Train && window.Train.plan(t.tplan) ? ['Trening · plan treningu', 'train'] : t.debt ? ['Rozliczenia', 'settle'] : MODS[t.mod] ? [MODS[t.mod], t.mod] : null);
   const modPill = (txt, mod) => `<span class="srcpill m-${mod}">${txt}</span>`;
   const srcPill = (t) => { const x = srcOf(t); return x ? modPill(x[0], x[1]) : ''; };
@@ -208,6 +208,20 @@
           <button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} nawyki, wykonane ${nd} z ${list.length}"><span class="cnt">${nd}/${list.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>
           <button class="check" data-a="habdone" data-k="${k}" aria-pressed="${done}" aria-label="${done ? 'Oznacz wszystkie nawyki jako niewykonane' : 'Oznacz wszystkie nawyki jako wykonane'}"><span class="box">${done ? I.check : ''}</span></button>
         </div>${open ? `<div class="subpanel" role="group" aria-label="Nawyki">${list.map((h) => { const on = H.isDone(h, k); return `<div><div class="subrow hsub${on ? ' done' : ''}"><button class="subchk" data-a="habsub" data-id="${h.id}" data-k="${k}" aria-pressed="${on}" aria-label="${on ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(h.name)}"><span class="box">${on ? I.check : ''}</span></button><div class="st">${esc(h.name)}</div></div></div>`; }).join('')}</div>` : ''}</div>`;
+  }
+
+  // v56 (R16, makieta Day): wiersz zbiorczy „Cele” – dziś kroki kamieni ręcznych i kamienie z terminem do 14 dni, w przyszłe dni kamień
+  // w dniu terminu (decyzja właściciela 27.11.2026). Odhaczenie zapisuje się w module Cele; treść wiersza otwiera Cele. Kolejność dnia: id „goal”.
+  const goalsFor = (k) => (window.Goals ? window.Goals.dayItems(k) : []);
+  function goalRow(list, k) {
+    const nd = list.filter((x) => x.done).length, done = nd === list.length, key = 'g|' + k, open = !!S.subOpen[key];
+    return `<div class="act-wrap row-wrap hab-wrap mod mod-goal" data-id="goal" data-k="${k}" data-done="${done ? 1 : 0}">
+        <div class="row${done ? ' done' : ''}">
+          <button class="grip actgrip" data-grip="goal" aria-label="Zmień kolejność: Cele" aria-describedby="grip-help">${I.grip}</button>
+          <button class="body" data-a="goalopen" aria-label="Otwórz moduł Cele"><span class="title">Cele</span><span class="srcrow">${modPill('Cele · kamienie i kroki', 'goal')}</span><div class="rep">${I.repeat}<span>Kamienie milowe</span></div></button>
+          <button class="subtog" data-a="subtog" data-s="${key}" aria-expanded="${open}" aria-label="${open ? 'Zwiń' : 'Rozwiń'} cele, wykonane ${nd} z ${list.length}"><span class="cnt">${nd}/${list.length}</span><span class="chev${open ? ' up' : ''}">${I.down}</span></button>
+          <button class="check" data-a="goaldone" data-k="${k}" aria-pressed="${done}" aria-label="${done ? 'Oznacz wszystkie kroki celów jako niewykonane' : 'Oznacz wszystkie kroki celów jako wykonane'}"><span class="box">${done ? I.check : ''}</span></button>
+        </div>${open ? `<div class="subpanel" role="group" aria-label="Cele">${list.map((x) => `<div><div class="subrow hsub${x.done ? ' done' : ''}"><button class="subchk" data-a="goalsub" data-id="${x.id}" aria-pressed="${x.done}" aria-label="${x.done ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}: ${esc(x.title)}"><span class="box">${x.done ? I.check : ''}</span></button><div class="st">${esc(x.title)}</div></div></div>`).join('')}</div>` : ''}</div>`;
   }
 
   // ---------- Podzadania (v13) ----------
@@ -295,6 +309,8 @@
     if (r[0] === 'settle' && (r[1] === 'group' || r[1] === 'calc')) return r[1] === 'calc' ? '#/settle/group/' + r[2] : '#/settle/groups';
     if (r[0] === 'settle' && r[1]) return '#/settle';
     if (r[0] === 'habits' && r[1]) return '#/habits';   // v53: Nawyki
+    if (r[0] === 'goals' && r[1] === 'edit' && r[2] && r[2] !== 'new') return '#/goals/g/' + r[2];   // v56: Cele
+    if (r[0] === 'goals' && r[1]) return '#/goals';
     if (r[0] === 'notif') return '#/settings';
     return '#/';
   }
@@ -356,6 +372,7 @@
     else if (r.name === 'train' && window.TrainUI) { const k = window.TrainUI.navKey(r); html = k ? withNavbar(window.TrainUI.view(r), 'train', k) : window.TrainUI.view(r); }
     else if (r.name === 'settle' && window.SettleUI) html = withNavbar(window.SettleUI.view(r), 'settle', window.SettleUI.navKey(r));
     else if (r.name === 'habits' && window.HabitsUI) { const k = window.HabitsUI.navKey(r); html = k ? withNavbar(window.HabitsUI.view(r), 'habit', k) : window.HabitsUI.view(r); }   // v53: Nawyki
+    else if (r.name === 'goals' && window.GoalsUI) { const k = window.GoalsUI.navKey(r); html = k ? withNavbar(window.GoalsUI.view(r), 'goal', k) : window.GoalsUI.view(r); }   // v56: Cele
     else if (r.name === 'notif' && window.NotifUI) html = window.NotifUI.view();   // v53: Powiadomienia
     else html = viewHome();
     app.innerHTML = html + (S.dp ? viewDatePicker() : '') + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : '');
@@ -415,6 +432,10 @@
           <div class="ico" style="background:var(--lime-bg);color:var(--lime)">${svg(22, 1.8, window.HabitsUI.icon)}</div>
           <div class="txt"><div class="name">Nawyki</div><div class="desc">Codzienne nawyki i postępy</div></div>
         </a>` : ''}
+        ${window.GoalsUI ? `<a class="module goal wide" href="#/goals">
+          <div class="ico" style="background:var(--teal-bg);color:var(--teal)">${svg(22, 1.8, window.GoalsUI.icon)}</div>
+          <div class="txt"><div class="name">Cele</div><div class="desc">Cele główne i kamienie milowe</div></div>
+        </a>` : ''}
       </div>
       <div class="home-foot">${I.lock}<span>Dane tylko na tym telefonie · działa offline</span></div>
     </main>`;
@@ -440,10 +461,11 @@
       strip += `<button class="${cls}" data-a="pick" data-k="${dk}" aria-label="${esc(dayTitle(dk))}"${dk === k ? ' aria-current="date"' : ''}><span class="d">${C.DAY_SHORT[d.getDay()]}</span><span class="n">${d.getDate()}</span></button>`;
     }
     const items = C.forDay(k), acts = actsFor(k), habs = habsFor(k), habDone = habs.length > 0 && habs.every((h) => window.Habits.isDone(h, k));
-    const n = items.filter((x) => x.done).length + acts.filter((x) => x.done).length + (habDone ? 1 : 0);
+    const gls = goalsFor(k), glDone = gls.length > 0 && gls.every((x) => x.done);
+    const n = items.filter((x) => x.done).length + acts.filter((x) => x.done).length + (habDone ? 1 : 0) + (glDone ? 1 : 0);
     const isMove = S.undo && S.undo.kind === 'move';
     const extra = isMove ? ' · przełożono na ' + S.undo.text : (S.undo && S.undo.text ? ' · ' + S.undo.text : '');
-    const summary = C.tasksWord(items.length + acts.length + (habs.length ? 1 : 0)) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
+    const summary = C.tasksWord(items.length + acts.length + (habs.length ? 1 : 0) + (gls.length ? 1 : 0)) + ' · ' + n + ' ' + C.plural(n, 'wykonane', 'wykonane', 'wykonanych') + extra;
     let pill = '';
     if (S.undo) pill = `<button class="pillbtn" data-a="undo" aria-label="${isMove ? 'Cofnij przełożenie zadania' : S.undo.kind === 'sub' ? 'Cofnij usunięcie podzadania' : 'Cofnij usunięcie zadania'}"><span class="pill">${I.undo}<span>Cofnij</span></span></button>`;
     else if (k !== today) pill = `<button class="pillbtn" data-a="pick" data-k="${today}"><span class="pill">${I.arrow}<span>Dziś</span></span></button>`;
@@ -464,6 +486,7 @@
     const merged = (done) => items.filter((x) => x.done === done).map((x, i) => ({ id: x.task.id, i, html: () => taskRow(x) }))
       .concat(acts.filter((x) => !!x.done === done).map((x, i) => ({ id: 'a:' + x.a.id, i: 1000 + i, html: () => actRow(x, k) })))
       .concat(habs.length && habDone === done ? [{ id: 'hab', i: 2000, html: () => habRow(habs, k) }] : [])
+      .concat(gls.length && glDone === done ? [{ id: 'goal', i: 2001, html: () => goalRow(gls, k) }] : [])
       .map((e) => Object.assign(e, { p: opos(e.id) }))
       .sort((a, b) => (a.p !== b.p ? a.p - b.p : a.i - b.i));
     const rows = merged(false).map((e) => e.html()).join('') + merged(true).map((e) => e.html()).join('');
@@ -836,7 +859,7 @@
             <div class="kv"><span>Ostatnia kopia</span><span>${esc(lbText)}</span></div>
             <div class="kv" style="padding-bottom:0"><span>Wersja aplikacji</span><span>${APP_VERSION}</span></div>
           </div>
-          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse, treningi, rozliczenia i nawyki. Zrób kopię przed zmianą telefonu.</span></div>
+          <div class="warnbox">${I.warn}<span>Odinstalowanie aplikacji lub wyczyszczenie jej danych usuwa wszystkie zadania, dietę, finanse, treningi, rozliczenia, nawyki i cele. Zrób kopię przed zmianą telefonu.</span></div>
         </section>
         <section class="scard" style="gap:12px">
           <div class="eyebrow">Kopia danych</div>
@@ -857,8 +880,8 @@
 
   // Wybór modułów kopii (zapis i wczytanie) – panel w karcie „Kopia danych”, jak w makiecie.
   function viewBackupPicker() {
-    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train && !b.settle && !b.habits;
-    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening'], ['settle', 'Rozliczenia'], ['habits', 'Nawyki']];   // v53: szósty moduł – Nawyki
+    const b = S.bk, load = b.mode === 'load', none = !b.tasks && !b.diet && !b.fin && !b.train && !b.settle && !b.habits && !b.goals;
+    const mods = [['tasks', 'Zadania'], ['diet', 'Dieta'], ['fin', 'Finanse'], ['train', 'Trening'], ['settle', 'Rozliczenia'], ['habits', 'Nawyki'], ['goals', 'Cele']];   // v53: szósty moduł – Nawyki; v56: siódmy – Cele
     return `<div class="bkpick${load ? ' load' : ''}" role="group" aria-label="${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}">
       <div style="font-size:14px;font-weight:600;color:var(--text)">${load ? 'Które moduły wczytać z kopii?' : 'Które moduły zapisać w kopii?'}</div>
       ${load ? '<div style="font-size:13px;line-height:1.45;color:#F2D9A0">Zaznaczone moduły zastąpią obecne dane na tym telefonie. Pozostałe zostaną bez zmian. Najpierw zapisz kopię, jeśli chcesz zachować obecne dane.</div>' : ''}
@@ -910,6 +933,9 @@
     actsub: (el) => { const a = RCx().get(el.dataset.id); if (a) RCx().setDone(a.id, [el.dataset.k], !a.done[el.dataset.k]); render(); },
     actopen: (el) => go('#/train/recur/' + el.dataset.id),
     habopen: () => go('#/habits'),
+    goalopen: () => go('#/goals'),   // v56: Cele
+    goaldone: (el) => { const k = el.dataset.k, L = goalsFor(k), on = !L.every((x) => x.done); L.forEach((x) => window.Goals.setItem(x.id, on)); render(); },
+    goalsub: (el) => { window.Goals.setItem(el.dataset.id); render(); },
     habdone: (el) => { const H = window.Habits, k = el.dataset.k, L = habsFor(k), on = !L.every((h) => H.isDone(h, k)); L.forEach((h) => H.setDone(h, k, on)); render(); },
     habsub: (el) => { const H = window.Habits, h = H.get(el.dataset.id); if (h) H.toggle(h, el.dataset.k); render(); },
     subdone: (el) => { C.toggleSub(el.dataset.id, el.dataset.k, el.dataset.sid); render(); },
@@ -1011,7 +1037,7 @@
     },
     // Ustawienia
     sback: () => { S.set = { loadStep: 0, msg: '' }; S.bk = null; if (window.DietUI) window.DietUI.resetSettings(); if (window.FinUI) window.FinUI.resetSettings(); if (window.GCalUI) window.GCalUI.reset(); if (window.PolarUI) window.PolarUI.reset(); if (window.XlsxExport) window.XlsxExport.reset(); back(); },
-    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true }; render(); },
+    export: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'save', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true, goals: true }; render(); },
     bktoggle: (el) => { S.bk[el.dataset.k] = !S.bk[el.dataset.k]; render(); },
     bkclose: () => { S.bk = null; render(); },
     bkok: () => {
@@ -1024,11 +1050,12 @@
         if (b.train && window.Train) modules.train = window.Train.exportData();
         if (b.settle && window.Settle) modules.settle = window.Settle.exportData();
         if (b.habits && window.Habits) modules.habits = window.Habits.exportData();
+        if (b.goals && window.Goals) modules.goals = window.Goals.exportData();
         const name = 'mylife-kopia-' + C.todayKey() + '.json';
         downloadBlob(new Blob([JSON.stringify({ app: 'MyLife', version: 2, exported: new Date().toISOString(), modules }, null, 1)], { type: 'application/json' }), name);
         try { localStorage.setItem('mylive.lastBackup', C.todayKey()); } catch (e) {}
         S.bk = null;
-        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : '', b.settle ? 'rozliczenia' : '', b.habits ? 'nawyki' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
+        S.set = { loadStep: 0, msg: 'Zapisano plik ' + name + ' (' + [b.tasks ? 'zadania' : '', b.diet ? 'dieta' : '', b.fin ? 'finanse' : '', b.train ? 'trening' : '', b.settle ? 'rozliczenia' : '', b.habits ? 'nawyki' : '', b.goals ? 'cele' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' i $1') + ')' };
       } else {
         // Wczytanie: najpierw wybór modułów, potem plik (jak w makiecie).
         const f = document.getElementById('importFile'); if (f) f.click();
@@ -1036,7 +1063,7 @@
       }
       render();
     },
-    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true }; render(); },
+    askload: () => { S.set = { loadStep: 0, msg: '' }; S.bk = { mode: 'load', tasks: true, diet: true, fin: true, train: true, settle: true, habits: true, goals: true }; render(); },
     // Przełóż
     smode: (el) => { S.sheet.mode = el.dataset.v; render(); },
     smonth: (el) => {
@@ -1116,6 +1143,7 @@
         else if (k.indexOf('train-') === 0 && window.TrainUI) window.TrainUI.onInput(el, k);
         else if (k.indexOf('settle-') === 0 && window.SettleUI) window.SettleUI.onInput(el, k);
         else if (k.indexOf('habit-') === 0 && window.HabitsUI) window.HabitsUI.onInput(el, k);
+        else if (k.indexOf('goal-') === 0 && window.GoalsUI) window.GoalsUI.onInput(el, k);
         else if (k.indexOf('fin-') === 0 && window.FinUI) window.FinUI.onInput(el, k);
         else if (k.indexOf('gcal-') === 0 && window.GCalUI) window.GCalUI.onInput(el, k);
         else if (k.indexOf('polar-') === 0 && window.PolarUI) window.PolarUI.onInput(el, k);
@@ -1131,13 +1159,13 @@
       case 'count': r.repeat.count = Math.max(1, parseInt(el.value, 10) || 1); r.repeat.endMode = 'count'; render(); break;
       case 'import': {
         const f = el.files && el.files[0]; if (!f) return;
-        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train, settle: S.bk.settle, habits: S.bk.habits } : { tasks: true, diet: true, fin: true, train: true, settle: true, habits: true };
+        const want = S.bk && S.bk.mode === 'load' ? { tasks: S.bk.tasks, diet: S.bk.diet, fin: S.bk.fin, train: S.bk.train, settle: S.bk.settle, habits: S.bk.habits, goals: S.bk.goals } : { tasks: true, diet: true, fin: true, train: true, settle: true, habits: true, goals: true };
         f.text().then((txt) => {
           const p = JSON.parse(txt);
           // Kopia v5+: { modules: { tasks, diet } }; starsza (v1–v4): same zadania.
           const data = p && p.modules ? p.modules : (p && Array.isArray(p.tasks) ? { tasks: p } : null);
-          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train && !data.settle && !data.habits)) throw new Error('To nie jest kopia MyLife.');
-          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : '', want.settle && !data.settle ? 'Rozliczenia' : '', want.habits && !data.habits ? 'Nawyki' : ''].filter(Boolean);
+          if (!data || (!data.tasks && !data.diet && !data.fin && !data.train && !data.settle && !data.habits && !data.goals)) throw new Error('To nie jest kopia MyLife.');
+          const missing = [want.tasks && !data.tasks ? 'Zadania' : '', want.diet && !data.diet ? 'Dieta' : '', want.fin && !data.fin ? 'Finanse' : '', want.train && !data.train ? 'Trening' : '', want.settle && !data.settle ? 'Rozliczenia' : '', want.habits && !data.habits ? 'Nawyki' : '', want.goals && !data.goals ? 'Cele' : ''].filter(Boolean);
           const done = [];
           if (want.tasks && data.tasks) done.push('zadania: ' + C.tasksWord(C.importData(data.tasks)));
           if (want.diet && data.diet && window.Diet) { window.Diet.importData(data.diet); done.push('dieta: ' + window.Diet.summary()); }
@@ -1145,6 +1173,7 @@
           if (want.train && data.train && window.Train) { window.Train.importData(data.train); done.push('trening: ' + window.Train.summary()); }
           if (want.settle && data.settle && window.Settle) { window.Settle.importData(data.settle); done.push('rozliczenia: ' + window.Settle.summary()); }
           if (want.habits && data.habits && window.Habits) { window.Habits.importData(data.habits); done.push('nawyki: ' + window.Habits.summary(data.habits)); }
+          if (want.goals && data.goals && window.Goals) { window.Goals.importData(data.goals); done.push('cele: ' + window.Goals.summary(data.goals)); }
           if (!done.length) throw new Error('W pliku nie ma wybranych modułów (' + missing.join(', ') + ').');
           S.set = { loadStep: 0, msg: 'Wczytano kopię – ' + done.join('; ') + '. Pozostałe moduły bez zmian.' + (missing.length ? ' W pliku nie było: ' + missing.join(', ') + '.' : '') };
           S.bk = null; render();
@@ -1177,6 +1206,8 @@
     if (e.key === 'Escape' && window.TrainUI && route().name === 'train' && window.TrainUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.SettleUI && route().name === 'settle' && window.SettleUI.onEscape()) { render(); return; }
     if (e.key === 'Escape' && window.HabitsUI && route().name === 'habits' && window.HabitsUI.onEscape()) { render(); return; }
+    if (e.key === 'Escape' && window.GoalsUI && route().name === 'goals' && window.GoalsUI.onEscape()) { render(); return; }
+    if (e.key === 'Enter' && window.GoalsUI && route().name === 'goals' && window.GoalsUI.onKey(e)) { e.preventDefault(); return; }
     if (window.SettleUI && e.target.dataset && e.target.dataset.key && window.SettleUI.onKey(e)) return;
     if (window.DietUI && e.target.dataset && e.target.dataset.key && window.DietUI.onKey(e)) return;
     if (window.FinUI && e.target.dataset && e.target.dataset.key && window.FinUI.onKey(e)) return;
@@ -1259,7 +1290,7 @@
     if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault(); e.stopPropagation();
     // v13: rozpoczęcie zmiany kolejności zwija rozwinięte podzadania (wiersze mają wtedy równą wysokość).
-    const openKeys = Object.keys(S.subOpen).filter((x) => (x.indexOf('d|') === 0 || x.indexOf('a|') === 0 || x.indexOf('h|') === 0) && S.subOpen[x]);
+    const openKeys = Object.keys(S.subOpen).filter((x) => (x.indexOf('d|') === 0 || x.indexOf('a|') === 0 || x.indexOf('h|') === 0 || x.indexOf('g|') === 0) && S.subOpen[x]);
     if (openKeys.length) {
       openKeys.forEach((x) => { delete S.subOpen[x]; });
       const gid = g.dataset.grip; render();
@@ -1521,6 +1552,7 @@
   if (window.SummaryUI) { window.SummaryUI.init(window.App); }
   if (window.SettleUI) { window.SettleUI.init(window.App); }
   if (window.HabitsUI) { window.HabitsUI.init(window.App); }
+  if (window.GoalsUI) { window.GoalsUI.init(window.App); }
   if (window.NotifUI) { window.NotifUI.init(window.App); }
   if (window.Notif) { window.Notif.init(); }
   // v35: Kalendarz Google – stan połączenia (ukrywa wydarzenia z Google, gdy rozłączony), ekran ustawień i automatyczna synchronizacja.
@@ -1541,6 +1573,7 @@
     if (window.TrainUI) window.TrainUI.onRoute(r);
     if (window.SettleUI) window.SettleUI.onRoute(r);
     if (window.HabitsUI) window.HabitsUI.onRoute(r);
+    if (window.GoalsUI) window.GoalsUI.onRoute(r);
     if (r.name === 'home' && window.SummaryUI) window.SummaryUI.reset();   // v47: podsumowanie wraca na bieżący miesiąc
     window.scrollTo(0, 0); render();
   });

@@ -42,7 +42,7 @@
   };
   const MODS = [
     ['pulpit', 'Pulpit i Dziś', '#C9D3DF', 'sun'], ['plan', 'Plan', '#5BD0E8', 'calcheck'], ['fin', 'Finanse', '#F2B94B', 'coin'],
-    ['diet', 'Dieta', '#FF8F73', 'apple'], ['train', 'Trening', '#B9A2FF', 'dumb'], ['settle', 'Rozliczenia', '#7BE0A0', 'swap'], ['habit', 'Nawyki', '#C8E26B', 'habit'], ['set', 'Ustawienia', '#93A1B2', 'sliders']
+    ['diet', 'Dieta', '#FF8F73', 'apple'], ['train', 'Trening', '#B9A2FF', 'dumb'], ['settle', 'Rozliczenia', '#7BE0A0', 'swap'], ['habit', 'Nawyki', '#C8E26B', 'habit'], ['goal', 'Cele', '#38D6C0', 'target'], ['set', 'Ustawienia', '#93A1B2', 'sliders']
   ];
   // [moduł, nazwa, cel (#/… albo nazwa akcji), opis, słowa kluczowe, ikona]
   const FUNCS = [
@@ -89,6 +89,10 @@
     ['habit', 'Nawyki – dziś', '#/habits', 'Lista nawyków na wybrany dzień z odhaczaniem i serią', 'nawyki nawyk dziś odhaczanie seria codziennie', 'calcheck'],
     ['habit', 'Nowy nawyk', '#/habits/edit/new', 'Dodaj nawyk: nazwa, dni tygodnia, kolor', 'dodaj nawyk nowy częstotliwość dni kolor', 'plus'],
     ['habit', 'Postępy nawyków', '#/habits/progress', 'Realizacja, serie i porzucone dni nawyków: 7 dni, 30 dni albo cały okres', 'postępy nawyki seria realizacja statystyki porzucone', 'trend'],
+    ['goal', 'Cele – lista', '#/goals', 'Cele główne (do 5 aktywnych), wstrzymane i archiwum z tempem: na kursie albo opóźniony', 'cele cel główny aktywne wstrzymane archiwum limit tempo kurs', 'target'],
+    ['goal', 'Kamienie milowe celu', '#/goals', 'Kamienie z terminem, krokami i miernikiem (ręczny, liczbowy albo z innego modułu)', 'kamienie milowe kroki miernik cel termin', 'target'],
+    ['goal', 'Nowy cel', '#/goals/edit/new', 'Dodaj cel: nazwa, po co mi to, termin, obszar, kolor', 'dodaj cel nowy termin obszar kolor', 'plus'],
+    ['goal', 'Postępy celów', '#/goals/progress', 'Zaliczone kamienie i tempo celów: 7 dni, 30 dni albo cały okres', 'postępy cele kamienie tempo realizacja', 'trend'],
     ['set', 'Powiadomienia', '#/notif', 'Plan dnia: lista zadań i zadania z godziną; Nawyki: lista na początek dnia', 'powiadomienia przypomnienia suwak godzina zadania plan dnia nawyki', 'bell'],
     ['set', 'Błędy synchronizacji', '#/syncerr', 'Lista błędów Kalendarza Google i ponowienie', 'synchronizacja błędy kalendarz google', 'repeat']
   ];

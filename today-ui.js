@@ -95,12 +95,30 @@
       </section>`;
   }
 
+  // v56 (R16f, makieta Today): Cele – do 3 aktywnych celów z postępem i tempem; wiersz otwiera cel
+  function goalsSection() {
+    const G = window.Goals; if (!G) return '';
+    G.refresh();
+    const a = G.byStatus('active');
+    const rows = a.slice(0, 3).map((g) => {
+      const t = G.tempo(g), nx = G.nextMs(g), p = Math.round(G.gP(g) * 100);
+      return `<button class="tdrow tdgoal" data-a="tdgoal" data-id="${g.id}" aria-label="${esc('Otwórz cel: ' + g.name)}">
+          <span aria-hidden="true" class="gdot" style="background:${g.color};margin-top:0"></span>
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font-size:14px;line-height:1.3">${esc(g.name)}</span><span class="gbar" style="height:5px" aria-hidden="true"><span style="width:${p}%;background:${g.color}"></span></span><span style="font-size:12px;color:${t.c}">${esc(t.t + (nx && nx.due ? ' · następny: ' + nx.name + ', ' + C.dmy(nx.due).slice(0, 5) : ''))}</span></span>
+          <span style="flex:none;font-family:var(--display);font-size:16px;font-weight:700;color:${g.color}">${p}%</span></button>`;
+    }).join('');
+    return `<section class="tdsec" style="border-color:var(--teal-line)">
+        ${head('tdgoals', 'var(--teal)', '<circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.2"></circle>', 'Cele', a.length + ' z 5 aktywnych')}
+        ${a.length ? rows : empty('Brak aktywnych celów. Dodaj pierwszy w module Cele.')}
+      </section>`;
+  }
+
   function view() {
     const T = C.todayKey(), d = C.parse(T);
     return `<main class="screen"><div class="topbar">${A.navBtns()}
         <div style="display:flex;flex-direction:column;gap:1px"><h1>Dziś</h1><div style="font-size:12px;color:var(--muted)">${esc(C.DAY_NAME[d.getDay()] + ', ' + C.dmy(T))}</div></div>${A.gearLink('margin-left:auto')}</div>
       <div class="dscroll tdscroll" data-scroll="today">
-        ${tasksSection(T)}${mealsSection(T)}${actsSection(T)}${expSection(T)}
+        ${tasksSection(T)}${mealsSection(T)}${actsSection(T)}${expSection(T)}${goalsSection()}
         <div class="tdfoot">Każdy wiersz otwiera swój moduł. Zmiany zrobisz tam, a tu zobaczysz je od razu.</div>
       </div></main>`;
   }
@@ -120,6 +138,8 @@
     tddiet: () => { location.hash = '#/diet'; },
     tdacts: () => { location.hash = '#/train/cal'; },   // makieta: wiersz aktywności → „Aktywność fizyczna”
     tdtrain: () => { location.hash = '#/train'; },
+    tdgoals: () => A.go('#/goals'),
+    tdgoal: (el) => A.go('#/goals/g/' + el.dataset.id),
     tdexp: () => { if (A.actions.fhometoday) A.actions.fhometoday(); else location.hash = '#/fin/exp'; }
   };
   function init(app) { A = app; esc = A.esc; Object.assign(A.actions, actions); }

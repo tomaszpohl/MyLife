@@ -20,7 +20,7 @@
     { id: 'inv', name: 'Inwestycje i odsetki', color: '#F2B94B' },
     { id: 'oth', name: 'Inne', color: '#B79CFF' }
   ];
-  const NONE = { id: 'none', name: 'Bez kategorii', color: '#6F7E90' };
+  const NONE = { id: 'none', name: 'Bez kategorii', color: '#8896A8' };
   // Paleta 32 kolorów kategorii (v10, jak w makiecie).
   const PAL = ['#7BE0A0', '#5BD0E8', '#F2B94B', '#FF9CC8', '#B79CFF', '#FF8F73', '#93A1B2', '#8FD14F', '#4FC3B8', '#6FA8FF', '#E58BE8', '#FFC27A', '#C8E26B', '#FF7A90', '#9AD1F0', '#D2B48C',
     '#3FD6A8', '#A5E86B', '#E8D44D', '#FFA24D', '#FF6F6F', '#F27BB5', '#C792EA', '#8E9BFF', '#4DA3FF', '#4DD0E1', '#80CBC4', '#B5C99A', '#E6B8A2', '#BCAAA4', '#CFD8DC', '#9FA8DA'];
@@ -349,7 +349,7 @@
     const rows = ord.map((cid) => cats.find((c) => c.id === cid)).map((c) => ({ id: c.id, name: c.name, color: c.color, plan: bucket[c.id] || 0, spent: spentBy[c.id] || 0, locked: false }));
     let other = 0;
     Object.keys(spentBy).forEach((cid) => { if (ids.indexOf(cid) < 0) other = r2(other + spentBy[cid]); });
-    if (other > 0) rows.push({ id: '_other', name: 'Pozostałe (bez kategorii z listy)', color: '#6F7E90', plan: 0, spent: other, locked: true });
+    if (other > 0) rows.push({ id: '_other', name: 'Pozostałe (bez kategorii z listy)', color: '#8896A8', plan: 0, spent: other, locked: true });
     const plan = r2(rows.reduce((t, r) => t + r.plan, 0)), spent = r2(rows.reduce((t, r) => t + r.spent, 0));
     return { rows, plan, spent, left: r2(plan - spent), empty: !Object.keys(bucket).length };
   }
